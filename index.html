@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amazon FBA 80/20 Margenrechner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="blob blob-a"></div>
+    <div class="blob blob-b"></div>
+
+    <main class="shell">
+      <header class="card hero">
+        <div>
+          <p class="eyebrow">Amazon FBA 80/20 Modell</p>
+          <h1>Schneller Margen- & ROI-Vergleich für 5-10 Produkte</h1>
+          <p>
+            Nur High-Leverage Inputs je Produkt. Shipping wird als door-to-door 12-Monats-Richtwert (ein Szenario,
+            ein Wert) berechnet.
+          </p>
+        </div>
+        <div class="meta-grid">
+          <article>
+            <span>Produkte</span>
+            <strong id="productCount">0</strong>
+          </article>
+          <article>
+            <span>Modell</span>
+            <strong>3 Kostenblöcke</strong>
+          </article>
+          <article>
+            <span>Speicher</span>
+            <strong>lokal</strong>
+          </article>
+        </div>
+      </header>
+
+      <section class="layout">
+        <aside class="card sidebar">
+          <div class="sidebar-head">
+            <h2>Produkte</h2>
+            <button id="addProductBtn" type="button" class="btn btn-primary">+ Neu</button>
+          </div>
+          <ul id="productList" class="product-list"></ul>
+          <div class="sidebar-actions">
+            <button id="duplicateProductBtn" type="button" class="btn btn-ghost">Duplizieren</button>
+            <button id="deleteProductBtn" type="button" class="btn btn-danger">Löschen</button>
+          </div>
+        </aside>
+
+        <section class="main-column">
+          <section class="card basic-card">
+            <div class="section-head">
+              <div>
+                <h2>Basic View</h2>
+                <p>Pflichtfelder (80/20): max. 12-15 Inputs pro Produkt</p>
+              </div>
+              <div class="head-controls">
+                <label class="switch">
+                  <input id="advancedToggle" type="checkbox" />
+                  <span>Advanced</span>
+                </label>
+              </div>
+            </div>
+            <div class="fx-bar">
+              <p id="fxStatus" class="fx-status">USD→EUR Kurs: wird geladen ...</p>
+              <button id="refreshFxBtn" type="button" class="btn btn-ghost">Kurs aktualisieren</button>
+            </div>
+
+            <form id="basicForm" class="form-grid">
+              <section>
+                <h3>1) Markt & Absatz</h3>
+                <div class="grid cols-3">
+                  <label>
+                    Produktname (optional)
+                    <input data-path="name" type="text" placeholder="z. B. Trinkflasche 750ml" />
+                  </label>
+                  <label>
+                    Verkaufspreis brutto (EUR inkl. USt.)
+                    <input data-path="basic.priceGross" type="number" min="0" step="0.01" />
+                  </label>
+                  <label>
+                    Kategorie
+                    <select data-path="basic.category">
+                      <option value="home">Home & Küche</option>
+                      <option value="beauty">Beauty</option>
+                      <option value="electronics">Elektronik</option>
+                      <option value="apparel">Bekleidung</option>
+                      <option value="pet">Haustier</option>
+                      <option value="generic">Sonstiges</option>
+                    </select>
+                  </label>
+                  <label>
+                    Absatzannahme
+                    <input data-path="basic.demandValue" type="number" min="0" step="1" />
+                  </label>
+                  <label>
+                    Absatz-Basis
+                    <select data-path="basic.demandBasis">
+                      <option value="month">Einheiten / Monat</option>
+                      <option value="day">Einheiten / Tag</option>
+                    </select>
+                  </label>
+                  <label>
+                    Betrachtungszeitraum (Monate)
+                    <input data-path="basic.horizonMonths" type="number" min="1" step="1" />
+                  </label>
+                </div>
+              </section>
+
+              <section>
+                <h3>2) Produkt, Verpackung & Shipping Input</h3>
+                <div class="grid cols-3">
+                  <label>
+                    Produktgewicht netto (g)
+                    <input data-path="basic.netWeightG" type="number" min="0" step="1" />
+                  </label>
+                  <label>
+                    Verpackung Länge (cm)
+                    <input data-path="basic.packLengthCm" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Verpackung Breite (cm)
+                    <input data-path="basic.packWidthCm" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Verpackung Höhe (cm)
+                    <input data-path="basic.packHeightCm" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Units pro Order (PO)
+                    <input data-path="basic.unitsPerOrder" type="number" min="1" step="1" />
+                  </label>
+                  <label>
+                    Transportmodus
+                    <select data-path="basic.transportMode">
+                      <option value="sea_lcl">Sea LCL (Default)</option>
+                      <option value="rail" disabled>Rail (v2)</option>
+                      <option value="air" disabled>Air (v2)</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="shipping-quick" id="shippingQuickCard">
+                  <p>Shipping door-to-door (EUR / Unit)</p>
+                  <strong id="basicShippingUnit">-</strong>
+                  <small id="basicShippingMeta">12-Monats-Ø, kein Live-Tarif</small>
+                </div>
+              </section>
+
+              <section>
+                <h3>3) Einkauf, Amazon & Launch</h3>
+                <div class="grid cols-4">
+                  <label>
+                    EXW pro Einheit (USD)
+                    <input data-path="basic.exwUnit" type="number" min="0" step="0.01" />
+                  </label>
+                  <label>
+                    Marketplace
+                    <select data-path="basic.marketplace">
+                      <option value="DE">Amazon.de</option>
+                      <option value="FR">Amazon.fr</option>
+                      <option value="IT">Amazon.it</option>
+                      <option value="ES">Amazon.es</option>
+                    </select>
+                  </label>
+                  <label>
+                    Fulfillment-Modell
+                    <select data-path="basic.fulfillmentModel">
+                      <option value="fba">FBA</option>
+                      <option value="fbm" disabled>FBM (v2)</option>
+                    </select>
+                  </label>
+                  <label>
+                    Launch-Budget gesamt (EUR)
+                    <input data-path="basic.launchBudgetTotal" type="number" min="0" step="0.01" />
+                  </label>
+                </div>
+                <p class="hint">
+                  Währungslogik: EK/EXW in USD. Shipping, Amazon Fees, Launch und Overhead in EUR.
+                </p>
+              </section>
+            </form>
+          </section>
+
+          <section id="advancedPanel" class="card advanced-card hidden">
+            <div class="section-head">
+              <div>
+                <h2>Advanced Defaults & Overrides</h2>
+                <p>Defaults sind transparent, je Produkt überschreibbar. Admin-Werte gelten global.</p>
+              </div>
+            </div>
+
+            <div class="advanced-grid">
+              <section id="advancedAdsSection">
+                <h3>Ads (TACoS)</h3>
+                <label class="override-row">
+                  <span>
+                    TACoS %
+                    <small data-assumed="ads.tacosRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.ads.overrideTacos" type="checkbox" />
+                    <input data-path="assumptions.ads.tacosRate" type="number" min="0" max="100" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Launch-Multiplier
+                    <small data-assumed="ads.launchMultiplier"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.ads.overrideLaunchMultiplier" type="checkbox" />
+                    <input data-path="assumptions.ads.launchMultiplier" type="number" min="1" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Launch-Monate (Ads Boost)
+                    <small data-assumed="ads.launchMonths"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.ads.overrideLaunchMonths" type="checkbox" />
+                    <input data-path="assumptions.ads.launchMonths" type="number" min="1" step="1" />
+                  </div>
+                </label>
+              </section>
+
+              <section id="advancedReturnsSection">
+                <h3>Retouren</h3>
+                <label class="override-row">
+                  <span>
+                    Retourenquote %
+                    <small data-assumed="returns.returnRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.returns.overrideReturnRate" type="checkbox" />
+                    <input data-path="assumptions.returns.returnRate" type="number" min="0" max="100" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Wiederverkaufsquote %
+                    <small data-assumed="returns.resaleRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.returns.overrideResaleRate" type="checkbox" />
+                    <input data-path="assumptions.returns.resaleRate" type="number" min="0" max="100" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Unsellable-Anteil %
+                    <small data-assumed="returns.unsellableShare"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.returns.overrideUnsellableShare" type="checkbox" />
+                    <input data-path="assumptions.returns.unsellableShare" type="number" min="0" max="100" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Handling je Retoure (EUR)
+                    <small data-assumed="returns.handlingCost"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.returns.overrideHandlingCost" type="checkbox" />
+                    <input data-path="assumptions.returns.handlingCost" type="number" min="0" step="0.01" />
+                  </div>
+                </label>
+              </section>
+
+              <section id="advancedLeakageSection">
+                <h3>Leakage / Overhead</h3>
+                <label class="override-row">
+                  <span>
+                    Leakage % vom Umsatz
+                    <small data-assumed="leakage.ratePct"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.leakage.overrideRatePct" type="checkbox" />
+                    <input data-path="assumptions.leakage.ratePct" type="number" min="0" max="20" step="0.1" />
+                  </div>
+                </label>
+              </section>
+
+              <section id="advancedImportSection">
+                <h3>Import & Amazon</h3>
+                <label class="override-row">
+                  <span>
+                    Zollsatz %
+                    <small data-assumed="import.customsDutyRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.import.overrideCustomsDutyRate" type="checkbox" />
+                    <input data-path="assumptions.import.customsDutyRate" type="number" min="0" max="40" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Einfuhrumsatzsteuer %
+                    <small data-assumed="import.importVatRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.import.overrideImportVatRate" type="checkbox" />
+                    <input data-path="assumptions.import.importVatRate" type="number" min="0" max="30" step="0.1" />
+                  </div>
+                </label>
+                <label class="toggle-row">
+                  <input data-path="assumptions.import.includeImportVatAsCost" type="checkbox" />
+                  <span>EUSt als Kosten einpreisen</span>
+                </label>
+                <label class="toggle-row">
+                  <input data-path="assumptions.import.includeImportVatInCashRoi" type="checkbox" />
+                  <span>EUSt-Vorfinanzierung in Cash-ROI berücksichtigen</span>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Referral Fee %
+                    <small data-assumed="amazon.referralRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.amazon.overrideReferralRate" type="checkbox" />
+                    <input data-path="assumptions.amazon.referralRate" type="number" min="0" max="25" step="0.1" />
+                  </div>
+                </label>
+                <label class="toggle-row">
+                  <input data-path="assumptions.amazon.useManualFbaFee" type="checkbox" />
+                  <span>FBA Fee manuell setzen (statt Auto-Tier)</span>
+                </label>
+                <label>
+                  Manuelle FBA Fee / Einheit (EUR)
+                  <input data-path="assumptions.amazon.manualFbaFee" type="number" min="0" step="0.01" />
+                </label>
+              </section>
+
+              <section id="advancedLifecycleSection">
+                <h3>Launch & Lifecycle</h3>
+                <label class="override-row">
+                  <span>
+                    Zielmarge % (für Max TACoS)
+                    <small data-assumed="lifecycle.targetMarginPct"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.lifecycle.overrideTargetMarginPct" type="checkbox" />
+                    <input data-path="assumptions.lifecycle.targetMarginPct" type="number" min="0" max="50" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Weitere Lifecycle-Kosten / Monat (EUR)
+                    <small data-assumed="lifecycle.otherMonthlyCost"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.lifecycle.overrideOtherMonthlyCost" type="checkbox" />
+                    <input data-path="assumptions.lifecycle.otherMonthlyCost" type="number" min="0" step="0.01" />
+                  </div>
+                </label>
+                <label class="toggle-row">
+                  <input data-path="assumptions.launchSplit.enabled" type="checkbox" />
+                  <span>Launch-Budget aufteilen (Details)</span>
+                </label>
+                <div class="launch-split" id="launchSplitBox">
+                  <label>
+                    Listing/Fotos/A+ (EUR)
+                    <input data-path="assumptions.launchSplit.listing" type="number" min="0" step="0.01" />
+                  </label>
+                  <label>
+                    Amazon Vine (EUR)
+                    <input data-path="assumptions.launchSplit.vine" type="number" min="0" step="0.01" />
+                  </label>
+                  <label>
+                    Coupons/Discounts (EUR)
+                    <input data-path="assumptions.launchSplit.coupons" type="number" min="0" step="0.01" />
+                  </label>
+                  <label>
+                    Sonstige Launchkosten (EUR)
+                    <input data-path="assumptions.launchSplit.other" type="number" min="0" step="0.01" />
+                  </label>
+                  <p id="launchSplitHint" class="hint"></p>
+                </div>
+              </section>
+
+              <section id="advancedShippingSection">
+                <h3>Shipping Details (door-to-door)</h3>
+                <p id="shippingMethodText" class="hint"></p>
+                <ul id="shippingDetailList" class="calc-list"></ul>
+                <p id="shippingDebugInfo" class="hint"></p>
+              </section>
+
+              <section id="advancedAdminSection">
+                <h3>Admin Settings (global)</h3>
+                <p class="hint">Gilt für alle Produkte. Änderungen werden lokal gespeichert.</p>
+
+                <div class="admin-grid">
+                  <label>
+                    LCL Rate (EUR/CBM, 12M-Ø)
+                    <input data-settings-path="shipping12m.lclRateEurPerCbm" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Origin fixed (EUR/Shipment)
+                    <input data-settings-path="shipping12m.originFixedEurPerShipment" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Destination fixed (EUR/Shipment)
+                    <input data-settings-path="shipping12m.destinationFixedEurPerShipment" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    DE On-Carriage fixed (EUR/Shipment)
+                    <input data-settings-path="shipping12m.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" />
+                  </label>
+                  <label class="toggle-row">
+                    <input data-settings-path="shipping12m.customsBrokerEnabled" type="checkbox" />
+                    <span>Customs Broker berücksichtigen</span>
+                  </label>
+                  <label>
+                    Customs Broker fixed (EUR/Shipment)
+                    <input data-settings-path="shipping12m.customsBrokerFixedEurPerShipment" type="number" min="0" step="0.1" />
+                  </label>
+                </div>
+
+                <div class="admin-grid">
+                  <label>
+                    Amazon-Kartonprofil
+                    <select id="cartonPresetSelect">
+                      <option value="legacy">Standard (63,5cm / 23kg)</option>
+                      <option value="update_2025">Update 20.06.2025 (91,4/63,5/63,5 / 22,7kg)</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </label>
+                  <label>
+                    Karton max Länge (cm)
+                    <input data-settings-path="cartonRules.maxLengthCm" type="number" min="1" step="0.1" />
+                  </label>
+                  <label>
+                    Karton max Breite (cm)
+                    <input data-settings-path="cartonRules.maxWidthCm" type="number" min="1" step="0.1" />
+                  </label>
+                  <label>
+                    Karton max Höhe (cm)
+                    <input data-settings-path="cartonRules.maxHeightCm" type="number" min="1" step="0.1" />
+                  </label>
+                  <label>
+                    Karton max Gewicht (kg)
+                    <input data-settings-path="cartonRules.maxWeightKg" type="number" min="1" step="0.1" />
+                  </label>
+                  <label>
+                    Packfaktor (0-1)
+                    <input data-settings-path="cartonRules.packFactor" type="number" min="0.5" max="0.99" step="0.01" />
+                  </label>
+                </div>
+
+                <h4>Kategorie-Defaults</h4>
+                <div id="categoryDefaultsAdmin" class="admin-category-grid"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="card outputs-card">
+            <div class="section-head">
+              <div>
+                <h2>Entscheidungs-Outputs</h2>
+                <p>KPI plus nachvollziehbare Kostenblöcke (Mouseover zeigt Definition/Rechenweg)</p>
+              </div>
+              <div id="trafficLight" class="traffic-badge traffic-neutral">Ampel: -</div>
+            </div>
+
+            <div class="kpi-grid">
+              <article class="kpi" data-kpi="kpiRevenueGross"><span>Umsatz brutto / Monat (EUR)</span><strong id="kpiRevenueGross">-</strong></article>
+              <article class="kpi" data-kpi="kpiRevenueNet"><span>Umsatz netto / Monat (EUR)</span><strong id="kpiRevenueNet">-</strong></article>
+              <article class="kpi" data-kpi="kpiShippingUnit"><span>Shipping door-to-door / Unit (EUR)</span><strong id="kpiShippingUnit">-</strong></article>
+              <article class="kpi" data-kpi="kpiLandedUnit"><span>Landed / Unit (EUR)</span><strong id="kpiLandedUnit">-</strong></article>
+              <article class="kpi" data-kpi="kpiDb1Unit"><span>DB1 / Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
+              <article class="kpi" data-kpi="kpiDb1Margin"><span>DB1-Marge % (netto)</span><strong id="kpiDb1Margin">-</strong></article>
+              <article class="kpi" data-kpi="kpiGrossProfitMonthly"><span>Gewinn brutto / Monat (EUR)</span><strong id="kpiGrossProfitMonthly">-</strong></article>
+              <article class="kpi" data-kpi="kpiProfitMonthly"><span>Gewinn netto / Monat (EUR)</span><strong id="kpiProfitMonthly">-</strong></article>
+              <article class="kpi" data-kpi="kpiBreakEvenPrice"><span>Break-even Preis brutto (EUR)</span><strong id="kpiBreakEvenPrice">-</strong></article>
+              <article class="kpi" data-kpi="kpiMaxTacos"><span>Max TACoS (% Netto-Umsatz)</span><strong id="kpiMaxTacos">-</strong></article>
+              <article class="kpi" data-kpi="kpiProductRoi"><span>Produkt-ROI (%)</span><strong id="kpiProductRoi">-</strong></article>
+              <article class="kpi" data-kpi="kpiCashRoi"><span>Cash-ROI (%)</span><strong id="kpiCashRoi">-</strong></article>
+              <article class="kpi" data-kpi="kpiPayback"><span>Payback (Monate)</span><strong id="kpiPayback">-</strong></article>
+            </div>
+
+            <div class="block-grid">
+              <details open data-block="unit">
+                <summary>Block 1: Unit Economics (pro Einheit/Order) - klicken für Treiber/Overrides</summary>
+                <ul id="unitBlockList"></ul>
+              </details>
+              <details open data-block="launch">
+                <summary>Block 2: Launch & Lifecycle - klicken für Treiber/Overrides</summary>
+                <ul id="launchBlockList"></ul>
+              </details>
+              <details open data-block="leakage">
+                <summary>Block 3: Fixkosten / Leakage - klicken für Treiber/Overrides</summary>
+                <ul id="leakageBlockList"></ul>
+              </details>
+            </div>
+            <p id="driverFocusHint" class="hint">
+              Tipp: Klicke auf eine Kostenzeile. Die wichtigsten Treiber werden markiert (Impact: niedrig/mittel/hoch).
+            </p>
+
+            <div class="sensitivity">
+              <h3>Sensitivität</h3>
+              <div class="sensitivity-grid">
+                <article><span>Preis -10%</span><strong id="sensPriceDown">-</strong></article>
+                <article><span>TACoS +2%</span><strong id="sensTacosUp">-</strong></article>
+                <article><span>Absatz -10%</span><strong id="sensUnitsDown">-</strong></article>
+                <article><span>Worst Case</span><strong id="sensWorst">-</strong></article>
+                <article><span>Best Case</span><strong id="sensBest">-</strong></article>
+              </div>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <section class="card compare-card">
+        <div class="section-head">
+          <div>
+            <h2>Multi-Produkt Vergleich</h2>
+            <p>Sortier- und Filteransicht für schnelle Priorisierung</p>
+          </div>
+          <div class="head-controls">
+            <label class="inline-select">
+              Sortieren
+              <select id="compareSort">
+                <option value="profit_desc">Gewinn netto/Monat (EUR) ↓</option>
+                <option value="db1_margin_desc">DB1-Marge ↓</option>
+                <option value="roi_desc">ROI ↓</option>
+                <option value="cash_roi_desc">Cash-ROI ↓</option>
+                <option value="payback_asc">Payback ↑</option>
+                <option value="shipping_asc">Shipping / Unit (EUR) ↑</option>
+                <option value="max_tacos_desc">Max TACoS ↓</option>
+              </select>
+            </label>
+            <label class="inline-select">
+              Filter
+              <select id="compareFilter">
+                <option value="all">Alle</option>
+                <option value="green">Ampel Grün</option>
+                <option value="yellow">Ampel Gelb</option>
+                <option value="red">Ampel Rot</option>
+                <option value="profit">Nur profitabel</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Produkt</th>
+                <th>Kategorie</th>
+                <th>Preis brutto (EUR)</th>
+                <th>Preis netto (EUR)</th>
+                <th>Shipping / Unit (EUR)</th>
+                <th>Landed / Unit (EUR)</th>
+                <th>DB1/Stück (EUR netto)</th>
+                <th>DB1-Marge %</th>
+                <th>Gewinn netto/Monat (EUR)</th>
+                <th>ROI %</th>
+                <th>Cash-ROI %</th>
+                <th>Payback</th>
+                <th>Break-even Preis brutto (EUR)</th>
+                <th>Max TACoS %</th>
+                <th>Ampel</th>
+                <th>Worst/Best Gewinn netto</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <template id="productItemTemplate">
+      <li>
+        <button class="product-btn" type="button">
+          <span class="name"></span>
+          <span class="meta"></span>
+          <span class="pill"></span>
+        </button>
+      </li>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
