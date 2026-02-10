@@ -121,6 +121,19 @@ const RAIL_FORTO_V2_DEFAULTS = {
   insuranceRatePct: 0.624,
 };
 
+const RAIL_SHIPPING_V3_DEFAULTS = {
+  rateEurPerCbm: 164.7,
+  originBaseEurPerShipment: 36.69,
+  originPerCartonEur: 0.285,
+  mainRunFixedEurPerShipment: 185,
+  deOncarriageBaseEurPerShipment: 300,
+  deOncarriagePerCartonEur: 0.4,
+  customsBrokerFixedEurPerShipment: 50,
+  insuranceRatePct: 0.624,
+  manualSurchargeEnabled: false,
+  manualSurchargeEurPerShipment: 0,
+};
+
 const DEFAULT_SETTINGS = {
   tax: {
     fallbackUsdToEur: DEFAULT_USD_TO_EUR,
@@ -140,20 +153,27 @@ const DEFAULT_SETTINGS = {
         deOncarriageFixedEurPerShipment: 165,
       },
       rail: {
-        rateEurPerCbm: RAIL_FORTO_V2_DEFAULTS.rateEurPerCbm,
-        originFixedEurPerShipment: RAIL_FORTO_V2_DEFAULTS.originFixedEurPerShipment,
-        mainRunFixedEurPerShipment: RAIL_FORTO_V2_DEFAULTS.mainRunFixedEurPerShipment,
-        destinationFixedEurPerShipment: RAIL_FORTO_V2_DEFAULTS.mainRunFixedEurPerShipment,
-        deOncarriageFixedEurPerShipment: RAIL_FORTO_V2_DEFAULTS.deOncarriageFixedEurPerShipment,
+        rateEurPerCbm: RAIL_SHIPPING_V3_DEFAULTS.rateEurPerCbm,
+        originBaseEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.originBaseEurPerShipment,
+        originPerCartonEur: RAIL_SHIPPING_V3_DEFAULTS.originPerCartonEur,
+        mainRunFixedEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.mainRunFixedEurPerShipment,
+        deOncarriageBaseEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.deOncarriageBaseEurPerShipment,
+        deOncarriagePerCartonEur: RAIL_SHIPPING_V3_DEFAULTS.deOncarriagePerCartonEur,
+        // Legacy-Felder bleiben lesbar.
+        originFixedEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.originBaseEurPerShipment,
+        destinationFixedEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.mainRunFixedEurPerShipment,
+        deOncarriageFixedEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.deOncarriageBaseEurPerShipment,
       },
     },
     customsBrokerEnabled: true,
-    customsBrokerFixedEurPerShipment: RAIL_FORTO_V2_DEFAULTS.customsBrokerFixedEurPerShipment,
+    customsBrokerFixedEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.customsBrokerFixedEurPerShipment,
     insurance: {
       enabled: true,
       basis: "goods_value_eur",
-      ratePct: RAIL_FORTO_V2_DEFAULTS.insuranceRatePct,
+      ratePct: RAIL_SHIPPING_V3_DEFAULTS.insuranceRatePct,
     },
+    manualSurchargeEnabled: RAIL_SHIPPING_V3_DEFAULTS.manualSurchargeEnabled,
+    manualSurchargeEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.manualSurchargeEurPerShipment,
   },
   cartonRules: {
     preset: "legacy",
@@ -244,6 +264,7 @@ const DEFAULT_SETTINGS = {
   },
   meta: {
     railDefaultsVersion: 2,
+    railShippingModelVersion: 3,
   },
 };
 
@@ -405,15 +426,21 @@ const SETTINGS_HELP = {
   "shipping12m.modes.sea_lcl.destinationFixedEurPerShipment": "12-Monats-Durchschnitt: Sea LCL Hauptlauf-Fixkosten je Shipment in EUR.",
   "shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment": "12-Monats-Durchschnitt: Sea LCL Nachlauf-Fixkosten je Shipment in EUR.",
   "shipping12m.modes.rail.rateEurPerCbm": "12-Monats-Durchschnitt: Rail variabler Tarif in EUR pro CBM (W/M).",
-  "shipping12m.modes.rail.originFixedEurPerShipment": "12-Monats-Durchschnitt: Rail Vorlauf-Fixkosten je Shipment in EUR.",
+  "shipping12m.modes.rail.originBaseEurPerShipment": "Rail Vorlauf-Fixanteil je Shipment in EUR.",
+  "shipping12m.modes.rail.originPerCartonEur": "Rail Vorlauf variabel je Karton in EUR.",
+  "shipping12m.modes.rail.originFixedEurPerShipment": "Legacy-Feld für Rail Vorlauf-Fixkosten (wird auf Vorlauf-Basis gemappt).",
   "shipping12m.modes.rail.mainRunFixedEurPerShipment": "12-Monats-Durchschnitt: Rail Hauptlauf-Fixkosten je Shipment in EUR (z. B. THC/Handling).",
   "shipping12m.modes.rail.destinationFixedEurPerShipment": "Legacy-Feld für Rail Hauptlauf-Fixkosten (wird für neue Rail-Logik nicht mehr primär genutzt).",
-  "shipping12m.modes.rail.deOncarriageFixedEurPerShipment": "12-Monats-Durchschnitt: Rail Nachlauf-Fixkosten je Shipment in EUR.",
+  "shipping12m.modes.rail.deOncarriageBaseEurPerShipment": "Rail Nachlauf-Fixanteil je Shipment in EUR.",
+  "shipping12m.modes.rail.deOncarriagePerCartonEur": "Rail Nachlauf variabel je Karton in EUR.",
+  "shipping12m.modes.rail.deOncarriageFixedEurPerShipment": "Legacy-Feld für Rail Nachlauf-Fixkosten (wird auf Nachlauf-Basis gemappt).",
   "shipping12m.customsBrokerEnabled": "Aktiviert optionalen Fixkostenblock für Zollabfertigung.",
   "shipping12m.customsBrokerFixedEurPerShipment": "12-Monats-Durchschnitt: fixer Betrag für Zollabfertigung je Shipment in EUR.",
   "shipping12m.insurance.enabled": "Aktiviert die Versicherungsberechnung im Shipping-Block.",
   "shipping12m.insurance.basis": "Basis der Versicherung (v1: nur Warenwert in EUR).",
   "shipping12m.insurance.ratePct": "Versicherungssatz in % auf die gewählte Versicherungsbasis.",
+  "shipping12m.manualSurchargeEnabled": "Aktiviert optionale manuelle Nachbelastung je Shipment (z. B. Advance Commission).",
+  "shipping12m.manualSurchargeEurPerShipment": "Manuelle Nachbelastung je Shipment in EUR (nur wenn aktiv).",
   "cartonRules.maxLengthCm": "Maximale Karton-Länge in cm für Auto-Kartonisierung.",
   "cartonRules.maxWidthCm": "Maximale Karton-Breite in cm für Auto-Kartonisierung.",
   "cartonRules.maxHeightCm": "Maximale Karton-Höhe in cm für Auto-Kartonisierung.",
@@ -520,15 +547,21 @@ const PATH_LABEL_OVERRIDES = {
   "settings.shipping12m.modes.sea_lcl.destinationFixedEurPerShipment": "Sea LCL Hauptlauf fix (EUR/Shipment)",
   "settings.shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment": "Sea LCL Nachlauf fix (EUR/Shipment)",
   "settings.shipping12m.modes.rail.rateEurPerCbm": "Rail Rate (EUR/CBM, 12M-Ø)",
-  "settings.shipping12m.modes.rail.originFixedEurPerShipment": "Rail Vorlauf fix (EUR/Shipment)",
+  "settings.shipping12m.modes.rail.originBaseEurPerShipment": "Rail Vorlauf Basis (EUR/Shipment)",
+  "settings.shipping12m.modes.rail.originPerCartonEur": "Rail Vorlauf variabel (EUR/Karton)",
+  "settings.shipping12m.modes.rail.originFixedEurPerShipment": "Rail Vorlauf fix (legacy, EUR/Shipment)",
   "settings.shipping12m.modes.rail.mainRunFixedEurPerShipment": "Rail Hauptlauf fix (EUR/Shipment)",
   "settings.shipping12m.modes.rail.destinationFixedEurPerShipment": "Rail Hauptlauf fix (legacy, EUR/Shipment)",
-  "settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment": "Rail Nachlauf fix (EUR/Shipment)",
+  "settings.shipping12m.modes.rail.deOncarriageBaseEurPerShipment": "Rail Nachlauf Basis (EUR/Shipment)",
+  "settings.shipping12m.modes.rail.deOncarriagePerCartonEur": "Rail Nachlauf variabel (EUR/Karton)",
+  "settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment": "Rail Nachlauf fix (legacy, EUR/Shipment)",
   "settings.shipping12m.customsBrokerEnabled": "Zollabfertigung aktiv",
   "settings.shipping12m.customsBrokerFixedEurPerShipment": "Zollabfertigung fix (EUR/Shipment)",
   "settings.shipping12m.insurance.enabled": "Versicherung aktiv",
   "settings.shipping12m.insurance.basis": "Versicherungsbasis",
   "settings.shipping12m.insurance.ratePct": "Versicherungssatz (%)",
+  "settings.shipping12m.manualSurchargeEnabled": "Nachbelastung aktiv",
+  "settings.shipping12m.manualSurchargeEurPerShipment": "Nachbelastung (EUR/Shipment)",
   "settings.cartonRules.maxLengthCm": "Karton max Länge (cm)",
   "settings.cartonRules.maxWidthCm": "Karton max Breite (cm)",
   "settings.cartonRules.maxHeightCm": "Karton max Höhe (cm)",
@@ -578,8 +611,11 @@ const KPI_HELP = {
   kpiLandedUnit: "Landed je Unit = EXW(EUR) + Shipping + Zoll (+ optional EUSt als Kosten).",
   kpiDb1Unit: "DB1/Stück = Nettoverkaufspreis - Unit Economics je Stück (Landed, Amazon, Ads, Retouren).",
   kpiDb1Margin: "DB1-Marge % = DB1/Stück / Nettoverkaufspreis × 100.",
+  kpiNetMarginBeforePpc: "Nettomarge vor PPC % = (Gewinn netto/Monat + Ads/Monat) / Netto-Umsatz/Monat × 100.",
   kpiGrossProfitMonthly: "Gewinn brutto/Monat = DB1/Stück × Monatsabsatz (vor Block 2 und 3).",
   kpiProfitMonthly: "Gewinn netto/Monat = Gewinn brutto/Monat - Launch/Lifecycle - Leakage.",
+  kpiTotalCostMonthly: "Gesamtkosten/Monat = Block 1 (Unit Economics) + Block 2 (Launch/Lifecycle) + Block 3 (Leakage).",
+  kpiTotalCostPerUnit: "Gesamtkosten/Unit = Gesamtkosten/Monat / Monatsabsatz.",
   kpiBreakEvenPrice: "Break-even Preis brutto: Preis, bei dem Gewinn netto/Monat = 0.",
   kpiMaxTacos: "Max TACoS: höchste Ads-Quote, bei der die Ziel-Nettomarge gerade noch erreicht wird.",
   kpiProductRoi: "Produkt-ROI = Gewinn im Zeitraum / (Landed Kapital + Launch-Budget) × 100.",
@@ -806,7 +842,11 @@ const STRING_PATHS = new Set([
   "assumptions.extraCosts.receivingMode",
 ]);
 
-const SETTINGS_BOOLEAN_PATHS = new Set(["shipping12m.customsBrokerEnabled", "shipping12m.insurance.enabled"]);
+const SETTINGS_BOOLEAN_PATHS = new Set([
+  "shipping12m.customsBrokerEnabled",
+  "shipping12m.insurance.enabled",
+  "shipping12m.manualSurchargeEnabled",
+]);
 const SETTINGS_STRING_PATHS = new Set(["shipping12m.insurance.basis", "cartonRules.estimationMode"]);
 
 const OVERRIDE_CONTROL_MAP = [
@@ -909,8 +949,11 @@ const dom = {
   kpiLandedUnit: document.getElementById("kpiLandedUnit"),
   kpiDb1Unit: document.getElementById("kpiDb1Unit"),
   kpiDb1Margin: document.getElementById("kpiDb1Margin"),
+  kpiNetMarginBeforePpc: document.getElementById("kpiNetMarginBeforePpc"),
   kpiGrossProfitMonthly: document.getElementById("kpiGrossProfitMonthly"),
   kpiProfitMonthly: document.getElementById("kpiProfitMonthly"),
+  kpiTotalCostMonthly: document.getElementById("kpiTotalCostMonthly"),
+  kpiTotalCostPerUnit: document.getElementById("kpiTotalCostPerUnit"),
   kpiBreakEvenPrice: document.getElementById("kpiBreakEvenPrice"),
   kpiMaxTacos: document.getElementById("kpiMaxTacos"),
   kpiProductRoi: document.getElementById("kpiProductRoi"),
@@ -1026,9 +1069,27 @@ function shippingModeSettingsPathPrefix(mode) {
 function shippingModeDriverPaths(mode) {
   const normalized = normalizeShippingMode(mode);
   const prefix = shippingModeSettingsPathPrefix(normalized);
-  const paths = [
+  if (normalized === "rail") {
+    return [
+      `${prefix}.rateEurPerCbm`,
+      `${prefix}.originBaseEurPerShipment`,
+      `${prefix}.originPerCartonEur`,
+      `${prefix}.mainRunFixedEurPerShipment`,
+      `${prefix}.deOncarriageBaseEurPerShipment`,
+      `${prefix}.deOncarriagePerCartonEur`,
+      "settings.shipping12m.customsBrokerEnabled",
+      "settings.shipping12m.customsBrokerFixedEurPerShipment",
+      "settings.shipping12m.insurance.enabled",
+      "settings.shipping12m.insurance.basis",
+      "settings.shipping12m.insurance.ratePct",
+      "settings.shipping12m.manualSurchargeEnabled",
+      "settings.shipping12m.manualSurchargeEurPerShipment",
+    ];
+  }
+  const categories = [
     `${prefix}.rateEurPerCbm`,
     `${prefix}.originFixedEurPerShipment`,
+    `${prefix}.destinationFixedEurPerShipment`,
     `${prefix}.deOncarriageFixedEurPerShipment`,
     "settings.shipping12m.customsBrokerEnabled",
     "settings.shipping12m.customsBrokerFixedEurPerShipment",
@@ -1036,16 +1097,53 @@ function shippingModeDriverPaths(mode) {
     "settings.shipping12m.insurance.basis",
     "settings.shipping12m.insurance.ratePct",
   ];
+
+  return categories.map((category) => {
+    const totalMonthly = category.lines.reduce((sum, lineItem) => sum + num(lineItem.impactMonthly, 0), 0);
+    return {
+      ...category,
+      totalMonthly,
+      totalPerUnit: totalMonthly / monthlyUnits,
+    };
+  });
+}
+
+function shippingOriginDriverPaths(mode) {
+  const normalized = normalizeShippingMode(mode);
+  const prefix = shippingModeSettingsPathPrefix(normalized);
   if (normalized === "rail") {
-    paths.splice(2, 0, `${prefix}.mainRunFixedEurPerShipment`);
-  } else {
-    paths.splice(2, 0, `${prefix}.destinationFixedEurPerShipment`);
+    return [`${prefix}.originBaseEurPerShipment`, `${prefix}.originPerCartonEur`];
   }
-  return paths;
+  return [`${prefix}.originFixedEurPerShipment`];
+}
+
+function shippingMainRunFixedDriverPaths(mode) {
+  const normalized = normalizeShippingMode(mode);
+  const prefix = shippingModeSettingsPathPrefix(normalized);
+  if (normalized === "rail") {
+    return [`${prefix}.mainRunFixedEurPerShipment`];
+  }
+  return [`${prefix}.destinationFixedEurPerShipment`];
+}
+
+function shippingOncarriageDriverPaths(mode) {
+  const normalized = normalizeShippingMode(mode);
+  const prefix = shippingModeSettingsPathPrefix(normalized);
+  if (normalized === "rail") {
+    return [`${prefix}.deOncarriageBaseEurPerShipment`, `${prefix}.deOncarriagePerCartonEur`];
+  }
+  return [`${prefix}.deOncarriageFixedEurPerShipment`];
+}
+
+function shippingManualSurchargeDriverPaths(mode) {
+  if (normalizeShippingMode(mode) !== "rail") {
+    return [];
+  }
+  return ["settings.shipping12m.manualSurchargeEnabled", "settings.shipping12m.manualSurchargeEurPerShipment"];
 }
 
 function cartonizationSettingsPaths() {
-  return [
+  const categories = [
     "settings.cartonRules.estimationMode",
     "settings.cartonRules.maxLengthCm",
     "settings.cartonRules.maxWidthCm",
@@ -1397,6 +1495,33 @@ function ensureShipping12mSettings(rawShipping12m) {
   if (merged.modes.rail.mainRunFixedEurPerShipment === undefined) {
     merged.modes.rail.mainRunFixedEurPerShipment = merged.modes.rail.destinationFixedEurPerShipment;
   }
+  if (
+    source?.modes?.rail?.originBaseEurPerShipment === undefined &&
+    source?.modes?.rail?.originFixedEurPerShipment !== undefined
+  ) {
+    merged.modes.rail.originBaseEurPerShipment = source.modes.rail.originFixedEurPerShipment;
+  }
+  if (
+    source?.modes?.rail?.deOncarriageBaseEurPerShipment === undefined &&
+    source?.modes?.rail?.deOncarriageFixedEurPerShipment !== undefined
+  ) {
+    merged.modes.rail.deOncarriageBaseEurPerShipment = source.modes.rail.deOncarriageFixedEurPerShipment;
+  }
+  if (merged.modes.rail.originFixedEurPerShipment === undefined) {
+    merged.modes.rail.originFixedEurPerShipment = merged.modes.rail.originBaseEurPerShipment;
+  }
+  if (merged.modes.rail.destinationFixedEurPerShipment === undefined) {
+    merged.modes.rail.destinationFixedEurPerShipment = merged.modes.rail.mainRunFixedEurPerShipment;
+  }
+  if (merged.modes.rail.deOncarriageFixedEurPerShipment === undefined) {
+    merged.modes.rail.deOncarriageFixedEurPerShipment = merged.modes.rail.deOncarriageBaseEurPerShipment;
+  }
+  if (merged.manualSurchargeEnabled === undefined) {
+    merged.manualSurchargeEnabled = base.manualSurchargeEnabled;
+  }
+  if (merged.manualSurchargeEurPerShipment === undefined) {
+    merged.manualSurchargeEurPerShipment = base.manualSurchargeEurPerShipment;
+  }
 
   return merged;
 }
@@ -1412,6 +1537,29 @@ function applyRailFortoV2Defaults(settings) {
   settings.shipping12m.insurance.enabled = true;
   settings.shipping12m.insurance.basis = "goods_value_eur";
   settings.shipping12m.insurance.ratePct = RAIL_FORTO_V2_DEFAULTS.insuranceRatePct;
+}
+
+function applyRailShippingV3Defaults(settings) {
+  settings.shipping12m.modes.rail.rateEurPerCbm = RAIL_SHIPPING_V3_DEFAULTS.rateEurPerCbm;
+  settings.shipping12m.modes.rail.originBaseEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.originBaseEurPerShipment;
+  settings.shipping12m.modes.rail.originPerCartonEur = RAIL_SHIPPING_V3_DEFAULTS.originPerCartonEur;
+  settings.shipping12m.modes.rail.mainRunFixedEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.mainRunFixedEurPerShipment;
+  settings.shipping12m.modes.rail.deOncarriageBaseEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.deOncarriageBaseEurPerShipment;
+  settings.shipping12m.modes.rail.deOncarriagePerCartonEur = RAIL_SHIPPING_V3_DEFAULTS.deOncarriagePerCartonEur;
+
+  // Legacy-Felder bleiben für Bestandsdaten/alte Treiberpfade lesbar.
+  settings.shipping12m.modes.rail.originFixedEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.originBaseEurPerShipment;
+  settings.shipping12m.modes.rail.destinationFixedEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.mainRunFixedEurPerShipment;
+  settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.deOncarriageBaseEurPerShipment;
+
+  settings.shipping12m.customsBrokerEnabled = true;
+  settings.shipping12m.customsBrokerFixedEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.customsBrokerFixedEurPerShipment;
+  settings.shipping12m.insurance.enabled = true;
+  settings.shipping12m.insurance.basis = "goods_value_eur";
+  settings.shipping12m.insurance.ratePct = RAIL_SHIPPING_V3_DEFAULTS.insuranceRatePct;
+
+  settings.shipping12m.manualSurchargeEnabled = RAIL_SHIPPING_V3_DEFAULTS.manualSurchargeEnabled;
+  settings.shipping12m.manualSurchargeEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.manualSurchargeEurPerShipment;
 }
 
 function isNearlyEqual(value, expected, epsilon = 0.01) {
@@ -1446,6 +1594,20 @@ function migrateRailDefaultsV2(settings, parsedSettings) {
     applyRailFortoV2Defaults(settings);
   }
   settings.meta.railDefaultsVersion = 2;
+  return true;
+}
+
+function migrateRailShippingModelV3(settings, parsedSettings) {
+  const rawVersion = num(parsedSettings?.meta?.railShippingModelVersion, 0);
+  if (!settings.meta || typeof settings.meta !== "object") {
+    settings.meta = {};
+  }
+  if (rawVersion >= 3) {
+    settings.meta.railShippingModelVersion = 3;
+    return false;
+  }
+  applyRailShippingV3Defaults(settings);
+  settings.meta.railShippingModelVersion = 3;
   return true;
 }
 
@@ -1487,10 +1649,15 @@ function sanitizeSettings(settings) {
     5000,
   );
   settings.shipping12m.modes.rail.rateEurPerCbm = clamp(num(settings.shipping12m.modes.rail.rateEurPerCbm, 0), 0, 2000);
-  settings.shipping12m.modes.rail.originFixedEurPerShipment = clamp(
-    num(settings.shipping12m.modes.rail.originFixedEurPerShipment, 0),
+  settings.shipping12m.modes.rail.originBaseEurPerShipment = clamp(
+    num(settings.shipping12m.modes.rail.originBaseEurPerShipment, settings.shipping12m.modes.rail.originFixedEurPerShipment),
     0,
     5000,
+  );
+  settings.shipping12m.modes.rail.originPerCartonEur = clamp(
+    num(settings.shipping12m.modes.rail.originPerCartonEur, 0),
+    0,
+    200,
   );
   settings.shipping12m.modes.rail.mainRunFixedEurPerShipment = clamp(
     num(
@@ -1500,16 +1667,36 @@ function sanitizeSettings(settings) {
     0,
     5000,
   );
+  settings.shipping12m.modes.rail.deOncarriageBaseEurPerShipment = clamp(
+    num(
+      settings.shipping12m.modes.rail.deOncarriageBaseEurPerShipment,
+      settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment,
+    ),
+    0,
+    5000,
+  );
+  settings.shipping12m.modes.rail.deOncarriagePerCartonEur = clamp(
+    num(settings.shipping12m.modes.rail.deOncarriagePerCartonEur, 0),
+    0,
+    200,
+  );
+  settings.shipping12m.modes.rail.originFixedEurPerShipment = clamp(
+    num(settings.shipping12m.modes.rail.originFixedEurPerShipment, settings.shipping12m.modes.rail.originBaseEurPerShipment),
+    0,
+    5000,
+  );
   settings.shipping12m.modes.rail.destinationFixedEurPerShipment = clamp(
-    num(settings.shipping12m.modes.rail.destinationFixedEurPerShipment, 0),
+    num(settings.shipping12m.modes.rail.destinationFixedEurPerShipment, settings.shipping12m.modes.rail.mainRunFixedEurPerShipment),
     0,
     5000,
   );
   settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment = clamp(
-    num(settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment, 0),
+    num(settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment, settings.shipping12m.modes.rail.deOncarriageBaseEurPerShipment),
     0,
     5000,
   );
+  settings.shipping12m.manualSurchargeEnabled = Boolean(settings.shipping12m.manualSurchargeEnabled);
+  settings.shipping12m.manualSurchargeEurPerShipment = clamp(num(settings.shipping12m.manualSurchargeEurPerShipment, 0), 0, 5000);
   settings.shipping12m.customsBrokerFixedEurPerShipment = clamp(num(settings.shipping12m.customsBrokerFixedEurPerShipment, 0), 0, 5000);
   settings.shipping12m.customsBrokerEnabled = Boolean(settings.shipping12m.customsBrokerEnabled);
   settings.shipping12m.insurance.enabled = Boolean(settings.shipping12m.insurance?.enabled);
@@ -1599,6 +1786,7 @@ function sanitizeSettings(settings) {
     settings.meta = {};
   }
   settings.meta.railDefaultsVersion = Math.max(0, roundInt(settings.meta.railDefaultsVersion, 0));
+  settings.meta.railShippingModelVersion = Math.max(0, roundInt(settings.meta.railShippingModelVersion, 0));
 
   return settings;
 }
@@ -1727,8 +1915,9 @@ function loadSettings() {
       costDefaults: ensureCostDefaults(parsed?.costDefaults),
     };
     state.settings = sanitizeSettings(merged);
-    const migrated = migrateRailDefaultsV2(state.settings, parsed);
-    if (migrated) {
+    const migratedV2 = migrateRailDefaultsV2(state.settings, parsed);
+    const migratedV3 = migrateRailShippingModelV3(state.settings, parsed);
+    if (migratedV2 || migratedV3) {
       state.settings = sanitizeSettings(state.settings);
       saveSettings();
     }
@@ -1856,6 +2045,10 @@ function renderSettingsInputs() {
   }
   if (insuranceRateField) {
     insuranceRateField.disabled = !insuranceEnabled;
+  }
+  const surchargeField = document.querySelector('[data-settings-path="shipping12m.manualSurchargeEurPerShipment"]');
+  if (surchargeField) {
+    surchargeField.disabled = !Boolean(state.settings.shipping12m.manualSurchargeEnabled);
   }
 }
 
@@ -2321,25 +2514,56 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
   const insuranceRatePct = clamp(num(shipping.insurance?.ratePct, 0), 0, 20);
   const insuranceBaseEur = goodsValueEur;
 
-  const originFixed = Math.max(0, num(modeSettings.originFixedEurPerShipment));
-  const mainRunVariable = Math.max(0, num(modeSettings.rateEurPerCbm)) * chargeableCbm;
-  const destinationFixed = Math.max(0, num(modeSettings.destinationFixedEurPerShipment));
+  const rateEurPerCbm = Math.max(0, num(modeSettings.rateEurPerCbm));
+  const mainRunVariable = rateEurPerCbm * chargeableCbm;
+  const destinationFixedLegacy = Math.max(0, num(modeSettings.destinationFixedEurPerShipment));
+
+  let originBaseEurPerShipment = 0;
+  let originPerCartonEur = 0;
+  let deOncarriageBaseEurPerShipment = 0;
+  let deOncarriagePerCartonEur = 0;
+  let originTotal = 0;
+  let deOncarriageTotal = 0;
+
+  if (modeKey === "rail") {
+    originBaseEurPerShipment = Math.max(0, num(modeSettings.originBaseEurPerShipment, modeSettings.originFixedEurPerShipment));
+    originPerCartonEur = Math.max(0, num(modeSettings.originPerCartonEur, 0));
+    deOncarriageBaseEurPerShipment = Math.max(
+      0,
+      num(modeSettings.deOncarriageBaseEurPerShipment, modeSettings.deOncarriageFixedEurPerShipment),
+    );
+    deOncarriagePerCartonEur = Math.max(0, num(modeSettings.deOncarriagePerCartonEur, 0));
+    originTotal = originBaseEurPerShipment + originPerCartonEur * cartonsCount;
+    deOncarriageTotal = deOncarriageBaseEurPerShipment + deOncarriagePerCartonEur * cartonsCount;
+  } else {
+    originBaseEurPerShipment = Math.max(0, num(modeSettings.originFixedEurPerShipment));
+    deOncarriageBaseEurPerShipment = Math.max(0, num(modeSettings.deOncarriageFixedEurPerShipment));
+    originTotal = originBaseEurPerShipment;
+    deOncarriageTotal = deOncarriageBaseEurPerShipment;
+  }
+
   const mainRunFixed = modeKey === "rail"
-    ? Math.max(0, num(modeSettings.mainRunFixedEurPerShipment, destinationFixed))
-    : destinationFixed;
-  const oncarriageFixed = Math.max(0, num(modeSettings.deOncarriageFixedEurPerShipment));
+    ? Math.max(0, num(modeSettings.mainRunFixedEurPerShipment, destinationFixedLegacy))
+    : destinationFixedLegacy;
   const customsBroker = shipping.customsBrokerEnabled ? Math.max(0, num(shipping.customsBrokerFixedEurPerShipment)) : 0;
   const insuranceTotal = insuranceEnabled ? insuranceBaseEur * (insuranceRatePct / 100) : 0;
+  const manualSurchargeEnabled = modeKey === "rail" && Boolean(shipping.manualSurchargeEnabled);
+  const manualSurchargeEurPerShipment = manualSurchargeEnabled
+    ? Math.max(0, num(shipping.manualSurchargeEurPerShipment))
+    : 0;
+  const manualSurchargeTotal = manualSurchargeEurPerShipment;
 
-  const shippingTotal = originFixed + mainRunVariable + mainRunFixed + oncarriageFixed + customsBroker + insuranceTotal;
+  const shippingTotal = originTotal + mainRunVariable + mainRunFixed + deOncarriageTotal + customsBroker + insuranceTotal + manualSurchargeTotal;
   const shippingPerUnit = unitsPerOrder > 0 ? shippingTotal / unitsPerOrder : 0;
 
   const lines = [
     {
       key: "pre_run",
       label: "Vorlauf",
-      total: originFixed,
-      formula: "Vorlauf = origin_fixed",
+      total: originTotal,
+      formula: modeKey === "rail"
+        ? "Vorlauf = origin_base + origin_per_carton × cartons_count"
+        : "Vorlauf = origin_fixed",
       source: `Global Setting -> Shipping 12M -> ${modeLabel}`,
     },
     {
@@ -2359,8 +2583,10 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     {
       key: "oncarriage",
       label: "Nachlauf",
-      total: oncarriageFixed,
-      formula: "Nachlauf = de_oncarriage_fixed",
+      total: deOncarriageTotal,
+      formula: modeKey === "rail"
+        ? "Nachlauf = de_oncarriage_base + de_oncarriage_per_carton × cartons_count"
+        : "Nachlauf = de_oncarriage_fixed",
       source: `Global Setting -> Shipping 12M -> ${modeLabel}`,
     },
     {
@@ -2376,6 +2602,13 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
       total: insuranceTotal,
       formula: "Versicherung = Warenwert (EUR) × Versicherungsrate %",
       source: "Global Setting -> Shipping 12M -> Versicherung",
+    },
+    {
+      key: "manual_surcharge",
+      label: "Nachbelastung",
+      total: manualSurchargeTotal,
+      formula: "Nachbelastung = manual_surcharge_eur_per_shipment (optional)",
+      source: "Global Setting -> Shipping 12M -> Rail",
     },
   ].map((line) => ({
     ...line,
@@ -2410,13 +2643,22 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     insuranceBasis,
     insuranceRatePct,
     insuranceBaseEur,
-    originFixed,
+    originBaseEurPerShipment,
+    originPerCartonEur,
+    originTotal,
+    originFixed: originTotal,
     mainRunVariable,
     mainRunFixed,
-    destinationFixed,
-    oncarriageFixed,
+    destinationFixed: destinationFixedLegacy,
+    deOncarriageBaseEurPerShipment,
+    deOncarriagePerCartonEur,
+    deOncarriageTotal,
+    oncarriageFixed: deOncarriageTotal,
     customsBroker,
     insuranceTotal,
+    manualSurchargeEnabled,
+    manualSurchargeEurPerShipment,
+    manualSurchargeTotal,
     shippingTotal,
     shippingPerUnit,
     breakdown: lines,
@@ -3148,6 +3390,7 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const profitBeforeOverheadMonthly = grossProfitMonthly - block2Monthly;
   const profitHorizon = profitMonthly * horizonMonths;
   const netMarginPct = netRevenueMonthly > 0 ? (profitMonthly / netRevenueMonthly) * 100 : 0;
+  const netMarginBeforePpcPct = netRevenueMonthly > 0 ? ((profitMonthly + adsMonthly) / netRevenueMonthly) * 100 : 0;
   const sellerboardMarginPct = grossRevenueMonthly > 0 ? (profitBeforeOverheadMonthly / grossRevenueMonthly) * 100 : 0;
 
   const investedCapital = landedUnit * unitsHorizon + launchBudget + listingPackageCost + setupOneOffTotal;
@@ -3248,6 +3491,9 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     leakageRatePct: resolved.leakageRatePct,
     block3Monthly,
     totalCostMonthly: block1Monthly + block2Monthly + block3Monthly,
+    totalCostPerUnit: monthlyUnits > 0 ? (block1Monthly + block2Monthly + block3Monthly) / monthlyUnits : 0,
+    shippingCategoryTotalEurPerUnit: shippingUnit,
+    shippingCategoryTotalEurPerMonth: shippingMonthly,
 
     db1Unit,
     db1MarginPct,
@@ -3259,6 +3505,7 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     profitMonthly,
     profitBeforeOverheadMonthly,
     netMarginPct,
+    netMarginBeforePpcPct,
     sellerboardMarginPct,
     profitHorizon,
 
@@ -3914,6 +4161,9 @@ function settingsSectionIdFromPath(settingsPath) {
     if (prefixed.startsWith("settings.shipping12m.modes.rail.")) {
       return "settingsShippingRailMode";
     }
+    if (prefixed.startsWith("settings.shipping12m.manualSurcharge")) {
+      return "settingsShippingRailMode";
+    }
     if (prefixed.startsWith("settings.shipping12m.modes.sea_lcl.")) {
       return "settingsShippingSeaMode";
     }
@@ -4023,7 +4273,7 @@ function buildStageImpactItems(metrics, stage) {
       value: formatCurrency(shippingImportUnit),
       impactMonthly: (shippingImportUnit * metrics.monthlyUnits),
       explain: "Door-to-Door Shipping, Zoll und orderbezogene Import-Fixkosten pro Unit.",
-      formula: "Shipping & Import/Unit = (Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung)/Unit + Zoll/Unit + Order-Fix/Unit.",
+      formula: "Shipping & Import/Unit = (Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung + Nachbelastung)/Unit + Zoll/Unit + Order-Fix/Unit.",
       source: `User-Input (Preis/EK/Maße) + Global Settings (Shipping ${metrics.shipping.modeLabel}, Kosten-Defaults) + Kategorie-Default (Zoll/Steuer).`,
       robustness: "Mittel (mehrere Annahmen entlang der Kette).",
       driverPaths: [
@@ -4173,7 +4423,7 @@ function buildStageImpactItems(metrics, stage) {
       value: formatCurrency(metrics.shippingMonthly),
       impactMonthly: metrics.shippingMonthly,
       explain: "Internationaler D2D-Anteil aus Fixblöcken + variablem W/M-Tarif.",
-      formula: `Shipping Total (${metrics.shipping.modeLabel}) = Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung.`,
+      formula: `Shipping Total (${metrics.shipping.modeLabel}) = Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung + Nachbelastung.`,
       source: `Globale 12M-Settings (${metrics.shipping.modeLabel}) + Produktmaße/-gewicht/-Menge.`,
       robustness: "Mittel (Richtwert, kein Live-Spot-Tarif).",
       driverPaths: [
@@ -5048,12 +5298,13 @@ function buildCostCategoryData(metrics) {
   const importVatCostUnit = metrics.resolved.includeImportVatAsCost ? metrics.importVatUnit : 0;
   const amazonFeesUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit + metrics.amazonStoragePerUnit;
   const shippingUnitsBase = Math.max(1, metrics.shipping.unitsPerOrder);
-  const shippingPreRunUnit = metrics.shipping.originFixed / shippingUnitsBase;
+  const shippingPreRunUnit = metrics.shipping.originTotal / shippingUnitsBase;
   const shippingMainRunVariableUnit = metrics.shipping.mainRunVariable / shippingUnitsBase;
   const shippingMainRunFixedUnit = metrics.shipping.mainRunFixed / shippingUnitsBase;
-  const shippingPostRunUnit = metrics.shipping.oncarriageFixed / shippingUnitsBase;
+  const shippingPostRunUnit = metrics.shipping.deOncarriageTotal / shippingUnitsBase;
   const shippingCustomsClearanceUnit = metrics.shipping.customsBroker / shippingUnitsBase;
   const shippingInsuranceUnit = metrics.shipping.insuranceTotal / shippingUnitsBase;
+  const shippingSurchargeUnit = metrics.shipping.manualSurchargeTotal / shippingUnitsBase;
 
   const line = (config) => ({
     ...config,
@@ -5171,44 +5422,19 @@ function buildCostCategoryData(metrics) {
       collapsedRows: 6,
       lines: [
         line({
-          label: `Shipping door-to-door gesamt (${metrics.shipping.modeLabel}, EUR/Unit)`,
-          valueRaw: metrics.shippingUnit,
-          impactMonthly: metrics.shippingMonthly,
-          explain: `12M-Ø Door-to-Door Shipping-Richtwert im Modus ${metrics.shipping.modeLabel}, aufgeteilt in Vorlauf/Hauptlauf/Nachlauf/Zollabfertigung/Versicherung.`,
-          formula: `Shipping/Unit (${metrics.shipping.modeLabel}) = (Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung) / Units pro Order.`,
-          source: `Shipping 12M (${metrics.shipping.modeLabel}) + Kartonisierung.`,
-          robustness: "Mittel.",
-          driverPaths: [
-            "derived.shipping.unitsPerOrder",
-            "derived.shipping.unitsPerCartonAuto",
-            "derived.shipping.estimatedCartonLengthCm",
-            "derived.shipping.estimatedCartonWidthCm",
-            "derived.shipping.estimatedCartonHeightCm",
-            "derived.shipping.estimatedCartonGrossWeightKg",
-            "derived.shipping.cartonizationSource",
-            "derived.shipping.cartonsCount",
-            "derived.shipping.chargeableCbm",
-            "basic.unitsPerOrder",
-            "basic.netWeightG",
-            "basic.packLengthCm",
-            "basic.packWidthCm",
-            "basic.packHeightCm",
-            ...cartonizationProductPaths(),
-            ...shippingModeDriverPaths(metrics.shipping.modeKey),
-            ...cartonizationSettingsPaths(),
-          ],
-        }),
-        line({
           label: "Vorlauf (EUR/Unit)",
           valueRaw: shippingPreRunUnit,
           impactMonthly: shippingPreRunUnit * metrics.monthlyUnits,
           explain: "Abholung/Trucking am Ursprung.",
-          formula: "Vorlauf/Unit = origin_fixed / PO Units.",
+          formula: metrics.shipping.modeKey === "rail"
+            ? "Vorlauf/Unit = (origin_base + origin_per_carton × cartons_count) / PO Units."
+            : "Vorlauf/Unit = origin_fixed / PO Units.",
           source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
           robustness: "Mittel.",
           driverPaths: [
             "basic.unitsPerOrder",
-            ...shippingModeDriverPaths(metrics.shipping.modeKey).filter((path) => path.endsWith("originFixedEurPerShipment")),
+            "derived.shipping.cartonsCount",
+            ...shippingOriginDriverPaths(metrics.shipping.modeKey),
           ],
         }),
         line({
@@ -5235,7 +5461,7 @@ function buildCostCategoryData(metrics) {
           robustness: "Mittel.",
           driverPaths: [
             "basic.unitsPerOrder",
-            ...shippingModeDriverPaths(metrics.shipping.modeKey).filter((path) => path.endsWith("mainRunFixedEurPerShipment") || path.endsWith("destinationFixedEurPerShipment")),
+            ...shippingMainRunFixedDriverPaths(metrics.shipping.modeKey),
           ],
         }),
         line({
@@ -5243,12 +5469,15 @@ function buildCostCategoryData(metrics) {
           valueRaw: shippingPostRunUnit,
           impactMonthly: shippingPostRunUnit * metrics.monthlyUnits,
           explain: "Inlandstransport in DE nach Ankunft.",
-          formula: "Nachlauf/Unit = de_oncarriage_fixed / PO Units.",
+          formula: metrics.shipping.modeKey === "rail"
+            ? "Nachlauf/Unit = (de_oncarriage_base + de_oncarriage_per_carton × cartons_count) / PO Units."
+            : "Nachlauf/Unit = de_oncarriage_fixed / PO Units.",
           source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
           robustness: "Mittel.",
           driverPaths: [
             "basic.unitsPerOrder",
-            ...shippingModeDriverPaths(metrics.shipping.modeKey).filter((path) => path.endsWith("deOncarriageFixedEurPerShipment")),
+            "derived.shipping.cartonsCount",
+            ...shippingOncarriageDriverPaths(metrics.shipping.modeKey),
           ],
         }),
         line({
@@ -5281,6 +5510,19 @@ function buildCostCategoryData(metrics) {
             "settings.shipping12m.insurance.enabled",
             "settings.shipping12m.insurance.basis",
             "settings.shipping12m.insurance.ratePct",
+          ],
+        }),
+        line({
+          label: "Nachbelastung (EUR/Unit)",
+          valueRaw: shippingSurchargeUnit,
+          impactMonthly: shippingSurchargeUnit * metrics.monthlyUnits,
+          explain: "Optionaler manueller Fixbetrag je Shipment (z. B. Advance Commission).",
+          formula: "Nachbelastung/Unit = manual_surcharge_eur_per_shipment / PO Units.",
+          source: "Shipping 12M -> Rail.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "basic.unitsPerOrder",
+            ...shippingManualSurchargeDriverPaths(metrics.shipping.modeKey),
           ],
         }),
         line({
@@ -5601,6 +5843,7 @@ function buildCostCategoryData(metrics) {
             "assumptions.lifecycle.otherMonthlyCost",
             "basic.horizonMonths",
           ],
+          excludeFromCategoryTotal: true,
         }),
       ],
     },
@@ -5630,6 +5873,17 @@ function buildCostCategoryData(metrics) {
       ],
     },
   ];
+
+  return categories.map((category) => {
+    const totalMonthly = category.lines.reduce((sum, lineItem) => (
+      lineItem.excludeFromCategoryTotal ? sum : sum + num(lineItem.impactMonthly, 0)
+    ), 0);
+    return {
+      ...category,
+      totalMonthly,
+      totalPerUnit: totalMonthly / monthlyUnits,
+    };
+  });
 }
 
 function renderCostCategoryGrid(metrics) {
@@ -5647,9 +5901,12 @@ function renderCostCategoryGrid(metrics) {
     head.className = "cost-category-head";
     const title = document.createElement("h4");
     title.textContent = category.title;
+    const summary = document.createElement("div");
+    summary.className = "cost-category-summary";
+    summary.innerHTML = `<strong>Summe: ${formatCurrency(category.totalPerUnit)} / Unit</strong><small>${formatCurrency(category.totalMonthly)} / Monat</small>`;
     const subtitle = document.createElement("p");
     subtitle.textContent = category.description;
-    head.append(title, subtitle);
+    head.append(title, summary, subtitle);
     card.appendChild(head);
 
     const list = document.createElement("ul");
@@ -5704,7 +5961,7 @@ function renderShippingDetails(metrics) {
 
   if (dom.shippingMethodText) {
     dom.shippingMethodText.textContent =
-      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Für China→DE schätzen wir Umkartons konservativ über Supplier-Soft-Caps und nutzen Amazon-Hard-Caps nur als Fallback. Optional kannst du reale Packing-List-Werte manuell setzen. Daraus berechnen wir chargeable CBM (W/M) und addieren Vorlauf, Hauptlauf (variabel + fix), Nachlauf, Zollabfertigung und Versicherung. Ergebnis ist ein einzelner Richtwert in EUR/Unit, kein Live-Tarif.`;
+      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Für China→DE schätzen wir Umkartons konservativ über Supplier-Soft-Caps und nutzen Amazon-Hard-Caps nur als Fallback. Optional kannst du reale Packing-List-Werte manuell setzen. Daraus berechnen wir chargeable CBM (W/M) und addieren Vorlauf, Hauptlauf (variabel + fix), Nachlauf, Zollabfertigung, Versicherung und optionale Nachbelastung. Ergebnis ist ein einzelner Richtwert in EUR/Unit, kein Live-Tarif.`;
   }
 
   if (dom.shippingDetailList) {
@@ -5720,12 +5977,12 @@ function renderShippingDetails(metrics) {
 
     const totalLi = document.createElement("li");
     totalLi.innerHTML = `<span>Shipping total (${modeLabel})</span><strong>${formatCurrency(metrics.shipping.shippingTotal)} · ${formatCurrency(metrics.shipping.shippingPerUnit)}/Unit</strong>`;
-    totalLi.title = "Shipping Total = Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung.";
+    totalLi.title = "Shipping Total = Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung + optionale Nachbelastung.";
     dom.shippingDetailList.appendChild(totalLi);
   }
 
   if (dom.shippingDebugInfo) {
-    const base = `mode=${metrics.shipping.modeLabel} · source=${metrics.shipping.cartonizationSourceLabel} · units_per_carton_auto=${formatNumber(metrics.shipping.unitsPerCartonAuto)} · estimated_carton_cm=${formatNumber(metrics.shipping.estimatedCartonLengthCm)}x${formatNumber(metrics.shipping.estimatedCartonWidthCm)}x${formatNumber(metrics.shipping.estimatedCartonHeightCm)} · estimated_carton_gross_kg=${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)} · cartons_count=${formatNumber(metrics.shipping.cartonsCount)} · shipment_cbm=${formatNumber(metrics.shipping.shipmentCbm)} · shipment_weight_kg=${formatNumber(metrics.shipping.shipmentWeightKg)} · chargeable_cbm=${formatNumber(metrics.shipping.chargeableCbm)} · goods_value_eur=${formatCurrency(metrics.shipping.goodsValueEur)} · insurance_rate=${formatPercent(metrics.shipping.insuranceRatePct)}`;
+    const base = `mode=${metrics.shipping.modeLabel} · source=${metrics.shipping.cartonizationSourceLabel} · units_per_carton_auto=${formatNumber(metrics.shipping.unitsPerCartonAuto)} · estimated_carton_cm=${formatNumber(metrics.shipping.estimatedCartonLengthCm)}x${formatNumber(metrics.shipping.estimatedCartonWidthCm)}x${formatNumber(metrics.shipping.estimatedCartonHeightCm)} · estimated_carton_gross_kg=${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)} · cartons_count=${formatNumber(metrics.shipping.cartonsCount)} · shipment_cbm=${formatNumber(metrics.shipping.shipmentCbm)} · shipment_weight_kg=${formatNumber(metrics.shipping.shipmentWeightKg)} · chargeable_cbm=${formatNumber(metrics.shipping.chargeableCbm)} · goods_value_eur=${formatCurrency(metrics.shipping.goodsValueEur)} · insurance_rate=${formatPercent(metrics.shipping.insuranceRatePct)} · surcharge=${formatCurrency(metrics.shipping.manualSurchargeTotal)}`;
     dom.shippingDebugInfo.textContent = metrics.shipping.oversizeFlag
       ? `${base} · Hinweis: ${metrics.shipping.oversizeNote}`
       : base;
@@ -5746,6 +6003,9 @@ function renderLogisticsChain(metrics) {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chain-chip";
+      if (chipData.isSummary) {
+        chip.classList.add("is-summary");
+      }
       chip.innerHTML = `<span>${chipData.label}</span><strong>${formatCurrency(chipData.value)}</strong>`;
       const impact = classifyImpact(chipData.value * metrics.monthlyUnits, metrics.totalCostMonthly);
       chip.classList.add(`impact-${impact.level}`);
@@ -5794,12 +6054,13 @@ function renderLogisticsChain(metrics) {
 
   renderStation(dom.chainImportChips, [
     {
-      label: `Shipping D2D gesamt (${metrics.shipping.modeLabel}, EUR/Unit)`,
-      value: metrics.shippingUnit,
-      explain: `Summe aus Vorlauf, Hauptlauf variabel/fix, Nachlauf, Zollabfertigung und Versicherung im Modus ${metrics.shipping.modeLabel}.`,
-      formula: "Shipping/Unit = Shipping total / PO Units.",
+      label: `Kategorie-Summe Shipping zu 3PL (${metrics.shipping.modeLabel}, EUR/Unit)`,
+      value: metrics.shippingCategoryTotalEurPerUnit,
+      explain: `Summe aus Vorlauf, Hauptlauf variabel/fix, Nachlauf, Zollabfertigung, Versicherung und optionaler Nachbelastung im Modus ${metrics.shipping.modeLabel}.`,
+      formula: "Shipping/Unit = (Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung + Nachbelastung) / PO Units.",
       source: `Shipping 12M (${metrics.shipping.modeLabel}) + Kartonisierung.`,
       robustness: "Mittel",
+      isSummary: true,
       driverPaths: [
         "derived.shipping.unitsPerOrder",
         "derived.shipping.unitsPerCartonAuto",
@@ -5817,14 +6078,17 @@ function renderLogisticsChain(metrics) {
     },
     {
       label: "Vorlauf (EUR/Unit)",
-      value: metrics.shipping.originFixed / Math.max(1, metrics.shipping.unitsPerOrder),
+      value: metrics.shipping.originTotal / Math.max(1, metrics.shipping.unitsPerOrder),
       explain: "Abholung/Trucking am Ursprung (CN) je Unit.",
-      formula: "Vorlauf/Unit = origin_fixed / PO Units.",
+      formula: metrics.shipping.modeKey === "rail"
+        ? "Vorlauf/Unit = (origin_base + origin_per_carton × cartons_count) / PO Units."
+        : "Vorlauf/Unit = origin_fixed / PO Units.",
       source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
       robustness: "Mittel",
       driverPaths: [
         "basic.unitsPerOrder",
-        ...shippingModeDriverPaths(metrics.shipping.modeKey).filter((path) => path.endsWith("originFixedEurPerShipment")),
+        "derived.shipping.cartonsCount",
+        ...shippingOriginDriverPaths(metrics.shipping.modeKey),
       ],
     },
     {
@@ -5849,19 +6113,22 @@ function renderLogisticsChain(metrics) {
       robustness: "Mittel",
       driverPaths: [
         "basic.unitsPerOrder",
-        ...shippingModeDriverPaths(metrics.shipping.modeKey).filter((path) => path.endsWith("mainRunFixedEurPerShipment") || path.endsWith("destinationFixedEurPerShipment")),
+        ...shippingMainRunFixedDriverPaths(metrics.shipping.modeKey),
       ],
     },
     {
       label: "Nachlauf (EUR/Unit)",
-      value: metrics.shipping.oncarriageFixed / Math.max(1, metrics.shipping.unitsPerOrder),
+      value: metrics.shipping.deOncarriageTotal / Math.max(1, metrics.shipping.unitsPerOrder),
       explain: "Inlandstransport DE nach Ankunft bis Lager.",
-      formula: "Nachlauf/Unit = de_oncarriage_fixed / PO Units.",
+      formula: metrics.shipping.modeKey === "rail"
+        ? "Nachlauf/Unit = (de_oncarriage_base + de_oncarriage_per_carton × cartons_count) / PO Units."
+        : "Nachlauf/Unit = de_oncarriage_fixed / PO Units.",
       source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
       robustness: "Mittel",
       driverPaths: [
         "basic.unitsPerOrder",
-        ...shippingModeDriverPaths(metrics.shipping.modeKey).filter((path) => path.endsWith("deOncarriageFixedEurPerShipment")),
+        "derived.shipping.cartonsCount",
+        ...shippingOncarriageDriverPaths(metrics.shipping.modeKey),
       ],
     },
     {
@@ -5892,6 +6159,18 @@ function renderLogisticsChain(metrics) {
         "settings.shipping12m.insurance.enabled",
         "settings.shipping12m.insurance.basis",
         "settings.shipping12m.insurance.ratePct",
+      ],
+    },
+    {
+      label: "Nachbelastung (EUR/Unit)",
+      value: metrics.shipping.manualSurchargeTotal / Math.max(1, metrics.shipping.unitsPerOrder),
+      explain: "Optionaler manueller Fixbetrag je Shipment (z. B. Advance Commission).",
+      formula: "Nachbelastung/Unit = manual_surcharge_eur_per_shipment / PO Units.",
+      source: "Shipping 12M -> Rail.",
+      robustness: "Mittel",
+      driverPaths: [
+        "basic.unitsPerOrder",
+        ...shippingManualSurchargeDriverPaths(metrics.shipping.modeKey),
       ],
     },
   ]);
@@ -6054,8 +6333,11 @@ function renderSelectedOutputs(metrics) {
   setKpi(dom.kpiLandedUnit, metrics.landedUnit, "currency");
   setKpi(dom.kpiDb1Unit, metrics.db1Unit, "currency");
   setKpi(dom.kpiDb1Margin, metrics.db1MarginPct, "percent");
+  setKpi(dom.kpiNetMarginBeforePpc, metrics.netMarginBeforePpcPct, "percent");
   setKpi(dom.kpiGrossProfitMonthly, metrics.grossProfitMonthly, "currency");
   setKpi(dom.kpiProfitMonthly, metrics.profitMonthly, "currency");
+  setKpi(dom.kpiTotalCostMonthly, metrics.totalCostMonthly, "currency");
+  setKpi(dom.kpiTotalCostPerUnit, metrics.totalCostPerUnit, "currency");
 
   if (metrics.breakEvenPrice === null) {
     setKpi(dom.kpiBreakEvenPrice, "nicht erreichbar", "text");
@@ -6076,6 +6358,17 @@ function renderSelectedOutputs(metrics) {
       dom.kpiNetMargin.classList.add("margin-mid");
     } else {
       dom.kpiNetMargin.classList.add("margin-low");
+    }
+  }
+
+  if (dom.kpiNetMarginBeforePpc) {
+    dom.kpiNetMarginBeforePpc.classList.remove("margin-good", "margin-mid", "margin-low");
+    if (metrics.netMarginBeforePpcPct > 20) {
+      dom.kpiNetMarginBeforePpc.classList.add("margin-good");
+    } else if (metrics.netMarginBeforePpcPct >= 15) {
+      dom.kpiNetMarginBeforePpc.classList.add("margin-mid");
+    } else {
+      dom.kpiNetMarginBeforePpc.classList.add("margin-low");
     }
   }
 
@@ -6255,6 +6548,10 @@ function syncControlStates(product) {
   }
   if (insuranceRateField) {
     insuranceRateField.disabled = !insuranceEnabled;
+  }
+  const surchargeField = document.querySelector('[data-settings-path="shipping12m.manualSurchargeEurPerShipment"]');
+  if (surchargeField) {
+    surchargeField.disabled = !Boolean(state.settings.shipping12m.manualSurchargeEnabled);
   }
 
   renderSettingsInputs();

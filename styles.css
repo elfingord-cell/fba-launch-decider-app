@@ -998,6 +998,11 @@ select:disabled {
   background: color-mix(in srgb, #f1faf6 86%, white);
 }
 
+.chain-chip.is-summary {
+  border-color: color-mix(in srgb, var(--accent) 42%, white);
+  background: color-mix(in srgb, #eef8f4 86%, white);
+}
+
 .block-grid {
   margin-top: 10px;
   display: grid;
@@ -1035,6 +1040,25 @@ select:disabled {
   margin: 0;
   color: var(--muted);
   font-size: 0.68rem;
+}
+
+.cost-category-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.cost-category-summary strong {
+  font-size: 0.77rem;
+  color: #224f46;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.cost-category-summary small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
 }
 
 .cost-category-toggle {
