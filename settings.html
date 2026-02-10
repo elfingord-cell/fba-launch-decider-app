@@ -58,6 +58,17 @@
               </div>
             </div>
 
+            <nav class="settings-chain-nav" aria-label="Kostenkette Navigation">
+              <a href="#settingsProductDefaultsSection">Lieferant</a>
+              <a href="#settingsShippingSection">Shipping/Import</a>
+              <a href="#settings3plReceivingSection">3PL</a>
+              <a href="#settings3plCarrierSection">Versand zu Amazon</a>
+              <a href="#settingsAmazonSection">Amazon</a>
+              <a href="#settingsCategorySection">Werbung/Retouren</a>
+              <a href="#settingsLifecycleSection">Launch</a>
+              <a href="#settingsOverheadSection">Overhead</a>
+            </nav>
+
             <div class="settings-accordion">
               <details id="settingsTaxSection" class="settings-section">
                 <summary>
@@ -80,11 +91,22 @@
                   <small>Door-to-door Richtwert, kein Live-Tarif</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <h4 id="settingsShippingSeaMode">Sea LCL (12M-Ø)</h4>
                 <div class="admin-grid">
-                  <label>LCL Rate (EUR/CBM)<input data-settings-path="shipping12m.lclRateEurPerCbm" type="number" min="0" step="0.1" /></label>
-                  <label>Origin fixed (EUR/Shipment)<input data-settings-path="shipping12m.originFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
-                  <label>Destination fixed (EUR/Shipment)<input data-settings-path="shipping12m.destinationFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
-                  <label>DE On-Carriage fixed (EUR/Shipment)<input data-settings-path="shipping12m.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Rate (EUR/CBM)<input data-settings-path="shipping12m.modes.sea_lcl.rateEurPerCbm" type="number" min="0" step="0.1" /></label>
+                  <label>Origin fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.sea_lcl.originFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Destination fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.sea_lcl.destinationFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>DE On-Carriage fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                </div>
+                <h4 id="settingsShippingRailMode">Rail (12M-Ø)</h4>
+                <div class="admin-grid">
+                  <label>Rate (EUR/CBM)<input data-settings-path="shipping12m.modes.rail.rateEurPerCbm" type="number" min="0" step="0.1" /></label>
+                  <label>Origin fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.originFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Destination fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.destinationFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>DE On-Carriage fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                </div>
+                <h4>Gemeinsam</h4>
+                <div class="admin-grid">
                   <label class="toggle-row"><input data-settings-path="shipping12m.customsBrokerEnabled" type="checkbox" /><span>Customs Broker berücksichtigen</span></label>
                   <label>Customs Broker fixed (EUR/Shipment)<input data-settings-path="shipping12m.customsBrokerFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
                 </div>
@@ -169,9 +191,21 @@
                 <p class="hint">Richtwert: mit echten DHL-/Carrier-Kosten überschreiben.</p>
               </details>
 
+              <details id="settingsAmazonSection" class="settings-section">
+                <summary>
+                  <span>H) Amazon Defaults</span>
+                  <small>Amazon-Lager und Lagerdauer</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <div class="admin-grid">
+                  <label>Amazon Lager je CBM/Monat (EUR)<input data-settings-path="costDefaults.amazonStoragePerCbmMonthEur" type="number" min="0" step="0.1" /></label>
+                  <label>Ø Amazon Lagerdauer (Monate)<input data-settings-path="costDefaults.avgAmazonStorageMonths" type="number" min="0" step="0.1" /></label>
+                </div>
+              </details>
+
               <details id="settingsCategorySection" class="settings-section">
                 <summary>
-                  <span>H) Kategorie-Defaults</span>
+                  <span>I) Kategorie-Defaults</span>
                   <small>TACoS, Retouren, Referral, Zielmarge</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -180,7 +214,7 @@
 
               <details id="settingsLifecycleSection" class="settings-section">
                 <summary>
-                  <span>I) Listing & Launch</span>
+                  <span>J) Listing & Launch</span>
                   <small>Lifecycle 36M, Listing-Pakete, Launch-Profile</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -234,10 +268,10 @@
                 </div>
               </details>
 
-              <details id="settingsChainDefaultsSection" class="settings-section">
+              <details id="settingsProductDefaultsSection" class="settings-section">
                 <summary>
-                  <span>J) Weitere Kosten-Defaults entlang der Kette</span>
-                  <small>Packaging, Dokumente, Launch-Operations, One-Offs</small>
+                  <span>K) Produkt-Defaults</span>
+                  <small>Packaging, Dokumente, Grußkarte, Samples/Tooling/Zertifikate/Inspection</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Validation, Deep-Dive</p>
                 <div class="admin-grid">
@@ -245,14 +279,24 @@
                   <label>Weitere Kosten pro Unit (EUR)<input data-settings-path="costDefaults.otherUnitCostEur" type="number" min="0" step="0.01" /></label>
                   <label>Dokumentation pro Order (EUR)<input data-settings-path="costDefaults.docsPerOrderEur" type="number" min="0" step="0.1" /></label>
                   <label>Frachtpapiere pro Order (EUR)<input data-settings-path="costDefaults.freightPapersPerOrderEur" type="number" min="0" step="0.1" /></label>
-                  <label>Amazon Lager je CBM/Monat (EUR)<input data-settings-path="costDefaults.amazonStoragePerCbmMonthEur" type="number" min="0" step="0.1" /></label>
-                  <label>Ø Amazon Lagerdauer (Monate)<input data-settings-path="costDefaults.avgAmazonStorageMonths" type="number" min="0" step="0.1" /></label>
                   <label>Grußkarte pro Launch-Unit (EUR)<input data-settings-path="costDefaults.greetingCardPerLaunchUnitEur" type="number" min="0" step="0.01" /></label>
                   <label>Samples je Produkt (EUR)<input data-settings-path="costDefaults.samplesPerProductEur" type="number" min="0" step="0.1" /></label>
                   <label>Tooling je Produkt (EUR)<input data-settings-path="costDefaults.toolingPerProductEur" type="number" min="0" step="0.1" /></label>
                   <label>Zertifikate je Produkt (EUR)<input data-settings-path="costDefaults.certificatesPerProductEur" type="number" min="0" step="0.1" /></label>
                   <label>Inspection in China (EUR)<input data-settings-path="costDefaults.inspectionPerProductEur" type="number" min="0" step="0.1" /></label>
                 </div>
+              </details>
+
+              <details id="settingsOverheadSection" class="settings-section">
+                <summary>
+                  <span>L) Overhead / Leakage</span>
+                  <small>Pauschale vergessene Kosten im Modell</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <div class="admin-grid">
+                  <label>Leakage Default (% vom Netto-Umsatz)<input data-settings-path="costDefaults.leakageRatePct" type="number" min="0" max="20" step="0.1" /></label>
+                </div>
+                <p class="hint">Empfohlener Bandbereich: 2-5% als Sicherheitspuffer.</p>
               </details>
             </div>
           </section>

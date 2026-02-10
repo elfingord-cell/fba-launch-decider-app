@@ -115,10 +115,20 @@ const DEFAULT_SETTINGS = {
     },
   },
   shipping12m: {
-    lclRateEurPerCbm: 128,
-    originFixedEurPerShipment: 180,
-    destinationFixedEurPerShipment: 260,
-    deOncarriageFixedEurPerShipment: 165,
+    modes: {
+      sea_lcl: {
+        rateEurPerCbm: 128,
+        originFixedEurPerShipment: 180,
+        destinationFixedEurPerShipment: 260,
+        deOncarriageFixedEurPerShipment: 165,
+      },
+      rail: {
+        rateEurPerCbm: 185,
+        originFixedEurPerShipment: 150,
+        destinationFixedEurPerShipment: 210,
+        deOncarriageFixedEurPerShipment: 145,
+      },
+    },
     customsBrokerEnabled: true,
     customsBrokerFixedEurPerShipment: 95,
   },
@@ -195,6 +205,7 @@ const DEFAULT_SETTINGS = {
     freightPapersPerOrderEur: 28,
     amazonStoragePerCbmMonthEur: 28,
     avgAmazonStorageMonths: 1.5,
+    leakageRatePct: 3,
     greetingCardPerLaunchUnitEur: 0.22,
     samplesPerProductEur: 120,
     toolingPerProductEur: 220,
@@ -274,7 +285,7 @@ const FIELD_HELP = {
   "basic.packWidthCm": "Verpackungsbreite in cm je Einheit.",
   "basic.packHeightCm": "Verpackungshöhe in cm je Einheit.",
   "basic.unitsPerOrder": "Typische PO-Menge in Einheiten pro Import-Order. Basis für Door-to-Door Shipping/Unit.",
-  "basic.transportMode": "v1: Sea LCL. Rail/Air sind nur als Platzhalter sichtbar.",
+  "basic.transportMode": "Transportmodus China -> DE für Door-to-Door Shipping (v1: Rail und Sea LCL).",
   "basic.exwUnit": "Einkaufspreis EXW in USD. Wird mit aktuellem USD→EUR Kurs umgerechnet.",
   "basic.marketplace": "Marktplatz setzt die lokale USt für Brutto→Netto Berechnung.",
   "basic.fulfillmentModel": "Fulfillment-Flag. v1 rechnet FBA.",
@@ -350,10 +361,14 @@ const SETTINGS_HELP = {
   "tax.vatRates.FR": "MwSt-Satz für Marketplace FR in Prozent.",
   "tax.vatRates.IT": "MwSt-Satz für Marketplace IT in Prozent.",
   "tax.vatRates.ES": "MwSt-Satz für Marketplace ES in Prozent.",
-  "shipping12m.lclRateEurPerCbm": "12-Monats-Durchschnitt: variabler LCL-Tarif in EUR pro CBM (W/M).",
-  "shipping12m.originFixedEurPerShipment": "12-Monats-Durchschnitt: fixe Origin-Kosten je Shipment in EUR.",
-  "shipping12m.destinationFixedEurPerShipment": "12-Monats-Durchschnitt: fixe Destination-Kosten je Shipment in EUR.",
-  "shipping12m.deOncarriageFixedEurPerShipment": "12-Monats-Durchschnitt: fixer DE On-Carriage Anteil je Shipment in EUR.",
+  "shipping12m.modes.sea_lcl.rateEurPerCbm": "12-Monats-Durchschnitt: Sea LCL variabler Tarif in EUR pro CBM (W/M).",
+  "shipping12m.modes.sea_lcl.originFixedEurPerShipment": "12-Monats-Durchschnitt: Sea LCL Origin-Kosten je Shipment in EUR.",
+  "shipping12m.modes.sea_lcl.destinationFixedEurPerShipment": "12-Monats-Durchschnitt: Sea LCL Destination-Kosten je Shipment in EUR.",
+  "shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment": "12-Monats-Durchschnitt: Sea LCL DE On-Carriage Anteil je Shipment in EUR.",
+  "shipping12m.modes.rail.rateEurPerCbm": "12-Monats-Durchschnitt: Rail variabler Tarif in EUR pro CBM (W/M).",
+  "shipping12m.modes.rail.originFixedEurPerShipment": "12-Monats-Durchschnitt: Rail Origin-Kosten je Shipment in EUR.",
+  "shipping12m.modes.rail.destinationFixedEurPerShipment": "12-Monats-Durchschnitt: Rail Destination-Kosten je Shipment in EUR.",
+  "shipping12m.modes.rail.deOncarriageFixedEurPerShipment": "12-Monats-Durchschnitt: Rail DE On-Carriage Anteil je Shipment in EUR.",
   "shipping12m.customsBrokerEnabled": "Aktiviert optionalen Customs-Broker-Fixkostenblock.",
   "shipping12m.customsBrokerFixedEurPerShipment": "12-Monats-Durchschnitt: fixer Customs-Broker Betrag je Shipment in EUR.",
   "cartonRules.maxLengthCm": "Maximale Karton-Länge in cm für Auto-Kartonisierung.",
@@ -389,6 +404,7 @@ const SETTINGS_HELP = {
   "costDefaults.freightPapersPerOrderEur": "Globaler Default für Frachtpapiere je Order (EUR).",
   "costDefaults.amazonStoragePerCbmMonthEur": "Globaler Default für Amazon-Lagerkosten je CBM/Monat (EUR).",
   "costDefaults.avgAmazonStorageMonths": "Globaler Default für durchschnittliche Amazon-Lagerdauer in Monaten.",
+  "costDefaults.leakageRatePct": "Globaler Default für Leakage/Overhead in % vom Netto-Umsatz.",
   "costDefaults.greetingCardPerLaunchUnitEur": "Globaler Default für handgeschriebene Grußkarte pro Launch-Unit (EUR).",
   "costDefaults.samplesPerProductEur": "Globaler Default für Samples je Produkt (einmalig, EUR).",
   "costDefaults.toolingPerProductEur": "Globaler Default für Tooling je Produkt (einmalig, EUR).",
@@ -445,6 +461,50 @@ const SETTINGS_HELP = {
   "categoryDefaults.generic.unsellableShare": "Default Unsellable-Anteil % für Kategorie Sonstiges.",
   "categoryDefaults.generic.referralRate": "Default Referral Fee % für Kategorie Sonstiges.",
   "categoryDefaults.generic.targetMarginPct": "Default Zielmarge % für Kategorie Sonstiges.",
+};
+
+const PATH_LABEL_OVERRIDES = {
+  "settings.tax.fallbackUsdToEur": "Fallback USD -> EUR",
+  "settings.shipping12m.modes.sea_lcl.rateEurPerCbm": "Sea LCL Rate (EUR/CBM, 12M-Ø)",
+  "settings.shipping12m.modes.sea_lcl.originFixedEurPerShipment": "Sea LCL Origin fixed (EUR/Shipment)",
+  "settings.shipping12m.modes.sea_lcl.destinationFixedEurPerShipment": "Sea LCL Destination fixed (EUR/Shipment)",
+  "settings.shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment": "Sea LCL DE On-Carriage fixed (EUR/Shipment)",
+  "settings.shipping12m.modes.rail.rateEurPerCbm": "Rail Rate (EUR/CBM, 12M-Ø)",
+  "settings.shipping12m.modes.rail.originFixedEurPerShipment": "Rail Origin fixed (EUR/Shipment)",
+  "settings.shipping12m.modes.rail.destinationFixedEurPerShipment": "Rail Destination fixed (EUR/Shipment)",
+  "settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment": "Rail DE On-Carriage fixed (EUR/Shipment)",
+  "settings.shipping12m.customsBrokerEnabled": "Customs Broker aktiv",
+  "settings.shipping12m.customsBrokerFixedEurPerShipment": "Customs Broker fixed (EUR/Shipment)",
+  "settings.cartonRules.maxLengthCm": "Karton max Länge (cm)",
+  "settings.cartonRules.maxWidthCm": "Karton max Breite (cm)",
+  "settings.cartonRules.maxHeightCm": "Karton max Höhe (cm)",
+  "settings.cartonRules.maxWeightKg": "Karton max Gewicht (kg)",
+  "settings.cartonRules.packFactor": "Packfaktor (0-1)",
+  "settings.threePl.receivingPerCartonSortedEur": "3PL Receiving sortenrein (EUR/Karton)",
+  "settings.threePl.receivingPerCartonMixedEur": "3PL Receiving gemischt (EUR/Karton)",
+  "settings.threePl.storagePerPalletPerMonthEur": "3PL Lagerung (EUR/Palette/Monat)",
+  "settings.threePl.unitsPerPallet": "Units je Palette",
+  "settings.threePl.avgStorageMonths": "Ø 3PL Lagerdauer (Monate)",
+  "settings.threePl.outboundBasePerCartonEur": "3PL Outbound base (EUR/Karton)",
+  "settings.threePl.pickPackPerCartonEur": "3PL Pick & Pack (EUR/Karton)",
+  "settings.threePl.fbaProcessingPerCartonEur": "3PL FBA Abwicklung (EUR/Karton)",
+  "settings.threePl.insertPerInsertEur": "Beilage je Stück (EUR)",
+  "settings.threePl.thirdCountryLabelPerLabelEur": "Drittland-Label je Stück (EUR)",
+  "settings.threePl.insertsPerCartonDefault": "Beilagen je Karton (Default)",
+  "settings.threePl.labelsPerCartonDefault": "Labels je Karton (Default)",
+  "settings.threePl.carrierCostPerCartonEur": "Carrier 3PL -> Amazon (EUR/Karton)",
+  "settings.costDefaults.packagingPerUnitEur": "Packaging pro Unit (EUR)",
+  "settings.costDefaults.otherUnitCostEur": "Weitere Stückkosten pro Unit (EUR)",
+  "settings.costDefaults.docsPerOrderEur": "Dokumentation pro Order (EUR)",
+  "settings.costDefaults.freightPapersPerOrderEur": "Frachtpapiere pro Order (EUR)",
+  "settings.costDefaults.amazonStoragePerCbmMonthEur": "Amazon Lager (EUR/CBM/Monat)",
+  "settings.costDefaults.avgAmazonStorageMonths": "Ø Amazon Lagerdauer (Monate)",
+  "settings.costDefaults.leakageRatePct": "Leakage/Overhead (% vom Netto-Umsatz)",
+  "settings.costDefaults.greetingCardPerLaunchUnitEur": "Grußkarte pro Launch-Unit (EUR)",
+  "settings.costDefaults.samplesPerProductEur": "Samples je Produkt (EUR)",
+  "settings.costDefaults.toolingPerProductEur": "Tooling je Produkt (EUR)",
+  "settings.costDefaults.certificatesPerProductEur": "Zertifikate je Produkt (EUR)",
+  "settings.costDefaults.inspectionPerProductEur": "Inspection in China je Produkt (EUR)",
 };
 
 const KPI_HELP = {
@@ -684,6 +744,7 @@ const state = {
     focusedDriverLabel: "",
     workspaceTab: "product",
     driverModal: null,
+    costCategoryExpanded: {},
   },
 };
 
@@ -748,9 +809,7 @@ const dom = {
   kpiCashRoi: document.getElementById("kpiCashRoi"),
   kpiPayback: document.getElementById("kpiPayback"),
 
-  unitBlockList: document.getElementById("unitBlockList"),
-  launchBlockList: document.getElementById("launchBlockList"),
-  leakageBlockList: document.getElementById("leakageBlockList"),
+  costCategoryGrid: document.getElementById("costCategoryGrid"),
 
   sensPriceDown: document.getElementById("sensPriceDown"),
   sensTacosUp: document.getElementById("sensTacosUp"),
@@ -843,6 +902,31 @@ function launchCompetitionLabel(key) {
   return labels[key] ?? key;
 }
 
+function normalizeShippingMode(mode) {
+  return mode === "rail" ? "rail" : "sea_lcl";
+}
+
+function shippingModeLabel(mode) {
+  const normalized = normalizeShippingMode(mode);
+  return normalized === "rail" ? "Rail" : "Sea LCL";
+}
+
+function shippingModeSettingsPathPrefix(mode) {
+  return `settings.shipping12m.modes.${normalizeShippingMode(mode)}`;
+}
+
+function shippingModeDriverPaths(mode) {
+  const prefix = shippingModeSettingsPathPrefix(mode);
+  return [
+    `${prefix}.rateEurPerCbm`,
+    `${prefix}.originFixedEurPerShipment`,
+    `${prefix}.destinationFixedEurPerShipment`,
+    `${prefix}.deOncarriageFixedEurPerShipment`,
+    "settings.shipping12m.customsBrokerEnabled",
+    "settings.shipping12m.customsBrokerFixedEurPerShipment",
+  ];
+}
+
 function robustnessLabel(score) {
   if (score >= 80) {
     return "hoch";
@@ -870,8 +954,49 @@ function setByPath(object, path, value) {
   cursor[last] = value;
 }
 
+function unsetByPath(object, path) {
+  if (!object || typeof object !== "object") {
+    return;
+  }
+  const keys = path.split(".");
+  const last = keys.pop();
+  let cursor = object;
+  for (const key of keys) {
+    if (!cursor || typeof cursor !== "object" || !(key in cursor)) {
+      return;
+    }
+    cursor = cursor[key];
+  }
+  if (cursor && typeof cursor === "object" && last in cursor) {
+    delete cursor[last];
+  }
+}
+
 function deepClone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function resolveEffectiveSettings(product) {
+  const effective = deepClone(state.settings);
+  const overrides = product?.assumptions?.localSettingOverrides;
+  if (overrides && typeof overrides === "object") {
+    const stack = [{ value: overrides, prefix: "" }];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (!current || typeof current.value !== "object" || current.value === null) {
+        continue;
+      }
+      Object.entries(current.value).forEach(([key, nested]) => {
+        const nextPath = current.prefix ? `${current.prefix}.${key}` : key;
+        if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+          stack.push({ value: nested, prefix: nextPath });
+          return;
+        }
+        setByPath(effective, nextPath, nested);
+      });
+    }
+  }
+  return sanitizeSettings(effective);
 }
 
 function defaultProduct(index = 1) {
@@ -897,7 +1022,7 @@ function defaultProduct(index = 1) {
       packWidthCm: 16,
       packHeightCm: 8,
       unitsPerOrder: 1200,
-      transportMode: "sea_lcl",
+      transportMode: "rail",
       exwUnit: 6.4,
       marketplace: "DE",
       fulfillmentModel: "fba",
@@ -955,6 +1080,7 @@ function defaultProduct(index = 1) {
         coupons: 0,
         other: 0,
       },
+      localSettingOverrides: {},
       extraCosts: {
         overridePackagingGroup: false,
         packagingPerUnitEur: DEFAULT_SETTINGS.costDefaults.packagingPerUnitEur,
@@ -1071,6 +1197,45 @@ function ensureThreePlSettings(rawThreePl, rawCostDefaults) {
   };
 }
 
+function ensureShipping12mSettings(rawShipping12m) {
+  const base = deepClone(DEFAULT_SETTINGS.shipping12m);
+  const source = rawShipping12m && typeof rawShipping12m === "object" ? rawShipping12m : {};
+  const merged = {
+    ...base,
+    ...source,
+    modes: {
+      sea_lcl: {
+        ...base.modes.sea_lcl,
+        ...(source?.modes?.sea_lcl ?? {}),
+      },
+      rail: {
+        ...base.modes.rail,
+        ...(source?.modes?.rail ?? {}),
+      },
+    },
+  };
+
+  const legacySeaRate = source.lclRateEurPerCbm;
+  const legacySeaOrigin = source.originFixedEurPerShipment;
+  const legacySeaDestination = source.destinationFixedEurPerShipment;
+  const legacySeaOncarriage = source.deOncarriageFixedEurPerShipment;
+
+  if (legacySeaRate !== undefined) {
+    merged.modes.sea_lcl.rateEurPerCbm = legacySeaRate;
+  }
+  if (legacySeaOrigin !== undefined) {
+    merged.modes.sea_lcl.originFixedEurPerShipment = legacySeaOrigin;
+  }
+  if (legacySeaDestination !== undefined) {
+    merged.modes.sea_lcl.destinationFixedEurPerShipment = legacySeaDestination;
+  }
+  if (legacySeaOncarriage !== undefined) {
+    merged.modes.sea_lcl.deOncarriageFixedEurPerShipment = legacySeaOncarriage;
+  }
+
+  return merged;
+}
+
 function applyCartonPreset(preset, settings) {
   const chosen = CARTON_PRESETS[preset];
   if (!chosen) {
@@ -1084,16 +1249,46 @@ function applyCartonPreset(preset, settings) {
 }
 
 function sanitizeSettings(settings) {
+  settings.shipping12m = ensureShipping12mSettings(settings.shipping12m);
+
   settings.tax.fallbackUsdToEur = clamp(num(settings.tax.fallbackUsdToEur, DEFAULT_USD_TO_EUR), 0.2, 2);
   settings.tax.vatRates.DE = clamp(num(settings.tax.vatRates.DE, MARKETPLACE_VAT.DE), 0, 30);
   settings.tax.vatRates.FR = clamp(num(settings.tax.vatRates.FR, MARKETPLACE_VAT.FR), 0, 30);
   settings.tax.vatRates.IT = clamp(num(settings.tax.vatRates.IT, MARKETPLACE_VAT.IT), 0, 30);
   settings.tax.vatRates.ES = clamp(num(settings.tax.vatRates.ES, MARKETPLACE_VAT.ES), 0, 30);
 
-  settings.shipping12m.lclRateEurPerCbm = clamp(num(settings.shipping12m.lclRateEurPerCbm, 0), 0, 2000);
-  settings.shipping12m.originFixedEurPerShipment = clamp(num(settings.shipping12m.originFixedEurPerShipment, 0), 0, 5000);
-  settings.shipping12m.destinationFixedEurPerShipment = clamp(num(settings.shipping12m.destinationFixedEurPerShipment, 0), 0, 5000);
-  settings.shipping12m.deOncarriageFixedEurPerShipment = clamp(num(settings.shipping12m.deOncarriageFixedEurPerShipment, 0), 0, 5000);
+  settings.shipping12m.modes.sea_lcl.rateEurPerCbm = clamp(num(settings.shipping12m.modes.sea_lcl.rateEurPerCbm, 0), 0, 2000);
+  settings.shipping12m.modes.sea_lcl.originFixedEurPerShipment = clamp(
+    num(settings.shipping12m.modes.sea_lcl.originFixedEurPerShipment, 0),
+    0,
+    5000,
+  );
+  settings.shipping12m.modes.sea_lcl.destinationFixedEurPerShipment = clamp(
+    num(settings.shipping12m.modes.sea_lcl.destinationFixedEurPerShipment, 0),
+    0,
+    5000,
+  );
+  settings.shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment = clamp(
+    num(settings.shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment, 0),
+    0,
+    5000,
+  );
+  settings.shipping12m.modes.rail.rateEurPerCbm = clamp(num(settings.shipping12m.modes.rail.rateEurPerCbm, 0), 0, 2000);
+  settings.shipping12m.modes.rail.originFixedEurPerShipment = clamp(
+    num(settings.shipping12m.modes.rail.originFixedEurPerShipment, 0),
+    0,
+    5000,
+  );
+  settings.shipping12m.modes.rail.destinationFixedEurPerShipment = clamp(
+    num(settings.shipping12m.modes.rail.destinationFixedEurPerShipment, 0),
+    0,
+    5000,
+  );
+  settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment = clamp(
+    num(settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment, 0),
+    0,
+    5000,
+  );
   settings.shipping12m.customsBrokerFixedEurPerShipment = clamp(num(settings.shipping12m.customsBrokerFixedEurPerShipment, 0), 0, 5000);
   settings.shipping12m.customsBrokerEnabled = Boolean(settings.shipping12m.customsBrokerEnabled);
 
@@ -1158,6 +1353,7 @@ function sanitizeSettings(settings) {
   settings.costDefaults.freightPapersPerOrderEur = clamp(num(settings.costDefaults.freightPapersPerOrderEur, 0), 0, 5000);
   settings.costDefaults.amazonStoragePerCbmMonthEur = clamp(num(settings.costDefaults.amazonStoragePerCbmMonthEur, 0), 0, 1000);
   settings.costDefaults.avgAmazonStorageMonths = clamp(num(settings.costDefaults.avgAmazonStorageMonths, 1.5), 0, 12);
+  settings.costDefaults.leakageRatePct = clamp(num(settings.costDefaults.leakageRatePct, 3), 0, 20);
   settings.costDefaults.greetingCardPerLaunchUnitEur = clamp(num(settings.costDefaults.greetingCardPerLaunchUnitEur, 0), 0, 20);
   settings.costDefaults.samplesPerProductEur = clamp(num(settings.costDefaults.samplesPerProductEur, 0), 0, 10000);
   settings.costDefaults.toolingPerProductEur = clamp(num(settings.costDefaults.toolingPerProductEur, 0), 0, 50000);
@@ -1200,6 +1396,10 @@ function migrateProduct(raw, index) {
       amazon: { ...base.assumptions.amazon, ...(raw.assumptions?.amazon ?? {}) },
       lifecycle: { ...base.assumptions.lifecycle, ...(raw.assumptions?.lifecycle ?? {}) },
       launchSplit: { ...base.assumptions.launchSplit, ...(raw.assumptions?.launchSplit ?? {}) },
+      localSettingOverrides: {
+        ...(base.assumptions.localSettingOverrides ?? {}),
+        ...(raw.assumptions?.localSettingOverrides ?? {}),
+      },
       extraCosts: { ...base.assumptions.extraCosts, ...(raw.assumptions?.extraCosts ?? {}) },
     },
   };
@@ -1224,10 +1424,13 @@ function migrateProduct(raw, index) {
     merged.basic.unitsPerOrder = oldUnitsPerCarton > 0 ? oldUnitsPerCarton * 50 : base.basic.unitsPerOrder;
   }
 
-  if (merged.basic.transportMode === "sea") {
+  const rawTransportMode = raw?.basic?.transportMode;
+  if (rawTransportMode === undefined || rawTransportMode === null || rawTransportMode === "") {
+    merged.basic.transportMode = "sea_lcl";
+  } else if (merged.basic.transportMode === "sea") {
     merged.basic.transportMode = "sea_lcl";
   }
-  if (!["sea_lcl", "rail", "air"].includes(merged.basic.transportMode)) {
+  if (!["sea_lcl", "rail"].includes(merged.basic.transportMode)) {
     merged.basic.transportMode = "sea_lcl";
   }
   if (!["ai", "photographer", "visual_advantage"].includes(merged.basic.listingPackage)) {
@@ -1263,10 +1466,7 @@ function loadSettings() {
       ...defaultSettings(),
       ...parsed,
       tax: ensureTaxSettings(parsed?.tax),
-      shipping12m: {
-        ...defaultSettings().shipping12m,
-        ...(parsed?.shipping12m ?? {}),
-      },
+      shipping12m: ensureShipping12mSettings(parsed?.shipping12m),
       cartonRules: {
         ...defaultSettings().cartonRules,
         ...(parsed?.cartonRules ?? {}),
@@ -1460,10 +1660,13 @@ function assumedText(isOverride, defaultValue, activeValue, formatter) {
   return `Default: ${formatter(defaultValue)}`;
 }
 
-function calculateShippingDoorToDoor(product) {
+function calculateShippingDoorToDoor(product, settings = state.settings) {
   const basic = product.basic;
-  const rules = state.settings.cartonRules;
-  const shipping = state.settings.shipping12m;
+  const rules = settings.cartonRules;
+  const shipping = settings.shipping12m;
+  const modeKey = normalizeShippingMode(basic.transportMode);
+  const modeLabel = shippingModeLabel(modeKey);
+  const modeSettings = shipping?.modes?.[modeKey] ?? shipping?.modes?.sea_lcl ?? DEFAULT_SETTINGS.shipping12m.modes.sea_lcl;
 
   const l = Math.max(0.1, num(basic.packLengthCm, 0.1));
   const w = Math.max(0.1, num(basic.packWidthCm, 0.1));
@@ -1503,10 +1706,10 @@ function calculateShippingDoorToDoor(product) {
   const shipmentWeightKg = unitsPerOrder * unitWeightKg;
   const chargeableCbm = Math.max(shipmentCbm, shipmentWeightKg / 1000);
 
-  const originFixed = Math.max(0, num(shipping.originFixedEurPerShipment));
-  const variableLcl = Math.max(0, num(shipping.lclRateEurPerCbm)) * chargeableCbm;
-  const destinationFixed = Math.max(0, num(shipping.destinationFixedEurPerShipment));
-  const oncarriageFixed = Math.max(0, num(shipping.deOncarriageFixedEurPerShipment));
+  const originFixed = Math.max(0, num(modeSettings.originFixedEurPerShipment));
+  const variableLcl = Math.max(0, num(modeSettings.rateEurPerCbm)) * chargeableCbm;
+  const destinationFixed = Math.max(0, num(modeSettings.destinationFixedEurPerShipment));
+  const oncarriageFixed = Math.max(0, num(modeSettings.deOncarriageFixedEurPerShipment));
   const customsBroker = shipping.customsBrokerEnabled ? Math.max(0, num(shipping.customsBrokerFixedEurPerShipment)) : 0;
 
   const shippingTotal = originFixed + variableLcl + destinationFixed + oncarriageFixed + customsBroker;
@@ -1514,7 +1717,7 @@ function calculateShippingDoorToDoor(product) {
 
   const lines = [
     { key: "origin", label: "Origin fixed", total: originFixed },
-    { key: "lcl", label: "LCL variabel (W/M)", total: variableLcl },
+    { key: "lcl", label: `${modeLabel} variabel (W/M)`, total: variableLcl },
     { key: "destination", label: "Destination fixed", total: destinationFixed },
     { key: "oncarriage", label: "DE On-Carriage", total: oncarriageFixed },
     { key: "broker", label: "Customs Broker", total: customsBroker },
@@ -1528,7 +1731,9 @@ function calculateShippingDoorToDoor(product) {
     : "";
 
   return {
-    transportMode: basic.transportMode,
+    transportMode: modeKey,
+    modeKey,
+    modeLabel,
     unitCbm,
     unitWeightKg,
     unitsPerOrder,
@@ -1545,14 +1750,14 @@ function calculateShippingDoorToDoor(product) {
   };
 }
 
-function resolveAssumptions(product) {
+function resolveAssumptions(product, settings = state.settings) {
   const basic = product.basic;
   const assumptions = product.assumptions;
-  const category = state.settings.categoryDefaults[basic.category] ?? state.settings.categoryDefaults.generic;
-  const costDefaults = state.settings.costDefaults ?? DEFAULT_SETTINGS.costDefaults;
-  const threePlDefaults = state.settings.threePl ?? DEFAULT_SETTINGS.threePl;
-  const listingPackages = state.settings.lifecycle?.listingPackages ?? DEFAULT_SETTINGS.lifecycle.listingPackages;
-  const launchProfiles = state.settings.lifecycle?.launchProfiles ?? DEFAULT_SETTINGS.lifecycle.launchProfiles;
+  const category = settings.categoryDefaults[basic.category] ?? settings.categoryDefaults.generic;
+  const costDefaults = settings.costDefaults ?? DEFAULT_SETTINGS.costDefaults;
+  const threePlDefaults = settings.threePl ?? DEFAULT_SETTINGS.threePl;
+  const listingPackages = settings.lifecycle?.listingPackages ?? DEFAULT_SETTINGS.lifecycle.listingPackages;
+  const launchProfiles = settings.lifecycle?.launchProfiles ?? DEFAULT_SETTINGS.lifecycle.launchProfiles;
   const isOverrideActive = (flag) => Boolean(flag);
 
   const listingPackageKey = basic.listingPackage in listingPackages ? basic.listingPackage : "ai";
@@ -1575,12 +1780,12 @@ function resolveAssumptions(product) {
   const defaultUnsellableShare = clamp(category.unsellableShare, 0, 100);
   const defaultReturnHandling = GLOBAL_DEFAULTS.returnHandlingCost;
 
-  const defaultLeakage = clamp(GLOBAL_DEFAULTS.leakageRatePct, 0, 20);
+  const defaultLeakage = clamp(num(costDefaults.leakageRatePct, GLOBAL_DEFAULTS.leakageRatePct), 0, 20);
   const defaultCustomsRate = clamp(GLOBAL_DEFAULTS.importCustomsDutyRate, 0, 40);
   const defaultImportVatRate = clamp(GLOBAL_DEFAULTS.importVatRate, 0, 30);
   const defaultReferralRate = clamp(category.referralRate, 0, 25);
   const defaultTargetMargin = clamp(category.targetMarginPct, 0, 50);
-  const defaultLifecycleMonths = clamp(roundInt(state.settings.lifecycle?.defaultMonths, 36), 1, 120);
+  const defaultLifecycleMonths = clamp(roundInt(settings.lifecycle?.defaultMonths, 36), 1, 120);
   const defaultListingPackageTotal =
     num(listingPackage.listingCreationEur) +
     num(listingPackage.imagesInfographicsEur) +
@@ -1782,7 +1987,7 @@ function resolveAssumptions(product) {
   };
 
   const resolved = {
-    vatRate: state.settings.tax?.vatRates?.[basic.marketplace] ?? MARKETPLACE_VAT[basic.marketplace] ?? 19,
+    vatRate: settings.tax?.vatRates?.[basic.marketplace] ?? MARKETPLACE_VAT[basic.marketplace] ?? 19,
 
     tacosRate: resolveValue(isOverrideActive(assumptions.ads.overrideTacos), assumptions.ads.tacosRate, defaultTacos, 0, 100),
     launchAdsMultiplier: resolveValue(
@@ -2112,7 +2317,8 @@ function buildStageState(product, metrics) {
 }
 
 function calculateProduct(product, scenario = {}, options = { includeDerived: true }) {
-  const resolved = resolveAssumptions(product);
+  const effectiveSettings = resolveEffectiveSettings(product);
+  const resolved = resolveAssumptions(product, effectiveSettings);
   const basic = product.basic;
 
   const monthlyUnits = Math.max(
@@ -2132,7 +2338,7 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const targetPriceNet = vatFactor > 0 ? priceGrossTarget / vatFactor : priceGrossTarget;
   const fxUsdToEur = Math.max(0, num(state.fx.usdToEur, DEFAULT_USD_TO_EUR));
 
-  const shipping = calculateShippingDoorToDoor(product);
+  const shipping = calculateShippingDoorToDoor(product, effectiveSettings);
   const extra = resolved.extraCosts;
 
   const exwUnitUsd = Math.max(0, num(basic.exwUnit));
@@ -2969,6 +3175,42 @@ function extractControlLabel(control, fallback) {
   return text || fallback;
 }
 
+function humanizePathSegment(segment) {
+  return segment
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/pct/gi, "%")
+    .replace(/\beur\b/gi, "EUR")
+    .replace(/\bcbm\b/gi, "CBM")
+    .replace(/\b3pl\b/gi, "3PL")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function fallbackLabelFromPath(path) {
+  if (!path) {
+    return "";
+  }
+  const normalized = path.startsWith("settings.") ? path : path;
+  if (PATH_LABEL_OVERRIDES[normalized]) {
+    return PATH_LABEL_OVERRIDES[normalized];
+  }
+  const segments = normalized.split(".");
+  const last = segments[segments.length - 1] ?? normalized;
+  return humanizePathSegment(last);
+}
+
+function resolveLabelForPath(path, control) {
+  if (PATH_LABEL_OVERRIDES[path]) {
+    return PATH_LABEL_OVERRIDES[path];
+  }
+  const controlLabel = extractControlLabel(control, "");
+  if (controlLabel && controlLabel !== path) {
+    return controlLabel;
+  }
+  return fallbackLabelFromPath(path);
+}
+
 function getPathHelp(path) {
   if (path.startsWith("derived.")) {
     return DERIVED_DRIVER_MAP[path]?.help ?? "";
@@ -2977,6 +3219,85 @@ function getPathHelp(path) {
     return SETTINGS_HELP[path.slice("settings.".length)] ?? "";
   }
   return FIELD_HELP[path] ?? "";
+}
+
+function settingsSectionIdFromPath(settingsPath) {
+  const prefixed = settingsPath.startsWith("settings.") ? settingsPath : `settings.${settingsPath}`;
+  if (prefixed.startsWith("settings.tax.")) {
+    return "settingsTaxSection";
+  }
+  if (prefixed.startsWith("settings.shipping12m.")) {
+    if (prefixed.startsWith("settings.shipping12m.modes.rail.")) {
+      return "settingsShippingRailMode";
+    }
+    if (prefixed.startsWith("settings.shipping12m.modes.sea_lcl.")) {
+      return "settingsShippingSeaMode";
+    }
+    return "settingsShippingSection";
+  }
+  if (prefixed.startsWith("settings.cartonRules.")) {
+    return "settingsCartonSection";
+  }
+  if (prefixed.startsWith("settings.threePl.receiving")) {
+    return "settings3plReceivingSection";
+  }
+  if (
+    prefixed.startsWith("settings.threePl.storage") ||
+    prefixed.startsWith("settings.threePl.unitsPerPallet") ||
+    prefixed.startsWith("settings.threePl.avgStorageMonths") ||
+    prefixed.startsWith("settings.threePl.shelf")
+  ) {
+    return "settings3plStorageSection";
+  }
+  if (
+    prefixed.startsWith("settings.threePl.outbound") ||
+    prefixed.startsWith("settings.threePl.pickPack") ||
+    prefixed.startsWith("settings.threePl.fbaProcessing") ||
+    prefixed.startsWith("settings.threePl.insert") ||
+    prefixed.startsWith("settings.threePl.thirdCountryLabel") ||
+    prefixed.startsWith("settings.threePl.insertsPerCartonDefault") ||
+    prefixed.startsWith("settings.threePl.labelsPerCartonDefault")
+  ) {
+    return "settings3plOutboundSection";
+  }
+  if (prefixed.startsWith("settings.threePl.carrierCostPerCartonEur")) {
+    return "settings3plCarrierSection";
+  }
+  if (
+    prefixed.startsWith("settings.costDefaults.amazonStoragePerCbmMonthEur") ||
+    prefixed.startsWith("settings.costDefaults.avgAmazonStorageMonths")
+  ) {
+    return "settingsAmazonSection";
+  }
+  if (prefixed.startsWith("settings.costDefaults.leakageRatePct")) {
+    return "settingsOverheadSection";
+  }
+  if (prefixed.startsWith("settings.costDefaults.")) {
+    return "settingsProductDefaultsSection";
+  }
+  if (prefixed.startsWith("settings.lifecycle.")) {
+    return "settingsLifecycleSection";
+  }
+  if (prefixed.startsWith("settings.categoryDefaults.")) {
+    return "settingsCategorySection";
+  }
+  return "settingsCategorySection";
+}
+
+function getProductSettingOverride(product, settingsPath) {
+  return getByPath(product?.assumptions?.localSettingOverrides ?? {}, settingsPath);
+}
+
+function getEffectiveSettingValueForProduct(product, settingsPath) {
+  const productOverride = getProductSettingOverride(product, settingsPath);
+  if (productOverride !== undefined) {
+    return productOverride;
+  }
+  return getByPath(state.settings, settingsPath);
+}
+
+function countProductsAffectedByGlobalSetting(settingsPath) {
+  return state.products.filter((item) => getProductSettingOverride(item, settingsPath) === undefined).length;
 }
 
 function formatDerivedValue(value, formatType) {
@@ -3016,7 +3337,7 @@ function buildStageImpactItems(metrics, stage) {
       impactMonthly: (shippingImportUnit * metrics.monthlyUnits),
       explain: "Door-to-Door Shipping, Zoll und orderbezogene Import-Fixkosten pro Unit.",
       formula: "Shipping & Import/Unit = Shipping/Unit + Zoll/Unit + Order-Fix/Unit.",
-      source: "User-Input (Preis/EK/Maße) + Global Settings (Shipping, Kosten-Defaults) + Kategorie-Default (Zoll/Steuer).",
+      source: `User-Input (Preis/EK/Maße) + Global Settings (Shipping ${metrics.shipping.modeLabel}, Kosten-Defaults) + Kategorie-Default (Zoll/Steuer).`,
       robustness: "Mittel (mehrere Annahmen entlang der Kette).",
       driverPaths: [
         "derived.shipping.unitsPerOrder",
@@ -3030,7 +3351,7 @@ function buildStageImpactItems(metrics, stage) {
         "basic.netWeightG",
         "assumptions.import.customsDutyRate",
         "assumptions.extraCosts.overridePackagingGroup",
-        "settings.shipping12m.lclRateEurPerCbm",
+        ...shippingModeDriverPaths(metrics.shipping.modeKey),
       ],
       pinned: true,
     },
@@ -3153,9 +3474,9 @@ function buildStageImpactItems(metrics, stage) {
       label: "Door-to-Door Shipping / Monat",
       value: formatCurrency(metrics.shippingMonthly),
       impactMonthly: metrics.shippingMonthly,
-      explain: "Internationaler D2D-Anteil aus Fixblöcken + LCL variabel (W/M).",
-      formula: "Shipping Total = Origin + Destination + On-Carriage + optional Broker + (chargeable CBM × LCL-Rate).",
-      source: "Globale 12M-Settings + Produktmaße/-gewicht/-Menge.",
+      explain: "Internationaler D2D-Anteil aus Fixblöcken + variablem W/M-Tarif.",
+      formula: `Shipping Total (${metrics.shipping.modeLabel}) = Origin + Destination + On-Carriage + optional Broker + (chargeable CBM × Rate).`,
+      source: `Globale 12M-Settings (${metrics.shipping.modeLabel}) + Produktmaße/-gewicht/-Menge.`,
       robustness: "Mittel (Richtwert, kein Live-Spot-Tarif).",
       driverPaths: [
         "basic.unitsPerOrder",
@@ -3163,10 +3484,7 @@ function buildStageImpactItems(metrics, stage) {
         "basic.packLengthCm",
         "basic.packWidthCm",
         "basic.packHeightCm",
-        "settings.shipping12m.lclRateEurPerCbm",
-        "settings.shipping12m.originFixedEurPerShipment",
-        "settings.shipping12m.destinationFixedEurPerShipment",
-        "settings.shipping12m.deOncarriageFixedEurPerShipment",
+        ...shippingModeDriverPaths(metrics.shipping.modeKey),
       ],
       pinned: true,
     },
@@ -3443,10 +3761,13 @@ function settingsValueText(path, value) {
   if (typeof value === "boolean") {
     return value ? "aktiv" : "inaktiv";
   }
-  if (path.includes("Rate") || path.endsWith("Pct")) {
+  if (
+    path.endsWith("Pct") ||
+    /(?:referralRate|tacosRate|returnRate|resaleRate|unsellableShare|customsDutyRate|importVatRate|targetMarginPct)$/.test(path)
+  ) {
     return formatPercent(num(value, 0));
   }
-  if (path.endsWith("Eur") || path.includes("cost") || path.includes("Cost")) {
+  if (path.endsWith("Eur") || path.includes("EurPer") || path.includes("cost") || path.includes("Cost")) {
     return formatCurrency(num(value, 0));
   }
   return formatNumber(num(value, 0));
@@ -3505,8 +3826,9 @@ function buildDriverFieldBadges(path, selected, diagnostics, metrics) {
     const overridePath = VALUE_TO_OVERRIDE_MAP.get(path) || getGroupOverridePath(path);
     if (overridePath) {
       const active = Boolean(getByPath(selected, overridePath));
+      const overrideLabel = fallbackLabelFromPath(overridePath);
       if (active) {
-        badges.push({ tone: "warn", label: "Produkt Override", title: `Aktiv über ${overridePath}.` });
+        badges.push({ tone: "warn", label: "Produkt Override", title: `Aktiv über "${overrideLabel}".` });
       } else {
         badges.push({ tone: "ok", label: "Default aktiv", title: `Kein Override: Wert kommt aus Defaults/Settings.` });
       }
@@ -3647,7 +3969,7 @@ function renderDriverModal() {
     }
 
     const sourceControl = getFieldControl(path);
-    const label = extractControlLabel(sourceControl, path);
+    const label = resolveLabelForPath(path, sourceControl);
     const helpText = getPathHelp(path);
 
     const field = document.createElement("article");
@@ -3664,27 +3986,126 @@ function renderDriverModal() {
 
     if (path.startsWith("settings.")) {
       const settingsPath = path.slice("settings.".length);
-      const value = getByPath(state.settings, settingsPath);
-      const text = document.createElement("small");
-      text.textContent = `Globaler Wert: ${settingsValueText(settingsPath, value)}`;
-      field.appendChild(text);
+      const globalValue = getByPath(state.settings, settingsPath);
+      const productValue = getProductSettingOverride(selected, settingsPath);
+      const effectiveValue = getEffectiveSettingValueForProduct(selected, settingsPath);
+
+      const sourceText = document.createElement("small");
+      sourceText.textContent =
+        productValue === undefined
+          ? `Aktuell aktiv: ${settingsValueText(settingsPath, effectiveValue)} (globaler Default).`
+          : `Aktuell aktiv: ${settingsValueText(settingsPath, effectiveValue)} (Produkt-Override). Global: ${settingsValueText(settingsPath, globalValue)}.`;
+      field.appendChild(sourceText);
+
+      const controlSource = sourceControl ?? document.querySelector(`[data-settings-path="${settingsPath}"]`);
+      let control = cloneControlForModal(controlSource);
+      if (!(controlSource instanceof HTMLElement) && SETTINGS_BOOLEAN_PATHS.has(settingsPath)) {
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        control = checkbox;
+      }
+      if (control instanceof HTMLInputElement && control.type === "checkbox") {
+        control.checked = Boolean(effectiveValue);
+      } else if (control instanceof HTMLSelectElement) {
+        control.value = String(effectiveValue ?? "");
+      } else if (control instanceof HTMLInputElement) {
+        control.value = effectiveValue ?? "";
+      }
+      field.appendChild(control);
+
       if (helpText) {
         const help = document.createElement("small");
         help.textContent = helpText;
         field.appendChild(help);
       }
+
       const actions = document.createElement("div");
       actions.className = "modal-actions";
-      const button = document.createElement("button");
-      button.className = "btn btn-ghost";
-      button.type = "button";
-      button.textContent = "In Settings öffnen";
-      button.addEventListener("click", () => {
-        closeDriverModal();
-        focusMetricDrivers([path], inferAdvancedSectionFromPath(path), label);
+
+      const readControlValue = () => {
+        if (control instanceof HTMLInputElement && control.type === "checkbox") {
+          return control.checked;
+        }
+        if (control instanceof HTMLSelectElement) {
+          return control.value;
+        }
+        if (control instanceof HTMLInputElement) {
+          return control.value;
+        }
+        return "";
+      };
+
+      const oldEffectiveText = settingsValueText(settingsPath, effectiveValue);
+      const oldGlobalText = settingsValueText(settingsPath, globalValue);
+
+      const saveProductBtn = document.createElement("button");
+      saveProductBtn.className = "btn btn-primary";
+      saveProductBtn.type = "button";
+      saveProductBtn.textContent = "Nur für dieses Produkt";
+      saveProductBtn.addEventListener("click", () => {
+        const raw = readControlValue();
+        const nextValue = normalizeSettingsValue(settingsPath, raw);
+        if (String(nextValue) === String(effectiveValue)) {
+          return;
+        }
+        if (!selected.assumptions.localSettingOverrides || typeof selected.assumptions.localSettingOverrides !== "object") {
+          selected.assumptions.localSettingOverrides = {};
+        }
+        setByPath(selected.assumptions.localSettingOverrides, settingsPath, nextValue);
+        saveProducts();
+        refreshAfterModalInput();
       });
-      actions.appendChild(button);
+      actions.appendChild(saveProductBtn);
+
+      const saveGlobalBtn = document.createElement("button");
+      saveGlobalBtn.className = "btn btn-ghost";
+      saveGlobalBtn.type = "button";
+      saveGlobalBtn.textContent = "Als globalen Default speichern";
+      saveGlobalBtn.addEventListener("click", () => {
+        const raw = readControlValue();
+        const nextValue = normalizeSettingsValue(settingsPath, raw);
+        const nextText = settingsValueText(settingsPath, nextValue);
+        const affectedProducts = countProductsAffectedByGlobalSetting(settingsPath);
+        const confirmed = window.confirm(
+          `Globalen Default aktualisieren?\n${label}\nAlt: ${oldGlobalText}\nNeu: ${nextText}\nProdukte betroffen: ${affectedProducts}\n\nSind Sie sicher?`,
+        );
+        if (!confirmed) {
+          return;
+        }
+        updateSettingsField(settingsPath, nextValue);
+        refreshAfterModalInput();
+      });
+      actions.appendChild(saveGlobalBtn);
+
+      if (productValue !== undefined) {
+        const clearBtn = document.createElement("button");
+        clearBtn.className = "btn btn-ghost";
+        clearBtn.type = "button";
+        clearBtn.textContent = "Produkt-Override löschen";
+        clearBtn.addEventListener("click", () => {
+          unsetByPath(selected.assumptions.localSettingOverrides, settingsPath);
+          saveProducts();
+          refreshAfterModalInput();
+        });
+        actions.appendChild(clearBtn);
+      }
+
+      const openSettingsBtn = document.createElement("button");
+      openSettingsBtn.className = "btn btn-ghost";
+      openSettingsBtn.type = "button";
+      openSettingsBtn.textContent = "In Settings öffnen";
+      openSettingsBtn.addEventListener("click", () => {
+        const sectionId = settingsSectionIdFromPath(settingsPath);
+        window.location.href = `settings.html#${sectionId}`;
+      });
+      actions.appendChild(openSettingsBtn);
+
       field.appendChild(actions);
+
+      const saveHint = document.createElement("small");
+      saveHint.textContent = `Speicherweg: ${oldEffectiveText} -> neuer Wert. Wahl zwischen Produkt-Override und globalem Default.`;
+      field.appendChild(saveHint);
+
       dom.driverModalFields.appendChild(field);
       return;
     }
@@ -3804,6 +4225,9 @@ function renderStageImpactList(stage, metrics) {
 }
 
 function renderBlockList(container, lines, options = { totalCostMonthly: 1 }) {
+  if (!container) {
+    return;
+  }
   container.innerHTML = "";
 
   lines.forEach((line) => {
@@ -3858,17 +4282,557 @@ function renderBlockList(container, lines, options = { totalCostMonthly: 1 }) {
   });
 }
 
+function buildCostCategoryData(metrics) {
+  const monthlyUnits = Math.max(1, metrics.monthlyUnits);
+  const horizonUnits = Math.max(1, metrics.unitsHorizon);
+  const extra = metrics.resolved.extraCosts;
+  const setupSampleUnit = extra.samplesPerProductEur / horizonUnits;
+  const setupToolingUnit = extra.toolingPerProductEur / horizonUnits;
+  const setupCertificatesUnit = extra.certificatesPerProductEur / horizonUnits;
+  const setupInspectionUnit = extra.inspectionPerProductEur / horizonUnits;
+  const listingLifecycleUnit = metrics.block2Monthly / monthlyUnits;
+  const leakageUnit = metrics.block3Monthly / monthlyUnits;
+  const importVatCostUnit = metrics.resolved.includeImportVatAsCost ? metrics.importVatUnit : 0;
+  const amazonFeesUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit + metrics.amazonStoragePerUnit;
+
+  const line = (config) => ({
+    ...config,
+    value: formatCurrency(num(config.valueRaw, 0)),
+    impactMonthly: num(config.impactMonthly, 0),
+  });
+
+  return [
+    {
+      key: "product",
+      title: "Produkt",
+      description: "Einkauf und direkte Produktkosten am Ursprung.",
+      collapsedRows: 4,
+      lines: [
+        line({
+          label: "EXW umgerechnet (EUR/Unit)",
+          valueRaw: metrics.exwUnit,
+          impactMonthly: metrics.exwUnit * metrics.monthlyUnits,
+          explain: "Einkaufspreis EXW in EUR aus USD-EK und aktuellem FX-Kurs.",
+          formula: "EXW(EUR) = EXW(USD) × USD→EUR.",
+          source: "User-Input + FX.",
+          robustness: "Mittel.",
+          driverPaths: ["basic.exwUnit", "settings.tax.fallbackUsdToEur"],
+        }),
+        line({
+          label: "Packaging & Other (EUR/Unit)",
+          valueRaw: metrics.packagingUnit,
+          impactMonthly: metrics.packagingUnit * metrics.monthlyUnits,
+          explain: "Zusätzliche Verpackungs- und weitere Stückkosten.",
+          formula: "Packaging/Unit = packaging_per_unit + other_unit_costs.",
+          source: "Settings oder Produkt-Override.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "assumptions.extraCosts.overridePackagingGroup",
+            "assumptions.extraCosts.packagingPerUnitEur",
+            "assumptions.extraCosts.otherUnitCostEur",
+            "settings.costDefaults.packagingPerUnitEur",
+            "settings.costDefaults.otherUnitCostEur",
+          ],
+        }),
+        line({
+          label: "Samples amortisiert (EUR/Unit)",
+          valueRaw: setupSampleUnit,
+          impactMonthly: setupSampleUnit * metrics.monthlyUnits,
+          explain: "Einmalige Sample-Kosten auf den Betrachtungszeitraum umgelegt.",
+          formula: "Samples/Unit = samples_per_product / Units im Zeitraum.",
+          source: "Settings oder Produkt-Override.",
+          robustness: "Hoch.",
+          driverPaths: [
+            "assumptions.extraCosts.overrideLaunchOpsGroup",
+            "assumptions.extraCosts.samplesPerProductEur",
+            "settings.costDefaults.samplesPerProductEur",
+            "basic.horizonMonths",
+            "basic.demandValue",
+            "basic.demandBasis",
+          ],
+        }),
+        line({
+          label: "Tooling amortisiert (EUR/Unit)",
+          valueRaw: setupToolingUnit,
+          impactMonthly: setupToolingUnit * metrics.monthlyUnits,
+          explain: "Einmalige Tooling-Kosten auf den Zeitraum verteilt.",
+          formula: "Tooling/Unit = tooling_per_product / Units im Zeitraum.",
+          source: "Settings oder Produkt-Override.",
+          robustness: "Hoch.",
+          driverPaths: [
+            "assumptions.extraCosts.overrideLaunchOpsGroup",
+            "assumptions.extraCosts.toolingPerProductEur",
+            "settings.costDefaults.toolingPerProductEur",
+            "basic.horizonMonths",
+            "basic.demandValue",
+            "basic.demandBasis",
+          ],
+        }),
+        line({
+          label: "Zertifikate amortisiert (EUR/Unit)",
+          valueRaw: setupCertificatesUnit,
+          impactMonthly: setupCertificatesUnit * metrics.monthlyUnits,
+          explain: "Compliance-/Zertifikatskosten auf den Zeitraum verteilt.",
+          formula: "Certificates/Unit = certificates_per_product / Units im Zeitraum.",
+          source: "Settings oder Produkt-Override.",
+          robustness: "Hoch.",
+          driverPaths: [
+            "assumptions.extraCosts.overrideLaunchOpsGroup",
+            "assumptions.extraCosts.certificatesPerProductEur",
+            "settings.costDefaults.certificatesPerProductEur",
+            "basic.horizonMonths",
+            "basic.demandValue",
+            "basic.demandBasis",
+          ],
+        }),
+        line({
+          label: "Inspection amortisiert (EUR/Unit)",
+          valueRaw: setupInspectionUnit,
+          impactMonthly: setupInspectionUnit * metrics.monthlyUnits,
+          explain: "Quality-Inspection-Kosten in China auf den Zeitraum verteilt.",
+          formula: "Inspection/Unit = inspection_per_product / Units im Zeitraum.",
+          source: "Settings oder Produkt-Override.",
+          robustness: "Hoch.",
+          driverPaths: [
+            "assumptions.extraCosts.overrideLaunchOpsGroup",
+            "assumptions.extraCosts.inspectionPerProductEur",
+            "settings.costDefaults.inspectionPerProductEur",
+            "basic.horizonMonths",
+            "basic.demandValue",
+            "basic.demandBasis",
+          ],
+        }),
+      ],
+    },
+    {
+      key: "shipping_import",
+      title: "Shipping & Import",
+      description: "China -> DE Door-to-Door inkl. Zoll und Importanteile.",
+      collapsedRows: 4,
+      lines: [
+        line({
+          label: `Shipping door-to-door (${metrics.shipping.modeLabel}, EUR/Unit)`,
+          valueRaw: metrics.shippingUnit,
+          impactMonthly: metrics.shippingMonthly,
+          explain: `12M-Ø Door-to-Door Shipping-Richtwert im Modus ${metrics.shipping.modeLabel}.`,
+          formula: `Shipping/Unit (${metrics.shipping.modeLabel}) = Shipping total / Units pro Order.`,
+          source: `Shipping 12M (${metrics.shipping.modeLabel}) + Kartonisierung.`,
+          robustness: "Mittel.",
+          driverPaths: [
+            "derived.shipping.unitsPerOrder",
+            "derived.shipping.unitsPerCartonAuto",
+            "derived.shipping.cartonsCount",
+            "derived.shipping.chargeableCbm",
+            "basic.unitsPerOrder",
+            "basic.netWeightG",
+            "basic.packLengthCm",
+            "basic.packWidthCm",
+            "basic.packHeightCm",
+            ...shippingModeDriverPaths(metrics.shipping.modeKey),
+            "settings.cartonRules.packFactor",
+          ],
+        }),
+        line({
+          label: "Zoll (EUR/Unit)",
+          valueRaw: metrics.customsUnit,
+          impactMonthly: metrics.customsMonthly,
+          explain: "Zollkosten auf importierte Ware.",
+          formula: "Zoll/Unit = customsDutyRate × landed_before_duty.",
+          source: "Import-Default/Override.",
+          robustness: "Hoch.",
+          driverPaths: ["assumptions.import.customsDutyRate", "basic.exwUnit", "basic.unitsPerOrder"],
+        }),
+        line({
+          label: "EUSt als Kosten (EUR/Unit)",
+          valueRaw: importVatCostUnit,
+          impactMonthly: metrics.importVatCostMonthly,
+          explain: "Einfuhrumsatzsteuer, falls als Kostenblock aktiviert.",
+          formula: "EUSt/Unit = (landed_before_duty + duty) × EUSt%.",
+          source: "Import-Setting/Override.",
+          robustness: "Hoch.",
+          driverPaths: [
+            "assumptions.import.overrideImportVatRate",
+            "assumptions.import.importVatRate",
+            "assumptions.import.includeImportVatAsCost",
+          ],
+        }),
+        line({
+          label: "Order-Fixkosten (EUR/Unit)",
+          valueRaw: metrics.orderFixedPerUnit,
+          impactMonthly: metrics.orderFixedPerUnit * metrics.monthlyUnits,
+          explain: "Dokumentation/Frachtpapiere je Order, auf Unit umgelegt.",
+          formula: "Order-Fix/Unit = (Dokumentation + Frachtpapiere) / PO Units.",
+          source: "Settings oder Produkt-Override.",
+          robustness: "Hoch.",
+          driverPaths: [
+            "assumptions.extraCosts.overrideLogisticsGroup",
+            "assumptions.extraCosts.docsPerOrderEur",
+            "assumptions.extraCosts.freightPapersPerOrderEur",
+            "settings.costDefaults.docsPerOrderEur",
+            "settings.costDefaults.freightPapersPerOrderEur",
+            "basic.unitsPerOrder",
+          ],
+        }),
+      ],
+    },
+    {
+      key: "threepl",
+      title: "3PL (DE)",
+      description: "Receiving, Storage und Versand an Amazon auf Kartonbasis.",
+      collapsedRows: 5,
+      lines: [
+        line({
+          label: "3PL Inbound / Receiving (EUR/Unit)",
+          valueRaw: metrics.threePlInboundPerUnit,
+          impactMonthly: metrics.threePlInboundPerUnit * metrics.monthlyUnits,
+          explain: "Wareneingangskosten im 3PL je Karton.",
+          formula: "Inbound/Unit = cartons_count × receiving_rate / PO Units.",
+          source: "3PL Settings/Override.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "derived.shipping.unitsPerOrder",
+            "derived.shipping.unitsPerCartonAuto",
+            "derived.shipping.cartonsCount",
+            "assumptions.extraCosts.receivingMode",
+            "assumptions.extraCosts.receivingPerCartonSortedEur",
+            "assumptions.extraCosts.receivingPerCartonMixedEur",
+            "settings.threePl.receivingPerCartonSortedEur",
+            "settings.threePl.receivingPerCartonMixedEur",
+          ],
+        }),
+        line({
+          label: "3PL Lagerung (EUR/Unit)",
+          valueRaw: metrics.threePlStoragePerUnit,
+          impactMonthly: metrics.threePlStoragePerUnit * metrics.monthlyUnits,
+          explain: "Lagerkosten im 3PL (Palette/Monat) auf Unit umgerechnet.",
+          formula: "Storage/Unit = ceil(PO Units/units_per_pallet) × storage_rate × months / PO Units.",
+          source: "3PL Settings/Override.",
+          robustness: "Mittel bis hoch.",
+          driverPaths: [
+            "derived.shipping.unitsPerOrder",
+            "derived.threepl.palletsCount",
+            "assumptions.extraCosts.storagePerPalletPerMonthEur",
+            "assumptions.extraCosts.unitsPerPallet",
+            "assumptions.extraCosts.avg3PlStorageMonths",
+            "settings.threePl.storagePerPalletPerMonthEur",
+            "settings.threePl.unitsPerPallet",
+            "settings.threePl.avgStorageMonths",
+          ],
+        }),
+        line({
+          label: "3PL -> Amazon Service (EUR/Unit)",
+          valueRaw: metrics.threePlOutboundServicePerUnit,
+          impactMonthly: metrics.threePlOutboundServicePerUnit * metrics.monthlyUnits,
+          explain: "Outbound-Service je Karton (Base, Pick & Pack, FBA Processing, optionale Extras).",
+          formula: "Service/Unit = cartons_count × service_per_carton / PO Units.",
+          source: "3PL Settings/Override.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "derived.shipping.unitsPerOrder",
+            "derived.shipping.cartonsCount",
+            "assumptions.extraCosts.outboundBasePerCartonEur",
+            "assumptions.extraCosts.pickPackPerCartonEur",
+            "assumptions.extraCosts.fbaProcessingPerCartonEur",
+            "assumptions.extraCosts.insertsPerCarton",
+            "assumptions.extraCosts.insertPerInsertEur",
+            "assumptions.extraCosts.labelsPerCarton",
+            "assumptions.extraCosts.thirdCountryLabelPerLabelEur",
+            "settings.threePl.outboundBasePerCartonEur",
+            "settings.threePl.pickPackPerCartonEur",
+            "settings.threePl.fbaProcessingPerCartonEur",
+          ],
+        }),
+        line({
+          label: "3PL -> Amazon Carrier (EUR/Unit)",
+          valueRaw: metrics.threePlCarrierPerUnit,
+          impactMonthly: metrics.threePlCarrierPerUnit * metrics.monthlyUnits,
+          explain: "Transportkosten vom 3PL zu Amazon je Karton.",
+          formula: "Carrier/Unit = cartons_count × carrier_per_carton / PO Units.",
+          source: "3PL Settings/Override.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "derived.shipping.unitsPerOrder",
+            "derived.shipping.cartonsCount",
+            "assumptions.extraCosts.carrierCostPerCartonEur",
+            "settings.threePl.carrierCostPerCartonEur",
+          ],
+        }),
+        line({
+          label: "3PL gesamt (EUR/Unit)",
+          valueRaw: metrics.threePlTotalPerUnit,
+          impactMonthly: metrics.threePlTotalPerUnit * metrics.monthlyUnits,
+          explain: "Summenzeile über Inbound, Lagerung, Service und Carrier.",
+          formula: "3PL total/Unit = inbound + storage + outbound service + carrier.",
+          source: "Aggregierter 3PL-Block.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "derived.threepl.inboundTotal",
+            "derived.threepl.storageTotal",
+            "derived.threepl.outboundServiceTotal",
+            "derived.threepl.carrierTotal",
+          ],
+        }),
+      ],
+    },
+    {
+      key: "amazon",
+      title: "Amazon",
+      description: "Amazon Fees und Lagerkosten.",
+      collapsedRows: 4,
+      lines: [
+        line({
+          label: "Referral Fee (EUR/Unit)",
+          valueRaw: metrics.referralFeeUnit,
+          impactMonthly: metrics.referralMonthly,
+          explain: "Prozentuale Amazon-Provision auf den Verkaufspreis.",
+          formula: "Referral/Unit = max(min fee, price_gross × referral_rate).",
+          source: "Kategorie-Default oder Override.",
+          robustness: "Hoch.",
+          driverPaths: ["assumptions.amazon.referralRate", "basic.category", "basic.priceGross"],
+        }),
+        line({
+          label: "FBA Fee (EUR/Unit)",
+          valueRaw: metrics.fbaFeeUnit,
+          impactMonthly: metrics.fbaFeeUnit * metrics.monthlyUnits,
+          explain: "FBA-Gebühr je Unit nach Größen-/Gewichtstier oder manuellem Override.",
+          formula: "FBA/Unit = auto tier fee oder manual fee.",
+          source: "Amazon Fee-Logik + Produktdaten.",
+          robustness: "Mittel bis hoch.",
+          driverPaths: [
+            "assumptions.amazon.useManualFbaFee",
+            "assumptions.amazon.manualFbaFee",
+            "basic.netWeightG",
+            "basic.packLengthCm",
+            "basic.packWidthCm",
+            "basic.packHeightCm",
+          ],
+        }),
+        line({
+          label: "Amazon Lagerung (EUR/Unit)",
+          valueRaw: metrics.amazonStoragePerUnit,
+          impactMonthly: metrics.amazonStoragePerUnit * metrics.monthlyUnits,
+          explain: "Lagerkosten bei Amazon aus CBM-Volumen und Lagerdauer.",
+          formula: "Amazon storage/Unit = rate_per_cbm_month × months × unit_cbm.",
+          source: "Settings oder Produkt-Override.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
+            "assumptions.extraCosts.avgAmazonStorageMonths",
+            "settings.costDefaults.amazonStoragePerCbmMonthEur",
+            "settings.costDefaults.avgAmazonStorageMonths",
+            "basic.packLengthCm",
+            "basic.packWidthCm",
+            "basic.packHeightCm",
+          ],
+        }),
+        line({
+          label: "Amazon gesamt (EUR/Unit)",
+          valueRaw: amazonFeesUnit,
+          impactMonthly: amazonFeesUnit * metrics.monthlyUnits,
+          explain: "Summenzeile über Referral, FBA und Amazon-Lagerung.",
+          formula: "Amazon total/Unit = referral + fba + storage.",
+          source: "Aggregierter Amazon-Block.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "assumptions.amazon.referralRate",
+            "assumptions.amazon.useManualFbaFee",
+            "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
+          ],
+        }),
+      ],
+    },
+    {
+      key: "ads_returns",
+      title: "Werbung & Retouren",
+      description: "Performance- und Qualitätskosten im laufenden Verkauf.",
+      collapsedRows: 4,
+      lines: [
+        line({
+          label: "Ads inkl. Launch-Boost (EUR/Unit)",
+          valueRaw: metrics.adsUnit,
+          impactMonthly: metrics.adsMonthly,
+          explain: "Werbekosten auf Netto-Umsatzbasis inklusive Launch-Profil.",
+          formula: "Ads/Unit = net_price × effective_TACoS.",
+          source: "Kategorie-Defaults + Launch-Profil + Overrides.",
+          robustness: "Niedrig bis mittel.",
+          driverPaths: [
+            "assumptions.ads.tacosRate",
+            "assumptions.ads.launchMultiplier",
+            "assumptions.ads.launchMonths",
+            "basic.launchCompetition",
+          ],
+        }),
+        line({
+          label: "Retourenverlust (EUR/Unit)",
+          valueRaw: metrics.returnLossUnit,
+          impactMonthly: metrics.returnLossUnit * metrics.monthlyUnits,
+          explain: "Wertverlust aus Retouren und Unsellable-Anteilen.",
+          formula: "Return loss/Unit = return_rate × landed × sellability factors.",
+          source: "Kategorie-Defaults + Overrides.",
+          robustness: "Niedrig bis mittel.",
+          driverPaths: [
+            "assumptions.returns.returnRate",
+            "assumptions.returns.resaleRate",
+            "assumptions.returns.unsellableShare",
+          ],
+        }),
+        line({
+          label: "Retouren-Handling (EUR/Unit)",
+          valueRaw: metrics.returnHandlingUnit,
+          impactMonthly: metrics.returnHandlingUnit * metrics.monthlyUnits,
+          explain: "Interne Bearbeitungskosten je Retoure, auf Unit umgelegt.",
+          formula: "Handling/Unit = return_rate × handling_cost_per_return.",
+          source: "Default/Override.",
+          robustness: "Mittel.",
+          driverPaths: ["assumptions.returns.returnRate", "assumptions.returns.handlingCost"],
+        }),
+      ],
+    },
+    {
+      key: "launch_lifecycle",
+      title: "Launch & Lifecycle",
+      description: "Einmalige/temporäre Kosten über den Zeitraum verteilt.",
+      collapsedRows: 4,
+      lines: [
+        line({
+          label: "Launch-Budget amortisiert (EUR/Unit)",
+          valueRaw: metrics.launchUnit,
+          impactMonthly: metrics.launchMonthly,
+          explain: "Launchbudget über Betrachtungszeitraum verteilt.",
+          formula: "Launch/Unit = launch_budget_total / Units im Zeitraum.",
+          source: "Produktinput + optional Launch-Split.",
+          robustness: "Hoch.",
+          driverPaths: ["basic.launchBudgetTotal", "assumptions.launchSplit.enabled", "basic.horizonMonths"],
+        }),
+        line({
+          label: "Listing amortisiert (EUR/Unit)",
+          valueRaw: metrics.listingUnit,
+          impactMonthly: metrics.listingMonthly,
+          explain: "Listing-Paketkosten über Lifecycle-Horizont verteilt.",
+          formula: "Listing/Unit = listing_package_total / Units im Zeitraum.",
+          source: "Listing-Paket Settings + Produktauswahl.",
+          robustness: "Hoch.",
+          driverPaths: ["basic.listingPackage", "settings.lifecycle.defaultMonths"],
+        }),
+        line({
+          label: "Launch Ops amortisiert (EUR/Unit)",
+          valueRaw: metrics.launchOpsUnit,
+          impactMonthly: metrics.launchOpsMonthly,
+          explain: "Grußkarten und Setup-Einmalkosten über den Zeitraum verteilt.",
+          formula: "Launch ops/Unit = (greeting cards + setup one-offs) / Units im Zeitraum.",
+          source: "Settings oder Produkt-Override.",
+          robustness: "Mittel bis hoch.",
+          driverPaths: [
+            "assumptions.extraCosts.greetingCardPerLaunchUnitEur",
+            "assumptions.extraCosts.samplesPerProductEur",
+            "assumptions.extraCosts.toolingPerProductEur",
+            "assumptions.extraCosts.certificatesPerProductEur",
+            "assumptions.extraCosts.inspectionPerProductEur",
+          ],
+        }),
+        line({
+          label: "Lifecycle gesamt (EUR/Unit)",
+          valueRaw: listingLifecycleUnit,
+          impactMonthly: metrics.block2Monthly,
+          explain: "Gesamter Launch/Lifecycle-Block pro Unit.",
+          formula: "Lifecycle total/Unit = block2_monthly / monthly_units.",
+          source: "Aggregierter Block 2.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "basic.launchBudgetTotal",
+            "basic.listingPackage",
+            "assumptions.lifecycle.otherMonthlyCost",
+            "basic.horizonMonths",
+          ],
+        }),
+      ],
+    },
+    {
+      key: "overhead",
+      title: "Overhead / Leakage",
+      description: "Sicherheitsblock für vergessene, indirekte Kosten.",
+      collapsedRows: 3,
+      lines: [
+        line({
+          label: "Leakage / Overhead (EUR/Unit)",
+          valueRaw: leakageUnit,
+          impactMonthly: metrics.block3Monthly,
+          explain: "Pauschaler Kostenblock als Anteil vom Netto-Umsatz.",
+          formula: "Leakage/Unit = (net_revenue_monthly × leakage_rate) / monthly_units.",
+          source: "Globaler Default oder Produkt-Override.",
+          robustness: "Mittel.",
+          driverPaths: [
+            "assumptions.leakage.overrideRatePct",
+            "assumptions.leakage.ratePct",
+            "settings.costDefaults.leakageRatePct",
+            "basic.priceGross",
+            "basic.demandValue",
+            "basic.demandBasis",
+          ],
+        }),
+      ],
+    },
+  ];
+}
+
+function renderCostCategoryGrid(metrics) {
+  if (!dom.costCategoryGrid) {
+    return;
+  }
+  dom.costCategoryGrid.innerHTML = "";
+  const categories = buildCostCategoryData(metrics);
+
+  categories.forEach((category) => {
+    const card = document.createElement("article");
+    card.className = "cost-category-card";
+
+    const head = document.createElement("div");
+    head.className = "cost-category-head";
+    const title = document.createElement("h4");
+    title.textContent = category.title;
+    const subtitle = document.createElement("p");
+    subtitle.textContent = category.description;
+    head.append(title, subtitle);
+    card.appendChild(head);
+
+    const list = document.createElement("ul");
+    list.className = "calc-list cost-category-list";
+    card.appendChild(list);
+
+    const expanded = Boolean(state.ui.costCategoryExpanded?.[category.key]);
+    const collapsedRows = Math.max(1, num(category.collapsedRows, 4));
+    const visibleLines = expanded ? category.lines : category.lines.slice(0, collapsedRows);
+    renderBlockList(list, visibleLines, { totalCostMonthly: metrics.totalCostMonthly });
+
+    if (category.lines.length > collapsedRows) {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "cost-category-toggle";
+      toggle.dataset.categoryToggle = category.key;
+      toggle.textContent = expanded ? "Weniger anzeigen" : `Weitere anzeigen (${category.lines.length - collapsedRows})`;
+      card.appendChild(toggle);
+    }
+
+    dom.costCategoryGrid.appendChild(card);
+  });
+}
+
 function renderShippingDetails(metrics) {
+  const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.transportMode);
+  const quickLabel = document.querySelector("#shippingQuickCard p");
+  if (quickLabel) {
+    quickLabel.textContent = `Shipping door-to-door (${modeLabel}, EUR / Unit)`;
+  }
   if (dom.basicShippingUnit) {
     dom.basicShippingUnit.textContent = formatCurrency(metrics.shippingUnit);
   }
   if (dom.basicShippingMeta) {
-    dom.basicShippingMeta.textContent = `Chargeable: ${formatNumber(metrics.shipping.chargeableCbm)} CBM · PO: ${formatNumber(metrics.shipping.unitsPerOrder)} Units`;
+    dom.basicShippingMeta.textContent = `${modeLabel} · Chargeable: ${formatNumber(metrics.shipping.chargeableCbm)} CBM · PO: ${formatNumber(metrics.shipping.unitsPerOrder)} Units`;
   }
 
   if (dom.shippingMethodText) {
     dom.shippingMethodText.textContent =
-      "So berechnen wir Shipping (12-Monats-Ø): Für China→DE schätzen wir Kartons automatisch aus Produktmaßen, Gewicht und Amazon-Kartonlimits. Daraus berechnen wir chargeable CBM (W/M) und addieren fixe Origin/Destination/On-Carriage Kosten. Ergebnis ist ein einzelner Richtwert in EUR/Unit, kein Live-Tarif.";
+      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Für China→DE schätzen wir Kartons automatisch aus Produktmaßen, Gewicht und Amazon-Kartonlimits. Daraus berechnen wir chargeable CBM (W/M) und addieren fixe Origin/Destination/On-Carriage Kosten. Ergebnis ist ein einzelner Richtwert in EUR/Unit, kein Live-Tarif.`;
   }
 
   if (dom.shippingDetailList) {
@@ -3880,12 +4844,12 @@ function renderShippingDetails(metrics) {
     });
 
     const totalLi = document.createElement("li");
-    totalLi.innerHTML = `<span>Shipping total</span><strong>${formatCurrency(metrics.shipping.shippingTotal)} · ${formatCurrency(metrics.shipping.shippingPerUnit)}/Unit</strong>`;
+    totalLi.innerHTML = `<span>Shipping total (${modeLabel})</span><strong>${formatCurrency(metrics.shipping.shippingTotal)} · ${formatCurrency(metrics.shipping.shippingPerUnit)}/Unit</strong>`;
     dom.shippingDetailList.appendChild(totalLi);
   }
 
   if (dom.shippingDebugInfo) {
-    const base = `units_per_carton_auto=${formatNumber(metrics.shipping.unitsPerCartonAuto)} · cartons_count=${formatNumber(metrics.shipping.cartonsCount)} · shipment_cbm=${formatNumber(metrics.shipping.shipmentCbm)} · shipment_weight_kg=${formatNumber(metrics.shipping.shipmentWeightKg)} · chargeable_cbm=${formatNumber(metrics.shipping.chargeableCbm)}`;
+    const base = `mode=${metrics.shipping.modeLabel} · units_per_carton_auto=${formatNumber(metrics.shipping.unitsPerCartonAuto)} · cartons_count=${formatNumber(metrics.shipping.cartonsCount)} · shipment_cbm=${formatNumber(metrics.shipping.shipmentCbm)} · shipment_weight_kg=${formatNumber(metrics.shipping.shipmentWeightKg)} · chargeable_cbm=${formatNumber(metrics.shipping.chargeableCbm)}`;
     dom.shippingDebugInfo.textContent = metrics.shipping.oversizeFlag
       ? `${base} · Hinweis: ${metrics.shipping.oversizeNote}`
       : base;
@@ -3954,11 +4918,11 @@ function renderLogisticsChain(metrics) {
 
   renderStation(dom.chainImportChips, [
     {
-      label: "Shipping D2D (EUR/Unit)",
+      label: `Shipping D2D (${metrics.shipping.modeLabel}, EUR/Unit)`,
       value: metrics.shippingUnit,
-      explain: "China -> DE door-to-door als 12M-Durchschnitt.",
-      formula: "Shipping/Unit = Shipping total / PO Units.",
-      source: "Shipping 12M + Kartonisierung.",
+      explain: `China -> DE door-to-door als 12M-Durchschnitt im Modus ${metrics.shipping.modeLabel}.`,
+      formula: `Shipping/Unit (${metrics.shipping.modeLabel}) = Shipping total / PO Units.`,
+      source: `Shipping 12M (${metrics.shipping.modeLabel}) + Kartonisierung.`,
       robustness: "Mittel",
       driverPaths: [
         "basic.unitsPerOrder",
@@ -3966,7 +4930,7 @@ function renderLogisticsChain(metrics) {
         "basic.packWidthCm",
         "basic.packHeightCm",
         "basic.netWeightG",
-        "settings.shipping12m.lclRateEurPerCbm",
+        ...shippingModeDriverPaths(metrics.shipping.modeKey),
       ],
     },
     {
@@ -4173,485 +5137,7 @@ function renderSelectedOutputs(metrics) {
 
   renderShippingDetails(metrics);
   renderLogisticsChain(metrics);
-
-  renderBlockList(
-    dom.unitBlockList,
-    [
-      {
-        label: "EXW / Einheit (USD)",
-        value: formatUsd(metrics.exwUnitUsd),
-        explain: "Direkter EK in USD. Umrechnung mit aktuellem USD→EUR Kurs.",
-        impactMonthly: metrics.exwUnit * metrics.monthlyUnits,
-        driverPaths: ["basic.exwUnit"],
-      },
-      {
-        label: `EXW umgerechnet / Einheit (EUR, 1 USD=${formatNumber(metrics.fxUsdToEur)} EUR)`,
-        value: formatCurrency(metrics.exwUnit),
-        explain: "EXW(EUR) = EXW(USD) × USD→EUR.",
-        impactMonthly: metrics.exwUnit * metrics.monthlyUnits,
-        driverPaths: ["basic.exwUnit"],
-      },
-      {
-        label: "Verpackung + weitere Stückkosten / Einheit (EUR)",
-        value: formatCurrency(metrics.packagingUnit),
-        targetSection: "advancedOpsSection",
-        explain: "Zusätzliche Verpackungskosten und weitere variable Kosten pro Unit.",
-        formula: "Verpackung/Unit + weitere Kosten/Unit.",
-        source: "Global costDefaults oder produktbezogener Override.",
-        robustness: "Mittel bis hoch (lieferanten- und materialabhängig).",
-        impactMonthly: metrics.packagingUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "assumptions.extraCosts.overridePackagingGroup",
-          "assumptions.extraCosts.packagingPerUnitEur",
-          "assumptions.extraCosts.otherUnitCostEur",
-          "settings.costDefaults.packagingPerUnitEur",
-          "settings.costDefaults.otherUnitCostEur",
-        ],
-      },
-      {
-        label: "Shipping door-to-door / Einheit (EUR)",
-        value: formatCurrency(metrics.shippingUnit),
-        targetSection: "advancedShippingSection",
-        explain: "12M-Ø Door-to-Door-Modell: fixe Kosten + LCL variabel über chargeable CBM.",
-        formula: "Shipping/Unit = Shipping total (Fixkosten + LCL W/M) / Units pro Order.",
-        source: "Globale 12M Shipping-Settings + Produktmaße/-gewicht.",
-        robustness: "Mittel (Richtwert, kein Live-Spot).",
-        impactMonthly: metrics.shippingMonthly,
-        driverPaths: [
-          "basic.unitsPerOrder",
-          "basic.netWeightG",
-          "basic.packLengthCm",
-          "basic.packWidthCm",
-          "basic.packHeightCm",
-          "settings.shipping12m.lclRateEurPerCbm",
-          "settings.shipping12m.originFixedEurPerShipment",
-          "settings.shipping12m.destinationFixedEurPerShipment",
-          "settings.shipping12m.deOncarriageFixedEurPerShipment",
-          "settings.cartonRules.packFactor",
-        ],
-      },
-      {
-        label: "Order-Fixkosten (Docs + Frachtpapiere) / Einheit (EUR)",
-        value: formatCurrency(metrics.orderFixedPerUnit),
-        targetSection: "advancedOpsSection",
-        explain: "Fixkosten je Order, verteilt auf Units pro Order.",
-        formula: "Order-Fix/Unit = (Dokumentation + Frachtpapiere) / Units pro Order.",
-        source: "Global costDefaults oder Produkt-Override.",
-        robustness: "Hoch (fixe Prozesskosten).",
-        impactMonthly: metrics.orderFixedPerUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "assumptions.extraCosts.overrideLogisticsGroup",
-          "assumptions.extraCosts.docsPerOrderEur",
-          "assumptions.extraCosts.freightPapersPerOrderEur",
-          "basic.unitsPerOrder",
-          "settings.costDefaults.docsPerOrderEur",
-          "settings.costDefaults.freightPapersPerOrderEur",
-        ],
-      },
-      {
-        label: "3PL Inbound / Einheit (EUR)",
-        value: formatCurrency(metrics.threePlInboundPerUnit),
-        targetSection: "advancedOpsSection",
-        explain: "3PL Wareneingang je Karton (sorted/mixed), verteilt auf Units pro Order.",
-        formula: "3PL Inbound/Unit = (Kartonanzahl × Receiving je Karton) / Units pro Order.",
-        source: "Globale 3PL-Settings + Auto-Kartonisierung oder Produkt-Override.",
-        robustness: "Mittel.",
-        impactMonthly: metrics.threePlInboundPerUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "derived.shipping.unitsPerOrder",
-          "derived.shipping.unitsPerCartonAuto",
-          "derived.shipping.cartonsCount",
-          "derived.threepl.inboundTotal",
-          "assumptions.extraCosts.overrideLogisticsGroup",
-          "assumptions.extraCosts.receivingMode",
-          "assumptions.extraCosts.receivingPerCartonSortedEur",
-          "assumptions.extraCosts.receivingPerCartonMixedEur",
-          "basic.unitsPerOrder",
-          "basic.packLengthCm",
-          "basic.packWidthCm",
-          "basic.packHeightCm",
-          "settings.threePl.receivingPerCartonSortedEur",
-          "settings.threePl.receivingPerCartonMixedEur",
-        ],
-      },
-      {
-        label: "3PL Lagerung / Einheit (EUR)",
-        value: formatCurrency(metrics.threePlStoragePerUnit),
-        targetSection: "advancedOpsSection",
-        explain: "3PL Lager je Palette/Monat, umgerechnet auf Unit und Lagerdauer.",
-        formula: "3PL Lager/Unit = (Paletten × EUR Palette/Monat × 3PL-Monate) / Units pro Order.",
-        source: "Globale 3PL-Settings oder Produkt-Override.",
-        robustness: "Mittel bis hoch.",
-        impactMonthly: metrics.threePlStoragePerUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "derived.shipping.unitsPerOrder",
-          "derived.threepl.palletsCount",
-          "derived.threepl.storageTotal",
-          "assumptions.extraCosts.overrideLogisticsGroup",
-          "assumptions.extraCosts.storagePerPalletPerMonthEur",
-          "assumptions.extraCosts.unitsPerPallet",
-          "assumptions.extraCosts.avg3PlStorageMonths",
-          "settings.threePl.storagePerPalletPerMonthEur",
-          "settings.threePl.unitsPerPallet",
-          "settings.threePl.avgStorageMonths",
-        ],
-      },
-      {
-        label: "3PL -> Amazon Service / Einheit (EUR)",
-        value: formatCurrency(metrics.threePlOutboundServicePerUnit),
-        targetSection: "advancedOpsSection",
-        explain: "3PL Outbound Services je Karton (Basis, Pick&Pack, FBA Processing, optionale Inserts/Labels).",
-        formula: "Service/Unit = (Kartonanzahl × Service je Karton) / Units pro Order.",
-        source: "Globale 3PL-Settings + Auto-Kartonisierung oder Produkt-Override.",
-        robustness: "Mittel.",
-        impactMonthly: metrics.threePlOutboundServicePerUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "derived.shipping.unitsPerOrder",
-          "derived.shipping.cartonsCount",
-          "derived.threepl.outboundServiceTotal",
-          "assumptions.extraCosts.overrideLogisticsGroup",
-          "assumptions.extraCosts.outboundBasePerCartonEur",
-          "assumptions.extraCosts.pickPackPerCartonEur",
-          "assumptions.extraCosts.fbaProcessingPerCartonEur",
-          "assumptions.extraCosts.insertsPerCarton",
-          "assumptions.extraCosts.insertPerInsertEur",
-          "assumptions.extraCosts.labelsPerCarton",
-          "assumptions.extraCosts.thirdCountryLabelPerLabelEur",
-          "basic.unitsPerOrder",
-          "basic.packLengthCm",
-          "basic.packWidthCm",
-          "basic.packHeightCm",
-          "settings.threePl.outboundBasePerCartonEur",
-          "settings.threePl.pickPackPerCartonEur",
-          "settings.threePl.fbaProcessingPerCartonEur",
-          "settings.threePl.insertPerInsertEur",
-          "settings.threePl.thirdCountryLabelPerLabelEur",
-        ],
-      },
-      {
-        label: "3PL -> Amazon Carrier / Einheit (EUR)",
-        value: formatCurrency(metrics.threePlCarrierPerUnit),
-        targetSection: "advancedOpsSection",
-        explain: "Transportkosten vom 3PL zu Amazon je Karton, separat von Outbound-Service.",
-        formula: "Carrier/Unit = (Kartonanzahl × Carrier je Karton) / Units pro Order.",
-        source: "Globales Carrier-Setting oder Produkt-Override.",
-        robustness: "Mittel.",
-        impactMonthly: metrics.threePlCarrierPerUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "derived.shipping.unitsPerOrder",
-          "derived.shipping.cartonsCount",
-          "derived.threepl.carrierTotal",
-          "assumptions.extraCosts.overrideLogisticsGroup",
-          "assumptions.extraCosts.carrierCostPerCartonEur",
-          "basic.unitsPerOrder",
-          "settings.threePl.carrierCostPerCartonEur",
-        ],
-      },
-      {
-        label: "3PL gesamt / Einheit (EUR)",
-        value: formatCurrency(metrics.threePlTotalPerUnit),
-        targetSection: "advancedOpsSection",
-        explain: "Summenzeile über Inbound, Lagerung, Outbound-Service und Carrier.",
-        formula: "3PL gesamt/Unit = Inbound + Lagerung + Service + Carrier.",
-        source: "3PL-Module zusammengeführt.",
-        robustness: "Mittel.",
-        impactMonthly: metrics.threePlTotalPerUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "derived.shipping.unitsPerOrder",
-          "derived.shipping.unitsPerCartonAuto",
-          "derived.shipping.cartonsCount",
-          "derived.threepl.inboundTotal",
-          "derived.threepl.storageTotal",
-          "derived.threepl.outboundServiceTotal",
-          "derived.threepl.carrierTotal",
-          "assumptions.extraCosts.receivingMode",
-          "assumptions.extraCosts.storagePerPalletPerMonthEur",
-          "assumptions.extraCosts.outboundBasePerCartonEur",
-          "assumptions.extraCosts.carrierCostPerCartonEur",
-        ],
-      },
-      {
-        label: "Amazon Lagerung / Einheit (EUR)",
-        value: formatCurrency(metrics.amazonStoragePerUnit),
-        targetSection: "advancedOpsSection",
-        explain: "Amazon-Lagerkosten aus EUR/CBM, Lagerdauer und Unit-CBM.",
-        formula: "Amazon Lager/Unit = EUR je CBM/Monat × Amazon-Monate × Unit-CBM.",
-        source: "Global costDefaults oder Produkt-Override.",
-        robustness: "Mittel (saisonal/volumenabhängig).",
-        impactMonthly: metrics.amazonStoragePerUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "assumptions.extraCosts.overrideLogisticsGroup",
-          "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
-          "assumptions.extraCosts.avgAmazonStorageMonths",
-          "basic.packLengthCm",
-          "basic.packWidthCm",
-          "basic.packHeightCm",
-          "settings.costDefaults.amazonStoragePerCbmMonthEur",
-        ],
-      },
-      {
-        label: "Zoll / Einheit (EUR)",
-        value: formatCurrency(metrics.customsUnit),
-        targetSection: "advancedImportSection",
-        explain: "Zoll auf EXW + Shipping bis Import.",
-        formula: "Zoll/Unit = customsDutyRate × landedBeforeDuty.",
-        source: "Default (Route/Kategorie) oder Produkt-Override.",
-        robustness: "Hoch.",
-        impactMonthly: metrics.customsMonthly,
-        driverPaths: ["assumptions.import.customsDutyRate", "basic.exwUnit", "basic.unitsPerOrder"],
-      },
-      {
-        label: "Landed / Einheit (EUR)",
-        value: formatCurrency(metrics.landedUnit),
-        targetSection: "advancedShippingSection",
-        explain: "Landed = EXW(EUR) + Shipping + Zoll (+ optional EUSt als Kosten).",
-        formula: "Landed/Unit = EXW(EUR) + Shipping + Zoll (+ optional EUSt).",
-        source: "User Inputs + globale Defaults.",
-        robustness: "Mittel.",
-        impactMonthly: metrics.landedUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "basic.exwUnit",
-          "basic.unitsPerOrder",
-          "assumptions.import.customsDutyRate",
-          "assumptions.import.importVatRate",
-          "assumptions.import.includeImportVatAsCost",
-        ],
-      },
-      {
-        label: "Amazon Referral / Einheit (EUR, brutto-basiert)",
-        value: formatCurrency(metrics.referralFeeUnit),
-        targetSection: "advancedImportSection",
-        explain: "Referral Fee in % auf Brutto-Preis, mindestens Mindestgebühr.",
-        formula: "Referral/Unit = max(Mindestfee, Brutto-Preis × Referral%).",
-        source: "Kategorie-Default oder Produkt-Override.",
-        robustness: "Hoch.",
-        impactMonthly: metrics.referralMonthly,
-        driverPaths: ["assumptions.amazon.referralRate", "basic.category", "basic.priceGross"],
-      },
-      {
-        label: `FBA Fee / Einheit (EUR, ${metrics.fbaTier})`,
-        value: formatCurrency(metrics.fbaFeeUnit),
-        targetSection: "advancedImportSection",
-        explain: "Automatische FBA-Tier-Erkennung (oder manueller Override).",
-        formula: "FBA Fee = Auto-Tier aus Maßen/Gewicht oder manueller Wert.",
-        source: "FBA-Tierlogik + optionales Produkt-Override.",
-        robustness: "Mittel bis hoch.",
-        impactMonthly: metrics.fbaFeeUnit * metrics.monthlyUnits,
-        driverPaths: [
-          "assumptions.amazon.useManualFbaFee",
-          "assumptions.amazon.manualFbaFee",
-          "basic.netWeightG",
-          "basic.packLengthCm",
-          "basic.packWidthCm",
-          "basic.packHeightCm",
-        ],
-      },
-      {
-        label: `Ads / Einheit (EUR, eff. ${formatPercent(metrics.effectiveTacosRate)} auf Netto-Umsatz)`,
-        value: formatCurrency(metrics.adsUnit),
-        targetSection: "advancedAdsSection",
-        explain: "Ads-Kosten = Netto-Preis × effektiver TACoS inkl. Launch-Boost-Profil.",
-        formula: "Ads/Unit = Netto-Preis × effektiver TACoS%.",
-        source: "User TACoS + Launch-Profil-Defaults.",
-        robustness: "Niedrig bis mittel.",
-        impactMonthly: metrics.adsMonthly,
-        driverPaths: [
-          "assumptions.ads.tacosRate",
-          "assumptions.ads.launchMultiplier",
-          "assumptions.ads.launchMonths",
-          "basic.launchCompetition",
-          "settings.lifecycle.launchProfiles.low.startTacosBoostPct",
-          "settings.lifecycle.launchProfiles.medium.startTacosBoostPct",
-          "settings.lifecycle.launchProfiles.high.startTacosBoostPct",
-          "basic.category",
-        ],
-      },
-      {
-        label: "Retourenverlust + Handling / Einheit (EUR)",
-        value: formatCurrency(metrics.returnLossUnit + metrics.returnHandlingUnit),
-        targetSection: "advancedReturnsSection",
-        explain: "Retourenquote, Unsellable-Anteil, Wiederverkaufsquote und Handling kombiniert.",
-        formula: "Retouren/Unit = Verlustanteile aus Landed + Handlinganteil je Retoure.",
-        source: "Kategorie-Defaults oder Produkt-Override.",
-        robustness: "Niedrig bis mittel.",
-        impactMonthly: metrics.returnsMonthly,
-        driverPaths: [
-          "assumptions.returns.returnRate",
-          "assumptions.returns.resaleRate",
-          "assumptions.returns.unsellableShare",
-          "assumptions.returns.handlingCost",
-        ],
-      },
-      {
-        label: "Block 1 gesamt / Monat (EUR)",
-        value: formatCurrency(metrics.block1Monthly),
-        targetSection: "advancedShippingSection",
-        explain: "Summe aller Unit-Economics-Kostenblöcke.",
-        formula: "Block 1 = (Landed + Amazon Fees + Ads + Retouren) × Monatsabsatz.",
-        source: "Aggregierter Kostenblock aus allen Unit-Treibern.",
-        robustness: "Mittel.",
-        impactMonthly: metrics.block1Monthly,
-        driverPaths: [
-          "basic.exwUnit",
-          "basic.unitsPerOrder",
-          "assumptions.ads.tacosRate",
-          "assumptions.amazon.referralRate",
-          "assumptions.returns.returnRate",
-        ],
-      },
-    ],
-    { totalCostMonthly: metrics.totalCostMonthly },
-  );
-
-  renderBlockList(
-    dom.launchBlockList,
-    [
-      {
-        label: `Launch-Profil (${launchCompetitionLabel(metrics.basic.launchCompetition)})`,
-        value: `TACoS +${formatPercent(metrics.averageLaunchTacosBoostPct)} · Preis -${formatPercent(metrics.averageLaunchPriceDiscountPct)}`,
-        targetSection: "settingsLifecycleSection",
-        explain: "Profil steuert Launch-PPC-Druck und Einführungspreis in den ersten Wochen.",
-        impactMonthly:
-          Math.abs(metrics.netRevenueTargetMonthly - metrics.netRevenueMonthly) + metrics.launchAdsIncrementMonthly,
-        driverPaths: [
-          "basic.launchCompetition",
-          "settings.lifecycle.launchProfiles.low.weeks",
-          "settings.lifecycle.launchProfiles.low.startTacosBoostPct",
-          "settings.lifecycle.launchProfiles.low.endTacosBoostPct",
-          "settings.lifecycle.launchProfiles.low.startPriceDiscountPct",
-          "settings.lifecycle.launchProfiles.medium.weeks",
-          "settings.lifecycle.launchProfiles.medium.startTacosBoostPct",
-          "settings.lifecycle.launchProfiles.medium.endTacosBoostPct",
-          "settings.lifecycle.launchProfiles.medium.startPriceDiscountPct",
-          "settings.lifecycle.launchProfiles.high.weeks",
-          "settings.lifecycle.launchProfiles.high.startTacosBoostPct",
-          "settings.lifecycle.launchProfiles.high.endTacosBoostPct",
-          "settings.lifecycle.launchProfiles.high.startPriceDiscountPct",
-        ],
-      },
-      {
-        label: "Launch-Budget gesamt (EUR)",
-        value: formatCurrency(metrics.launchBudget),
-        targetSection: "advancedLifecycleSection",
-        explain: "Einmaliges Budget, über Zeitraum amortisiert.",
-        formula: "Launch gesamt = Pflichtfeld oder Summe Launch-Split.",
-        source: "User-Input (produktbezogen).",
-        robustness: "Hoch.",
-        impactMonthly: metrics.launchMonthly,
-        driverPaths: ["basic.launchBudgetTotal", "assumptions.launchSplit.enabled"],
-      },
-      {
-        label: `Listing-Paket (${listingPackageLabel(metrics.resolved.listingPackageKey)}) gesamt (EUR)`,
-        value: formatCurrency(metrics.listingPackageCost),
-        targetSection: "settingsLifecycleSection",
-        explain: "Listing-Erstellung, Bilder/Infografiken und A+ Content aus globalem Paketpreis.",
-        formula: "Listing total = Summe Paketkomponenten (Listing + Bilder + A+).",
-        source: "Global Settings (Listing-Pakete).",
-        robustness: "Hoch.",
-        impactMonthly: metrics.listingMonthly,
-        driverPaths: [
-          "basic.listingPackage",
-          "settings.lifecycle.listingPackages.ai.listingCreationEur",
-          "settings.lifecycle.listingPackages.ai.imagesInfographicsEur",
-          "settings.lifecycle.listingPackages.ai.aPlusContentEur",
-          "settings.lifecycle.listingPackages.photographer.listingCreationEur",
-          "settings.lifecycle.listingPackages.photographer.imagesInfographicsEur",
-          "settings.lifecycle.listingPackages.photographer.aPlusContentEur",
-          "settings.lifecycle.listingPackages.visual_advantage.listingCreationEur",
-          "settings.lifecycle.listingPackages.visual_advantage.imagesInfographicsEur",
-          "settings.lifecycle.listingPackages.visual_advantage.aPlusContentEur",
-        ],
-      },
-      {
-        label: "Launch / Einheit über Zeitraum (EUR)",
-        value: formatCurrency(metrics.launchUnit),
-        targetSection: "advancedLifecycleSection",
-        explain: "Launch-Budget geteilt durch geplante Units im Zeitraum.",
-        impactMonthly: metrics.launchMonthly,
-        driverPaths: ["basic.launchBudgetTotal", "basic.horizonMonths", "basic.demandValue", "basic.demandBasis"],
-      },
-      {
-        label: "Launch amortisiert / Monat (EUR)",
-        value: formatCurrency(metrics.launchMonthly),
-        targetSection: "advancedLifecycleSection",
-        explain: "Launch-Budget geteilt durch Betrachtungszeitraum in Monaten.",
-        impactMonthly: metrics.launchMonthly,
-        driverPaths: ["basic.launchBudgetTotal", "basic.horizonMonths"],
-      },
-      {
-        label: `Listing amortisiert / Monat (EUR, ${formatNumber(metrics.lifecycleMonthsSetting)} Monate)`,
-        value: formatCurrency(metrics.listingMonthly),
-        targetSection: "settingsLifecycleSection",
-        explain: "Listing-Paketkosten werden über den globalen Lifecycle-Horizont verteilt.",
-        impactMonthly: metrics.listingMonthly,
-        driverPaths: ["basic.listingPackage", "settings.lifecycle.defaultMonths"],
-      },
-      {
-        label: "Weitere Lifecycle / Monat (EUR)",
-        value: formatCurrency(metrics.otherLifecycleMonthly),
-        targetSection: "advancedLifecycleSection",
-        explain: "Zusätzliche, dauerhafte Lifecycle-Kosten außerhalb Unit Economics.",
-        impactMonthly: metrics.otherLifecycleMonthly,
-        driverPaths: ["assumptions.lifecycle.otherMonthlyCost"],
-      },
-      {
-        label: "Block 2 gesamt / Monat (EUR)",
-        value: formatCurrency(metrics.block2Monthly),
-        targetSection: "advancedLifecycleSection",
-        explain: "Summe aus Launch-Amortisation, Listing-Amortisation und weiteren Lifecycle-Kosten.",
-        formula: "Block 2 = Launch/Monat + Listing/Monat + Launch Ops/Monat + weitere Lifecycle-Kosten.",
-        source: "Aggregierter Launch/Lifecycle-Block.",
-        robustness: "Mittel bis hoch.",
-        impactMonthly: metrics.block2Monthly,
-        driverPaths: [
-          "basic.launchBudgetTotal",
-          "basic.listingPackage",
-          "settings.lifecycle.defaultMonths",
-          "assumptions.lifecycle.otherMonthlyCost",
-        ],
-      },
-    ],
-    { totalCostMonthly: metrics.totalCostMonthly },
-  );
-
-  renderBlockList(
-    dom.leakageBlockList,
-    [
-      {
-        label: `Leakage-Rate (${formatPercent(metrics.leakageRatePct)} vom Netto-Umsatz)`,
-        value: formatCurrency(metrics.block3Monthly),
-        targetSection: "advancedLeakageSection",
-        explain: "Pauschaler Sicherheitsabschlag für vergessene/indirekte Kosten.",
-        formula: "Leakage/Monat = Netto-Umsatz × Leakage%.",
-        source: "Globales Leakage-Setting oder Produkt-Override.",
-        robustness: "Mittel.",
-        impactMonthly: metrics.block3Monthly,
-        driverPaths: ["assumptions.leakage.ratePct", "basic.priceGross", "basic.demandValue", "basic.demandBasis"],
-      },
-      {
-        label: "Netto-Umsatz / Monat (EUR)",
-        value: formatCurrency(metrics.netRevenueMonthly),
-        explain: "Bemessungsgrundlage für den pauschalen Leakage-Block.",
-        formula: "Netto-Umsatz = (Brutto-Preis / (1+USt)) × Monatsabsatz.",
-        source: "User-Input Preis + Marketplace-USt + Absatzannahme.",
-        robustness: "Hoch.",
-        impactMonthly: metrics.block3Monthly,
-        driverPaths: ["basic.priceGross", "basic.marketplace", "basic.demandValue", "basic.demandBasis"],
-      },
-      {
-        label: "Block 3 gesamt / Monat (EUR)",
-        value: formatCurrency(metrics.block3Monthly),
-        targetSection: "advancedLeakageSection",
-        explain: "Gesamter Leakage-Kostenblock pro Monat.",
-        formula: "Block 3 = Leakage-Rate × Netto-Umsatz/Monat.",
-        source: "Globales Leakage-Setting + Umsatztreiber.",
-        robustness: "Mittel.",
-        impactMonthly: metrics.block3Monthly,
-        driverPaths: ["assumptions.leakage.ratePct", "basic.priceGross", "basic.demandValue", "basic.demandBasis"],
-      },
-    ],
-    { totalCostMonthly: metrics.totalCostMonthly },
-  );
+  renderCostCategoryGrid(metrics);
 
   setKpi(dom.sensPriceDown, metrics.sensitivity.priceDown.profitMonthly, "currency");
   setKpi(dom.sensTacosUp, metrics.sensitivity.tacosUp.profitMonthly, "currency");
@@ -4867,45 +5353,7 @@ function inferAdvancedSectionFromPath(path) {
     return "advancedOpsSection";
   }
   if (path.startsWith("settings.")) {
-    if (path.startsWith("settings.tax.")) {
-      return "settingsTaxSection";
-    }
-    if (path.startsWith("settings.shipping12m.")) {
-      return "settingsShippingSection";
-    }
-    if (path.startsWith("settings.cartonRules.")) {
-      return "settingsCartonSection";
-    }
-    if (path.startsWith("settings.threePl.receiving")) {
-      return "settings3plReceivingSection";
-    }
-    if (path.startsWith("settings.threePl.storage") || path.startsWith("settings.threePl.unitsPerPallet") || path.startsWith("settings.threePl.avgStorageMonths")) {
-      return "settings3plStorageSection";
-    }
-    if (
-      path.startsWith("settings.threePl.outbound") ||
-      path.startsWith("settings.threePl.pickPack") ||
-      path.startsWith("settings.threePl.fbaProcessing") ||
-      path.startsWith("settings.threePl.insert") ||
-      path.startsWith("settings.threePl.thirdCountryLabel") ||
-      path.startsWith("settings.threePl.insertsPerCartonDefault") ||
-      path.startsWith("settings.threePl.labelsPerCartonDefault")
-    ) {
-      return "settings3plOutboundSection";
-    }
-    if (path.startsWith("settings.threePl.carrierCostPerCartonEur")) {
-      return "settings3plCarrierSection";
-    }
-    if (path.startsWith("settings.threePl.shelf")) {
-      return "settings3plStorageSection";
-    }
-    if (path.startsWith("settings.costDefaults.")) {
-      return "settingsChainDefaultsSection";
-    }
-    if (path.startsWith("settings.lifecycle.")) {
-      return "settingsLifecycleSection";
-    }
-    return "settingsCategorySection";
+    return settingsSectionIdFromPath(path.slice("settings.".length));
   }
   if (path.startsWith("workflow.deepDive.")) {
     return "advancedDeepDiveSection";
@@ -5184,7 +5632,7 @@ function updateSelectedField(path, rawValue) {
   if (path === "basic.netWeightG") {
     selected.basic.netWeightG = Math.max(0, num(selected.basic.netWeightG));
   }
-  if (path === "basic.transportMode" && !["sea_lcl", "rail", "air"].includes(selected.basic.transportMode)) {
+  if (path === "basic.transportMode" && !["sea_lcl", "rail"].includes(selected.basic.transportMode)) {
     selected.basic.transportMode = "sea_lcl";
   }
 
@@ -5540,15 +5988,25 @@ function bindEvents() {
     });
   }
 
-  [dom.unitBlockList, dom.launchBlockList, dom.leakageBlockList].forEach((list) => {
-    if (!list) {
-      return;
-    }
-    list.addEventListener("click", (event) => {
+  if (dom.costCategoryGrid) {
+    dom.costCategoryGrid.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) {
         return;
       }
+
+      const toggle = target.closest("[data-category-toggle]");
+      if (toggle instanceof HTMLElement) {
+        const key = toggle.dataset.categoryToggle;
+        if (!key) {
+          return;
+        }
+        const current = Boolean(state.ui.costCategoryExpanded?.[key]);
+        state.ui.costCategoryExpanded[key] = !current;
+        renderComputedViews();
+        return;
+      }
+
       const row = target.closest("li.clickable-row");
       if (!(row instanceof HTMLElement)) {
         return;
@@ -5578,7 +6036,7 @@ function bindEvents() {
         driverPaths,
       });
     });
-  });
+  }
 
   if (dom.addProductBtn) {
     dom.addProductBtn.addEventListener("click", addProduct);
@@ -5611,6 +6069,26 @@ function bindEvents() {
   });
 
   if (!dom.comparisonBody) {
+    if (APP_PAGE === "settings") {
+      document.querySelectorAll('.settings-chain-nav a[href^="#"]').forEach((anchor) => {
+        anchor.addEventListener("click", (event) => {
+          const href = anchor.getAttribute("href");
+          if (!href || !href.startsWith("#")) {
+            return;
+          }
+          const target = document.querySelector(href);
+          if (!(target instanceof HTMLElement)) {
+            return;
+          }
+          const details = target.tagName.toLowerCase() === "details" ? target : target.closest("details");
+          if (details instanceof HTMLDetailsElement) {
+            details.open = true;
+          }
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          event.preventDefault();
+        });
+      });
+    }
     return;
   }
   dom.comparisonBody.addEventListener("click", (event) => {

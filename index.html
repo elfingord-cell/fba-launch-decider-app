@@ -189,8 +189,8 @@
                   <label>
                     Transportmodus
                     <select data-path="basic.transportMode">
-                      <option value="sea_lcl">Sea LCL (Default)</option>
-                      <option value="rail" disabled>Rail (v2)</option>
+                      <option value="rail">Rail (Default)</option>
+                      <option value="sea_lcl">Sea LCL</option>
                       <option value="air" disabled>Air (v2)</option>
                     </select>
                   </label>
@@ -579,18 +579,7 @@
             </section>
 
             <div class="block-grid">
-              <details open data-block="unit">
-                <summary>Block 1: Unit Economics (pro Einheit/Order) - klicken für Treiber/Overrides</summary>
-                <ul id="unitBlockList"></ul>
-              </details>
-              <details open data-block="launch">
-                <summary>Block 2: Launch & Lifecycle - klicken für Treiber/Overrides</summary>
-                <ul id="launchBlockList"></ul>
-              </details>
-              <details open data-block="leakage">
-                <summary>Block 3: Fixkosten / Leakage - klicken für Treiber/Overrides</summary>
-                <ul id="leakageBlockList"></ul>
-              </details>
+              <div id="costCategoryGrid" class="cost-category-grid"></div>
             </div>
             <p id="driverFocusHint" class="hint">
               Tipp: Klicke auf eine Kostenzeile. Die wichtigsten Treiber werden markiert (Impact: niedrig/mittel/hoch).
