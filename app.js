@@ -105,6 +105,15 @@ const GLOBAL_DEFAULTS = {
 };
 
 const DEFAULT_SETTINGS = {
+  tax: {
+    fallbackUsdToEur: DEFAULT_USD_TO_EUR,
+    vatRates: {
+      DE: MARKETPLACE_VAT.DE,
+      FR: MARKETPLACE_VAT.FR,
+      IT: MARKETPLACE_VAT.IT,
+      ES: MARKETPLACE_VAT.ES,
+    },
+  },
   shipping12m: {
     lclRateEurPerCbm: 128,
     originFixedEurPerShipment: 180,
@@ -162,16 +171,28 @@ const DEFAULT_SETTINGS = {
       },
     },
   },
+  threePl: {
+    receivingPerCartonSortedEur: 3.5,
+    receivingPerCartonMixedEur: 8.99,
+    storagePerPalletPerMonthEur: 10.9,
+    unitsPerPallet: 240,
+    avgStorageMonths: 1.2,
+    outboundBasePerCartonEur: 2.35,
+    pickPackPerCartonEur: 0.3,
+    fbaProcessingPerCartonEur: 1.9,
+    insertPerInsertEur: 0.1,
+    thirdCountryLabelPerLabelEur: 0.27,
+    insertsPerCartonDefault: 1,
+    labelsPerCartonDefault: 0,
+    carrierCostPerCartonEur: 3.2,
+    shelfMPerMonthEur: 2.49,
+    shelfLPerMonthEur: 5.49,
+  },
   costDefaults: {
     packagingPerUnitEur: 0.32,
     otherUnitCostEur: 0.18,
     docsPerOrderEur: 45,
     freightPapersPerOrderEur: 28,
-    threePlInboundPerCartonEur: 1.1,
-    threePlStoragePerPalletMonthEur: 19,
-    threePlOutboundPerCartonEur: 3.2,
-    unitsPerPallet: 240,
-    avg3PlStorageMonths: 1.2,
     amazonStoragePerCbmMonthEur: 28,
     avgAmazonStorageMonths: 1.5,
     greetingCardPerLaunchUnitEur: 0.22,
@@ -295,11 +316,20 @@ const FIELD_HELP = {
   "assumptions.extraCosts.overrideLogisticsGroup": "Wenn aktiv, nutzt das Produkt eigene 3PL-/Lager-/Orderlogistik-Kosten statt globaler Settings.",
   "assumptions.extraCosts.docsPerOrderEur": "Fixkosten je Order für Dokumentation (EUR).",
   "assumptions.extraCosts.freightPapersPerOrderEur": "Fixkosten je Order für Frachtpapiere (EUR).",
-  "assumptions.extraCosts.threePlInboundPerCartonEur": "3PL Wareneingang/Handling je Umkarton (EUR).",
-  "assumptions.extraCosts.threePlStoragePerPalletMonthEur": "3PL Lagerkosten je Palette und Monat (EUR).",
-  "assumptions.extraCosts.threePlOutboundPerCartonEur": "Versandkosten 3PL -> Amazon je Umkarton (EUR).",
+  "assumptions.extraCosts.receivingMode": "3PL Receiving-Modus: sorted (Standard) oder mixed.",
+  "assumptions.extraCosts.receivingPerCartonSortedEur": "3PL Wareneingang sorted je Karton (EUR).",
+  "assumptions.extraCosts.receivingPerCartonMixedEur": "3PL Wareneingang mixed je Karton (EUR).",
+  "assumptions.extraCosts.storagePerPalletPerMonthEur": "3PL Lagerkosten je Palette und Monat (EUR).",
   "assumptions.extraCosts.unitsPerPallet": "Annahme, wie viele Units auf einer Palette liegen (für 3PL Storage-Rechnung).",
   "assumptions.extraCosts.avg3PlStorageMonths": "Durchschnittliche Lagerdauer im 3PL in Monaten.",
+  "assumptions.extraCosts.outboundBasePerCartonEur": "3PL Warenausgang Basis je Karton (EUR).",
+  "assumptions.extraCosts.pickPackPerCartonEur": "3PL Pick & Pack je Karton (EUR).",
+  "assumptions.extraCosts.fbaProcessingPerCartonEur": "3PL FBA-Processing je Karton (EUR).",
+  "assumptions.extraCosts.insertsPerCarton": "Anzahl Beilagen je Karton für Outbound.",
+  "assumptions.extraCosts.insertPerInsertEur": "Kosten je Beilage (Insert) in EUR.",
+  "assumptions.extraCosts.labelsPerCarton": "Anzahl Drittland-Labels je Karton.",
+  "assumptions.extraCosts.thirdCountryLabelPerLabelEur": "Kosten je Drittland-Label in EUR.",
+  "assumptions.extraCosts.carrierCostPerCartonEur": "Carrier-Kosten 3PL -> Amazon je Karton (EUR).",
   "assumptions.extraCosts.amazonStoragePerCbmMonthEur": "Amazon-Lagerkosten je CBM und Monat (EUR).",
   "assumptions.extraCosts.avgAmazonStorageMonths": "Durchschnittliche Lagerdauer bei Amazon in Monaten.",
   "assumptions.extraCosts.overrideLaunchOpsGroup": "Wenn aktiv, nutzt das Produkt eigene Launch-Operationskosten statt globaler Settings.",
@@ -315,6 +345,11 @@ const FIELD_HELP = {
 };
 
 const SETTINGS_HELP = {
+  "tax.fallbackUsdToEur": "Fallback-Umrechnungskurs USD->EUR, falls kein Livekurs verfügbar ist.",
+  "tax.vatRates.DE": "MwSt-Satz für Marketplace DE in Prozent.",
+  "tax.vatRates.FR": "MwSt-Satz für Marketplace FR in Prozent.",
+  "tax.vatRates.IT": "MwSt-Satz für Marketplace IT in Prozent.",
+  "tax.vatRates.ES": "MwSt-Satz für Marketplace ES in Prozent.",
   "shipping12m.lclRateEurPerCbm": "12-Monats-Durchschnitt: variabler LCL-Tarif in EUR pro CBM (W/M).",
   "shipping12m.originFixedEurPerShipment": "12-Monats-Durchschnitt: fixe Origin-Kosten je Shipment in EUR.",
   "shipping12m.destinationFixedEurPerShipment": "12-Monats-Durchschnitt: fixe Destination-Kosten je Shipment in EUR.",
@@ -352,11 +387,6 @@ const SETTINGS_HELP = {
   "costDefaults.otherUnitCostEur": "Globaler Default für weitere variable Zusatzkosten pro Stück (EUR).",
   "costDefaults.docsPerOrderEur": "Globaler Default für Dokumentation je Order (EUR).",
   "costDefaults.freightPapersPerOrderEur": "Globaler Default für Frachtpapiere je Order (EUR).",
-  "costDefaults.threePlInboundPerCartonEur": "Globaler Default für 3PL-Wareneingang je Umkarton (EUR).",
-  "costDefaults.threePlStoragePerPalletMonthEur": "Globaler Default für 3PL-Lagerung je Palette/Monat (EUR).",
-  "costDefaults.threePlOutboundPerCartonEur": "Globaler Default für 3PL -> Amazon je Umkarton (EUR).",
-  "costDefaults.unitsPerPallet": "Globaler Default für Units je Palette (für 3PL-Lagerkosten-Umrechnung).",
-  "costDefaults.avg3PlStorageMonths": "Globaler Default für durchschnittliche 3PL-Lagerdauer in Monaten.",
   "costDefaults.amazonStoragePerCbmMonthEur": "Globaler Default für Amazon-Lagerkosten je CBM/Monat (EUR).",
   "costDefaults.avgAmazonStorageMonths": "Globaler Default für durchschnittliche Amazon-Lagerdauer in Monaten.",
   "costDefaults.greetingCardPerLaunchUnitEur": "Globaler Default für handgeschriebene Grußkarte pro Launch-Unit (EUR).",
@@ -364,6 +394,21 @@ const SETTINGS_HELP = {
   "costDefaults.toolingPerProductEur": "Globaler Default für Tooling je Produkt (einmalig, EUR).",
   "costDefaults.certificatesPerProductEur": "Globaler Default für Zertifikate je Produkt (einmalig, EUR).",
   "costDefaults.inspectionPerProductEur": "Globaler Default für Quality Inspection in China je Produkt (einmalig, EUR).",
+  "threePl.receivingPerCartonSortedEur": "3PL Receiving (sorted) je Karton in EUR.",
+  "threePl.receivingPerCartonMixedEur": "3PL Receiving (mixed) je Karton in EUR.",
+  "threePl.storagePerPalletPerMonthEur": "3PL Lagerung je Palette und Monat in EUR.",
+  "threePl.unitsPerPallet": "Annahme für Units pro Palette zur Storage-Umrechnung.",
+  "threePl.avgStorageMonths": "Durchschnittliche Lagerdauer im 3PL in Monaten.",
+  "threePl.outboundBasePerCartonEur": "3PL Outbound Basis je Karton in EUR.",
+  "threePl.pickPackPerCartonEur": "3PL Pick&Pack je Karton in EUR.",
+  "threePl.fbaProcessingPerCartonEur": "3PL FBA-Processing je Karton in EUR.",
+  "threePl.insertPerInsertEur": "Kosten je Insert (Beilage) in EUR.",
+  "threePl.thirdCountryLabelPerLabelEur": "Kosten je Drittland-Label in EUR.",
+  "threePl.insertsPerCartonDefault": "Default-Anzahl Inserts pro Karton.",
+  "threePl.labelsPerCartonDefault": "Default-Anzahl Drittland-Labels pro Karton.",
+  "threePl.carrierCostPerCartonEur": "Carrier-Kosten von 3PL zu Amazon je Karton in EUR (Richtwert).",
+  "threePl.shelfMPerMonthEur": "Infowert: Regalplatz M je Monat in EUR.",
+  "threePl.shelfLPerMonthEur": "Infowert: Regalplatz L je Monat in EUR.",
   "categoryDefaults.home.tacosRate": "Default TACoS % für Kategorie Home.",
   "categoryDefaults.home.returnRate": "Default Retourenquote % für Kategorie Home.",
   "categoryDefaults.home.resaleRate": "Default Wiederverkaufsquote % für Kategorie Home.",
@@ -475,6 +520,75 @@ const TERM_HELP_BY_TEXT = [
   },
 ];
 
+const DERIVED_DRIVER_MAP = {
+  "derived.shipping.unitsPerOrder": {
+    label: "PO Units",
+    help: "Units pro Import-Order (PO), Basis für carton-basierte Umrechnung.",
+    format: "number",
+    read: (metrics) => metrics.shipping.unitsPerOrder,
+  },
+  "derived.shipping.unitsPerCartonAuto": {
+    label: "units_per_carton_auto",
+    help: "Automatisch abgeleitete Units pro Karton aus Amazon-Limits und Packfaktor.",
+    format: "number",
+    read: (metrics) => metrics.shipping.unitsPerCartonAuto,
+  },
+  "derived.shipping.cartonsCount": {
+    label: "cartons_count",
+    help: "Kartonanzahl = ceil(PO Units / units_per_carton_auto).",
+    format: "number",
+    read: (metrics) => metrics.shipping.cartonsCount,
+  },
+  "derived.shipping.shipmentCbm": {
+    label: "shipment_cbm",
+    help: "Volumen der gesamten Shipment in CBM.",
+    format: "number",
+    read: (metrics) => metrics.shipping.shipmentCbm,
+  },
+  "derived.shipping.shipmentWeightKg": {
+    label: "shipment_weight_kg",
+    help: "Gesamtgewicht der Shipment in kg.",
+    format: "number",
+    read: (metrics) => metrics.shipping.shipmentWeightKg,
+  },
+  "derived.shipping.chargeableCbm": {
+    label: "chargeable_cbm",
+    help: "Abrechnungsvolumen nach W/M = max(CBM, Gewicht/1000).",
+    format: "number",
+    read: (metrics) => metrics.shipping.chargeableCbm,
+  },
+  "derived.threepl.palletsCount": {
+    label: "pallets",
+    help: "Paletten = ceil(PO Units / units_per_pallet).",
+    format: "number",
+    read: (metrics) => metrics.palletsCount,
+  },
+  "derived.threepl.inboundTotal": {
+    label: "3PL Receiving total (EUR)",
+    help: "Receiving Gesamtkosten je Shipment.",
+    format: "currency",
+    read: (metrics) => metrics.threePlInboundTotal,
+  },
+  "derived.threepl.storageTotal": {
+    label: "3PL Storage total (EUR)",
+    help: "Storage Gesamtkosten je Shipment.",
+    format: "currency",
+    read: (metrics) => metrics.threePlStorageTotal,
+  },
+  "derived.threepl.outboundServiceTotal": {
+    label: "3PL Service total (EUR)",
+    help: "Outbound-Service Gesamtkosten je Shipment.",
+    format: "currency",
+    read: (metrics) => metrics.threePlOutboundServiceTotal,
+  },
+  "derived.threepl.carrierTotal": {
+    label: "3PL Carrier total (EUR)",
+    help: "Carrier Gesamtkosten je Shipment.",
+    format: "currency",
+    read: (metrics) => metrics.threePlCarrierTotal,
+  },
+};
+
 const DEFAULT_ROBUSTNESS = {
   "ads.tacosRate": { score: 45, why: "Ads-Leistung ist stark produkt- und keywordabhängig." },
   "ads.launchMultiplier": { score: 50, why: "Launch-Druck schwankt je Wettbewerb und Rankingstatus." },
@@ -526,6 +640,7 @@ const STRING_PATHS = new Set([
   "basic.fulfillmentModel",
   "basic.listingPackage",
   "basic.launchCompetition",
+  "assumptions.extraCosts.receivingMode",
 ]);
 
 const SETTINGS_BOOLEAN_PATHS = new Set(["shipping12m.customsBrokerEnabled"]);
@@ -605,11 +720,11 @@ const dom = {
   shippingDebugInfo: document.getElementById("shippingDebugInfo"),
   basicShippingUnit: document.getElementById("basicShippingUnit"),
   basicShippingMeta: document.getElementById("basicShippingMeta"),
-  chainSupplierCost: document.getElementById("chainSupplierCost"),
-  chainImportCost: document.getElementById("chainImportCost"),
-  chainThreePlCost: document.getElementById("chainThreePlCost"),
-  chainInboundCost: document.getElementById("chainInboundCost"),
-  chainAmazonCost: document.getElementById("chainAmazonCost"),
+  chainSupplierChips: document.getElementById("chainSupplierChips"),
+  chainImportChips: document.getElementById("chainImportChips"),
+  chainThreePlChips: document.getElementById("chainThreePlChips"),
+  chainInboundChips: document.getElementById("chainInboundChips"),
+  chainAmazonChips: document.getElementById("chainAmazonChips"),
   productWorkspace: document.getElementById("productWorkspace"),
   driverModal: document.getElementById("driverModal"),
   driverModalTitle: document.getElementById("driverModalTitle"),
@@ -848,11 +963,20 @@ function defaultProduct(index = 1) {
         overrideLogisticsGroup: false,
         docsPerOrderEur: DEFAULT_SETTINGS.costDefaults.docsPerOrderEur,
         freightPapersPerOrderEur: DEFAULT_SETTINGS.costDefaults.freightPapersPerOrderEur,
-        threePlInboundPerCartonEur: DEFAULT_SETTINGS.costDefaults.threePlInboundPerCartonEur,
-        threePlStoragePerPalletMonthEur: DEFAULT_SETTINGS.costDefaults.threePlStoragePerPalletMonthEur,
-        threePlOutboundPerCartonEur: DEFAULT_SETTINGS.costDefaults.threePlOutboundPerCartonEur,
-        unitsPerPallet: DEFAULT_SETTINGS.costDefaults.unitsPerPallet,
-        avg3PlStorageMonths: DEFAULT_SETTINGS.costDefaults.avg3PlStorageMonths,
+        receivingMode: "sorted",
+        receivingPerCartonSortedEur: DEFAULT_SETTINGS.threePl.receivingPerCartonSortedEur,
+        receivingPerCartonMixedEur: DEFAULT_SETTINGS.threePl.receivingPerCartonMixedEur,
+        storagePerPalletPerMonthEur: DEFAULT_SETTINGS.threePl.storagePerPalletPerMonthEur,
+        unitsPerPallet: DEFAULT_SETTINGS.threePl.unitsPerPallet,
+        avg3PlStorageMonths: DEFAULT_SETTINGS.threePl.avgStorageMonths,
+        outboundBasePerCartonEur: DEFAULT_SETTINGS.threePl.outboundBasePerCartonEur,
+        pickPackPerCartonEur: DEFAULT_SETTINGS.threePl.pickPackPerCartonEur,
+        fbaProcessingPerCartonEur: DEFAULT_SETTINGS.threePl.fbaProcessingPerCartonEur,
+        insertsPerCarton: DEFAULT_SETTINGS.threePl.insertsPerCartonDefault,
+        insertPerInsertEur: DEFAULT_SETTINGS.threePl.insertPerInsertEur,
+        labelsPerCarton: DEFAULT_SETTINGS.threePl.labelsPerCartonDefault,
+        thirdCountryLabelPerLabelEur: DEFAULT_SETTINGS.threePl.thirdCountryLabelPerLabelEur,
+        carrierCostPerCartonEur: DEFAULT_SETTINGS.threePl.carrierCostPerCartonEur,
         amazonStoragePerCbmMonthEur: DEFAULT_SETTINGS.costDefaults.amazonStoragePerCbmMonthEur,
         avgAmazonStorageMonths: DEFAULT_SETTINGS.costDefaults.avgAmazonStorageMonths,
 
@@ -914,6 +1038,39 @@ function ensureCostDefaults(rawCostDefaults) {
   };
 }
 
+function ensureTaxSettings(rawTax) {
+  const source = rawTax && typeof rawTax === "object" ? rawTax : {};
+  return {
+    fallbackUsdToEur: clamp(num(source.fallbackUsdToEur, DEFAULT_USD_TO_EUR), 0.2, 2),
+    vatRates: {
+      DE: clamp(num(source?.vatRates?.DE, MARKETPLACE_VAT.DE), 0, 30),
+      FR: clamp(num(source?.vatRates?.FR, MARKETPLACE_VAT.FR), 0, 30),
+      IT: clamp(num(source?.vatRates?.IT, MARKETPLACE_VAT.IT), 0, 30),
+      ES: clamp(num(source?.vatRates?.ES, MARKETPLACE_VAT.ES), 0, 30),
+    },
+  };
+}
+
+function ensureThreePlSettings(rawThreePl, rawCostDefaults) {
+  const source = rawThreePl && typeof rawThreePl === "object" ? rawThreePl : {};
+  const legacy = rawCostDefaults && typeof rawCostDefaults === "object" ? rawCostDefaults : {};
+
+  return {
+    ...deepClone(DEFAULT_SETTINGS.threePl),
+    ...source,
+    receivingPerCartonSortedEur:
+      source.receivingPerCartonSortedEur ?? legacy.threePlInboundPerCartonEur ?? DEFAULT_SETTINGS.threePl.receivingPerCartonSortedEur,
+    storagePerPalletPerMonthEur:
+      source.storagePerPalletPerMonthEur ?? legacy.threePlStoragePerPalletMonthEur ?? DEFAULT_SETTINGS.threePl.storagePerPalletPerMonthEur,
+    carrierCostPerCartonEur:
+      source.carrierCostPerCartonEur ?? legacy.threePlOutboundPerCartonEur ?? DEFAULT_SETTINGS.threePl.carrierCostPerCartonEur,
+    unitsPerPallet:
+      source.unitsPerPallet ?? legacy.unitsPerPallet ?? DEFAULT_SETTINGS.threePl.unitsPerPallet,
+    avgStorageMonths:
+      source.avgStorageMonths ?? legacy.avg3PlStorageMonths ?? DEFAULT_SETTINGS.threePl.avgStorageMonths,
+  };
+}
+
 function applyCartonPreset(preset, settings) {
   const chosen = CARTON_PRESETS[preset];
   if (!chosen) {
@@ -927,6 +1084,12 @@ function applyCartonPreset(preset, settings) {
 }
 
 function sanitizeSettings(settings) {
+  settings.tax.fallbackUsdToEur = clamp(num(settings.tax.fallbackUsdToEur, DEFAULT_USD_TO_EUR), 0.2, 2);
+  settings.tax.vatRates.DE = clamp(num(settings.tax.vatRates.DE, MARKETPLACE_VAT.DE), 0, 30);
+  settings.tax.vatRates.FR = clamp(num(settings.tax.vatRates.FR, MARKETPLACE_VAT.FR), 0, 30);
+  settings.tax.vatRates.IT = clamp(num(settings.tax.vatRates.IT, MARKETPLACE_VAT.IT), 0, 30);
+  settings.tax.vatRates.ES = clamp(num(settings.tax.vatRates.ES, MARKETPLACE_VAT.ES), 0, 30);
+
   settings.shipping12m.lclRateEurPerCbm = clamp(num(settings.shipping12m.lclRateEurPerCbm, 0), 0, 2000);
   settings.shipping12m.originFixedEurPerShipment = clamp(num(settings.shipping12m.originFixedEurPerShipment, 0), 0, 5000);
   settings.shipping12m.destinationFixedEurPerShipment = clamp(num(settings.shipping12m.destinationFixedEurPerShipment, 0), 0, 5000);
@@ -973,15 +1136,26 @@ function sanitizeSettings(settings) {
     profile.startPriceDiscountPct = clamp(num(profile.startPriceDiscountPct, 0), 0, 60);
   });
 
+  settings.threePl.receivingPerCartonSortedEur = clamp(num(settings.threePl.receivingPerCartonSortedEur, 0), 0, 200);
+  settings.threePl.receivingPerCartonMixedEur = clamp(num(settings.threePl.receivingPerCartonMixedEur, 0), 0, 200);
+  settings.threePl.storagePerPalletPerMonthEur = clamp(num(settings.threePl.storagePerPalletPerMonthEur, 0), 0, 1000);
+  settings.threePl.unitsPerPallet = clamp(roundInt(settings.threePl.unitsPerPallet, 240), 1, 10000);
+  settings.threePl.avgStorageMonths = clamp(num(settings.threePl.avgStorageMonths, 1.2), 0, 24);
+  settings.threePl.outboundBasePerCartonEur = clamp(num(settings.threePl.outboundBasePerCartonEur, 0), 0, 200);
+  settings.threePl.pickPackPerCartonEur = clamp(num(settings.threePl.pickPackPerCartonEur, 0), 0, 200);
+  settings.threePl.fbaProcessingPerCartonEur = clamp(num(settings.threePl.fbaProcessingPerCartonEur, 0), 0, 200);
+  settings.threePl.insertPerInsertEur = clamp(num(settings.threePl.insertPerInsertEur, 0), 0, 50);
+  settings.threePl.thirdCountryLabelPerLabelEur = clamp(num(settings.threePl.thirdCountryLabelPerLabelEur, 0), 0, 50);
+  settings.threePl.insertsPerCartonDefault = clamp(roundInt(settings.threePl.insertsPerCartonDefault, 1), 0, 20);
+  settings.threePl.labelsPerCartonDefault = clamp(roundInt(settings.threePl.labelsPerCartonDefault, 0), 0, 20);
+  settings.threePl.carrierCostPerCartonEur = clamp(num(settings.threePl.carrierCostPerCartonEur, 0), 0, 200);
+  settings.threePl.shelfMPerMonthEur = clamp(num(settings.threePl.shelfMPerMonthEur, 0), 0, 200);
+  settings.threePl.shelfLPerMonthEur = clamp(num(settings.threePl.shelfLPerMonthEur, 0), 0, 200);
+
   settings.costDefaults.packagingPerUnitEur = clamp(num(settings.costDefaults.packagingPerUnitEur, 0), 0, 50);
   settings.costDefaults.otherUnitCostEur = clamp(num(settings.costDefaults.otherUnitCostEur, 0), 0, 50);
   settings.costDefaults.docsPerOrderEur = clamp(num(settings.costDefaults.docsPerOrderEur, 0), 0, 5000);
   settings.costDefaults.freightPapersPerOrderEur = clamp(num(settings.costDefaults.freightPapersPerOrderEur, 0), 0, 5000);
-  settings.costDefaults.threePlInboundPerCartonEur = clamp(num(settings.costDefaults.threePlInboundPerCartonEur, 0), 0, 100);
-  settings.costDefaults.threePlStoragePerPalletMonthEur = clamp(num(settings.costDefaults.threePlStoragePerPalletMonthEur, 0), 0, 500);
-  settings.costDefaults.threePlOutboundPerCartonEur = clamp(num(settings.costDefaults.threePlOutboundPerCartonEur, 0), 0, 200);
-  settings.costDefaults.unitsPerPallet = clamp(roundInt(settings.costDefaults.unitsPerPallet, 240), 1, 10000);
-  settings.costDefaults.avg3PlStorageMonths = clamp(num(settings.costDefaults.avg3PlStorageMonths, 1.2), 0, 12);
   settings.costDefaults.amazonStoragePerCbmMonthEur = clamp(num(settings.costDefaults.amazonStoragePerCbmMonthEur, 0), 0, 1000);
   settings.costDefaults.avgAmazonStorageMonths = clamp(num(settings.costDefaults.avgAmazonStorageMonths, 1.5), 0, 12);
   settings.costDefaults.greetingCardPerLaunchUnitEur = clamp(num(settings.costDefaults.greetingCardPerLaunchUnitEur, 0), 0, 20);
@@ -1030,6 +1204,21 @@ function migrateProduct(raw, index) {
     },
   };
 
+  const rawExtra = raw?.assumptions?.extraCosts ?? {};
+  const mergedExtra = merged.assumptions.extraCosts;
+  if (rawExtra.threePlInboundPerCartonEur !== undefined && rawExtra.receivingPerCartonSortedEur === undefined) {
+    mergedExtra.receivingPerCartonSortedEur = num(rawExtra.threePlInboundPerCartonEur, mergedExtra.receivingPerCartonSortedEur);
+  }
+  if (rawExtra.threePlStoragePerPalletMonthEur !== undefined && rawExtra.storagePerPalletPerMonthEur === undefined) {
+    mergedExtra.storagePerPalletPerMonthEur = num(rawExtra.threePlStoragePerPalletMonthEur, mergedExtra.storagePerPalletPerMonthEur);
+  }
+  if (rawExtra.threePlOutboundPerCartonEur !== undefined && rawExtra.carrierCostPerCartonEur === undefined) {
+    mergedExtra.carrierCostPerCartonEur = num(rawExtra.threePlOutboundPerCartonEur, mergedExtra.carrierCostPerCartonEur);
+  }
+  if (!["sorted", "mixed"].includes(mergedExtra.receivingMode)) {
+    mergedExtra.receivingMode = "sorted";
+  }
+
   if (!Number.isFinite(num(merged.basic.unitsPerOrder, NaN))) {
     const oldUnitsPerCarton = num(raw?.basic?.unitsPerCarton, 0);
     merged.basic.unitsPerOrder = oldUnitsPerCarton > 0 ? oldUnitsPerCarton * 50 : base.basic.unitsPerOrder;
@@ -1062,6 +1251,8 @@ function loadSettings() {
   const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
   if (!raw) {
     state.settings = defaultSettings();
+    state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
+    state.fx.source = "Fallback (Settings)";
     saveSettings();
     return;
   }
@@ -1071,6 +1262,7 @@ function loadSettings() {
     const merged = {
       ...defaultSettings(),
       ...parsed,
+      tax: ensureTaxSettings(parsed?.tax),
       shipping12m: {
         ...defaultSettings().shipping12m,
         ...(parsed?.shipping12m ?? {}),
@@ -1081,11 +1273,16 @@ function loadSettings() {
       },
       categoryDefaults: ensureCategoryDefaults(parsed?.categoryDefaults),
       lifecycle: ensureLifecycleSettings(parsed?.lifecycle),
+      threePl: ensureThreePlSettings(parsed?.threePl, parsed?.costDefaults),
       costDefaults: ensureCostDefaults(parsed?.costDefaults),
     };
     state.settings = sanitizeSettings(merged);
+    state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
+    state.fx.source = "Fallback (Settings)";
   } catch (_error) {
     state.settings = defaultSettings();
+    state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
+    state.fx.source = "Fallback (Settings)";
     saveSettings();
   }
 }
@@ -1353,6 +1550,7 @@ function resolveAssumptions(product) {
   const assumptions = product.assumptions;
   const category = state.settings.categoryDefaults[basic.category] ?? state.settings.categoryDefaults.generic;
   const costDefaults = state.settings.costDefaults ?? DEFAULT_SETTINGS.costDefaults;
+  const threePlDefaults = state.settings.threePl ?? DEFAULT_SETTINGS.threePl;
   const listingPackages = state.settings.lifecycle?.listingPackages ?? DEFAULT_SETTINGS.lifecycle.listingPackages;
   const launchProfiles = state.settings.lifecycle?.launchProfiles ?? DEFAULT_SETTINGS.lifecycle.launchProfiles;
   const isOverrideActive = (flag) => Boolean(flag);
@@ -1416,38 +1614,109 @@ function resolveAssumptions(product) {
     0,
     5000,
   );
-  const threePlInboundPerCartonEur = clamp(
+  const receivingMode = useLogisticsOverride && ["sorted", "mixed"].includes(extra.receivingMode)
+    ? String(extra.receivingMode)
+    : "sorted";
+  const receivingPerCartonSortedEur = clamp(
     useLogisticsOverride
-      ? num(extra.threePlInboundPerCartonEur, costDefaults.threePlInboundPerCartonEur)
-      : num(costDefaults.threePlInboundPerCartonEur, 0),
-    0,
-    100,
-  );
-  const threePlStoragePerPalletMonthEur = clamp(
-    useLogisticsOverride
-      ? num(extra.threePlStoragePerPalletMonthEur, costDefaults.threePlStoragePerPalletMonthEur)
-      : num(costDefaults.threePlStoragePerPalletMonthEur, 0),
-    0,
-    500,
-  );
-  const threePlOutboundPerCartonEur = clamp(
-    useLogisticsOverride
-      ? num(extra.threePlOutboundPerCartonEur, costDefaults.threePlOutboundPerCartonEur)
-      : num(costDefaults.threePlOutboundPerCartonEur, 0),
+      ? num(extra.receivingPerCartonSortedEur, threePlDefaults.receivingPerCartonSortedEur)
+      : num(threePlDefaults.receivingPerCartonSortedEur, 0),
     0,
     200,
   );
+  const receivingPerCartonMixedEur = clamp(
+    useLogisticsOverride
+      ? num(extra.receivingPerCartonMixedEur, threePlDefaults.receivingPerCartonMixedEur)
+      : num(threePlDefaults.receivingPerCartonMixedEur, 0),
+    0,
+    200,
+  );
+  const receivingPerCartonEur = receivingMode === "mixed" ? receivingPerCartonMixedEur : receivingPerCartonSortedEur;
+  const storagePerPalletPerMonthEur = clamp(
+    useLogisticsOverride
+      ? num(extra.storagePerPalletPerMonthEur, threePlDefaults.storagePerPalletPerMonthEur)
+      : num(threePlDefaults.storagePerPalletPerMonthEur, 0),
+    0,
+    1000,
+  );
   const unitsPerPallet = clamp(
-    roundInt(useLogisticsOverride ? num(extra.unitsPerPallet, costDefaults.unitsPerPallet) : num(costDefaults.unitsPerPallet, 240), 240),
+    roundInt(
+      useLogisticsOverride
+        ? num(extra.unitsPerPallet, threePlDefaults.unitsPerPallet)
+        : num(threePlDefaults.unitsPerPallet, 240),
+      240,
+    ),
     1,
     10000,
   );
   const avg3PlStorageMonths = clamp(
     useLogisticsOverride
-      ? num(extra.avg3PlStorageMonths, costDefaults.avg3PlStorageMonths)
-      : num(costDefaults.avg3PlStorageMonths, 1.2),
+      ? num(extra.avg3PlStorageMonths, threePlDefaults.avgStorageMonths)
+      : num(threePlDefaults.avgStorageMonths, 1.2),
     0,
-    12,
+    24,
+  );
+  const outboundBasePerCartonEur = clamp(
+    useLogisticsOverride
+      ? num(extra.outboundBasePerCartonEur, threePlDefaults.outboundBasePerCartonEur)
+      : num(threePlDefaults.outboundBasePerCartonEur, 0),
+    0,
+    200,
+  );
+  const pickPackPerCartonEur = clamp(
+    useLogisticsOverride
+      ? num(extra.pickPackPerCartonEur, threePlDefaults.pickPackPerCartonEur)
+      : num(threePlDefaults.pickPackPerCartonEur, 0),
+    0,
+    200,
+  );
+  const fbaProcessingPerCartonEur = clamp(
+    useLogisticsOverride
+      ? num(extra.fbaProcessingPerCartonEur, threePlDefaults.fbaProcessingPerCartonEur)
+      : num(threePlDefaults.fbaProcessingPerCartonEur, 0),
+    0,
+    200,
+  );
+  const insertsPerCarton = clamp(
+    roundInt(
+      useLogisticsOverride
+        ? num(extra.insertsPerCarton, threePlDefaults.insertsPerCartonDefault)
+        : num(threePlDefaults.insertsPerCartonDefault, 1),
+      1,
+    ),
+    0,
+    20,
+  );
+  const insertPerInsertEur = clamp(
+    useLogisticsOverride
+      ? num(extra.insertPerInsertEur, threePlDefaults.insertPerInsertEur)
+      : num(threePlDefaults.insertPerInsertEur, 0),
+    0,
+    50,
+  );
+  const labelsPerCarton = clamp(
+    roundInt(
+      useLogisticsOverride
+        ? num(extra.labelsPerCarton, threePlDefaults.labelsPerCartonDefault)
+        : num(threePlDefaults.labelsPerCartonDefault, 0),
+      0,
+    ),
+    0,
+    20,
+  );
+  const thirdCountryLabelPerLabelEur = clamp(
+    useLogisticsOverride
+      ? num(extra.thirdCountryLabelPerLabelEur, threePlDefaults.thirdCountryLabelPerLabelEur)
+      : num(threePlDefaults.thirdCountryLabelPerLabelEur, 0),
+    0,
+    50,
+  );
+  const carrierCostPerCartonEur = clamp(
+    useLogisticsOverride
+      ? num(extra.carrierCostPerCartonEur, threePlDefaults.carrierCostPerCartonEur)
+      : num(threePlDefaults.carrierCostPerCartonEur, 0),
+    0,
+    200,
   );
   const amazonStoragePerCbmMonthEur = clamp(
     useLogisticsOverride
@@ -1513,7 +1782,7 @@ function resolveAssumptions(product) {
   };
 
   const resolved = {
-    vatRate: MARKETPLACE_VAT[basic.marketplace] ?? 19,
+    vatRate: state.settings.tax?.vatRates?.[basic.marketplace] ?? MARKETPLACE_VAT[basic.marketplace] ?? 19,
 
     tacosRate: resolveValue(isOverrideActive(assumptions.ads.overrideTacos), assumptions.ads.tacosRate, defaultTacos, 0, 100),
     launchAdsMultiplier: resolveValue(
@@ -1627,11 +1896,21 @@ function resolveAssumptions(product) {
       otherUnitCostEur,
       docsPerOrderEur,
       freightPapersPerOrderEur,
-      threePlInboundPerCartonEur,
-      threePlStoragePerPalletMonthEur,
-      threePlOutboundPerCartonEur,
+      receivingMode,
+      receivingPerCartonSortedEur,
+      receivingPerCartonMixedEur,
+      receivingPerCartonEur,
+      storagePerPalletPerMonthEur,
       unitsPerPallet,
       avg3PlStorageMonths,
+      outboundBasePerCartonEur,
+      pickPackPerCartonEur,
+      fbaProcessingPerCartonEur,
+      insertsPerCarton,
+      insertPerInsertEur,
+      labelsPerCarton,
+      thirdCountryLabelPerLabelEur,
+      carrierCostPerCartonEur,
       amazonStoragePerCbmMonthEur,
       avgAmazonStorageMonths,
       greetingCardPerLaunchUnitEur,
@@ -1862,18 +2141,30 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const packagingUnit = extra.packagingPerUnitEur + extra.otherUnitCostEur;
   const orderFixedPerUnit =
     (extra.docsPerOrderEur + extra.freightPapersPerOrderEur) / Math.max(1, shipping.unitsPerOrder);
-  const threePlInboundPerUnit =
-    (shipping.cartonsCount * extra.threePlInboundPerCartonEur) / Math.max(1, shipping.unitsPerOrder);
-  const threePlOutboundPerUnit =
-    (shipping.cartonsCount * extra.threePlOutboundPerCartonEur) / Math.max(1, shipping.unitsPerOrder);
-  const threePlStoragePerUnit =
-    (extra.threePlStoragePerPalletMonthEur * extra.avg3PlStorageMonths) / Math.max(1, extra.unitsPerPallet);
+  const palletsCount = Math.max(1, Math.ceil(shipping.unitsPerOrder / Math.max(1, extra.unitsPerPallet)));
+  const threePlInboundTotal = shipping.cartonsCount * extra.receivingPerCartonEur;
+  const threePlInboundPerUnit = threePlInboundTotal / Math.max(1, shipping.unitsPerOrder);
+  const threePlStorageTotal = palletsCount * extra.storagePerPalletPerMonthEur * extra.avg3PlStorageMonths;
+  const threePlStoragePerUnit = threePlStorageTotal / Math.max(1, shipping.unitsPerOrder);
+  const outboundServicePerCarton =
+    extra.outboundBasePerCartonEur +
+    extra.pickPackPerCartonEur +
+    extra.fbaProcessingPerCartonEur +
+    extra.insertsPerCarton * extra.insertPerInsertEur +
+    extra.labelsPerCarton * extra.thirdCountryLabelPerLabelEur;
+  const threePlOutboundServiceTotal = shipping.cartonsCount * outboundServicePerCarton;
+  const threePlOutboundServicePerUnit = threePlOutboundServiceTotal / Math.max(1, shipping.unitsPerOrder);
+  const threePlCarrierTotal = shipping.cartonsCount * extra.carrierCostPerCartonEur;
+  const threePlCarrierPerUnit = threePlCarrierTotal / Math.max(1, shipping.unitsPerOrder);
+  const threePlTotalPerUnit =
+    threePlInboundPerUnit + threePlStoragePerUnit + threePlOutboundServicePerUnit + threePlCarrierPerUnit;
   const amazonStoragePerUnit = extra.amazonStoragePerCbmMonthEur * extra.avgAmazonStorageMonths * shipping.unitCbm;
   const logisticsExtraUnit =
     orderFixedPerUnit +
     threePlInboundPerUnit +
-    threePlOutboundPerUnit +
     threePlStoragePerUnit +
+    threePlOutboundServicePerUnit +
+    threePlCarrierPerUnit +
     amazonStoragePerUnit;
 
   const landedBeforeDuty = exwUnit + shippingUnit + packagingUnit + logisticsExtraUnit;
@@ -2018,9 +2309,16 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     packagingUnit,
     logisticsExtraUnit,
     orderFixedPerUnit,
+    palletsCount,
+    threePlInboundTotal,
+    threePlStorageTotal,
+    threePlOutboundServiceTotal,
+    threePlCarrierTotal,
     threePlInboundPerUnit,
-    threePlOutboundPerUnit,
     threePlStoragePerUnit,
+    threePlOutboundServicePerUnit,
+    threePlCarrierPerUnit,
+    threePlTotalPerUnit,
     amazonStoragePerUnit,
     customsUnit,
     importVatUnit,
@@ -2487,6 +2785,15 @@ function impactMonthlyFromPath(path, metrics) {
   if (!path || !metrics) {
     return 0;
   }
+  if (path.startsWith("derived.shipping.")) {
+    return metrics.shippingMonthly + metrics.customsMonthly;
+  }
+  if (path.startsWith("derived.threepl.")) {
+    return metrics.threePlTotalPerUnit * metrics.monthlyUnits;
+  }
+  if (path.startsWith("derived.")) {
+    return metrics.totalCostMonthly * 0.08;
+  }
   if (path.startsWith("assumptions.ads.")) {
     return metrics.adsMonthly;
   }
@@ -2507,7 +2814,8 @@ function impactMonthlyFromPath(path, metrics) {
       (metrics.orderFixedPerUnit +
         metrics.threePlInboundPerUnit +
         metrics.threePlStoragePerUnit +
-        metrics.threePlOutboundPerUnit +
+        metrics.threePlOutboundServicePerUnit +
+        metrics.threePlCarrierPerUnit +
         metrics.amazonStoragePerUnit +
         metrics.packagingUnit) *
       metrics.monthlyUnits
@@ -2516,10 +2824,49 @@ function impactMonthlyFromPath(path, metrics) {
   if (path.startsWith("settings.shipping12m.") || path.startsWith("settings.cartonRules.")) {
     return metrics.shippingMonthly;
   }
-  if (path.startsWith("settings.costDefaults.")) {
+  if (
+    path.startsWith("settings.costDefaults.") ||
+    path.startsWith("settings.threePl.") ||
+    path.startsWith("settings.tax.")
+  ) {
     return metrics.block1Monthly + metrics.block2Monthly;
   }
   return 0;
+}
+
+function driverTypePriority(path) {
+  if (path.startsWith("basic.") || path.startsWith("assumptions.") || path.startsWith("workflow.")) {
+    return 0;
+  }
+  if (path.startsWith("settings.")) {
+    return 1;
+  }
+  if (path.startsWith("derived.")) {
+    return 2;
+  }
+  return 3;
+}
+
+function sortDriverPathsForModal(paths, metrics) {
+  const unique = [...new Set((paths ?? []).filter(Boolean))];
+  return unique
+    .map((path, idx) => ({
+      path,
+      idx,
+      impactMonthly: impactMonthlyFromPath(path, metrics),
+      priority: driverTypePriority(path),
+    }))
+    .sort((a, b) => {
+      const diff = b.impactMonthly - a.impactMonthly;
+      if (Math.abs(diff) > 0.0001) {
+        return diff;
+      }
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+      return a.idx - b.idx;
+    })
+    .map((row) => row.path);
 }
 
 function getDriverControl(path) {
@@ -2623,16 +2970,30 @@ function extractControlLabel(control, fallback) {
 }
 
 function getPathHelp(path) {
+  if (path.startsWith("derived.")) {
+    return DERIVED_DRIVER_MAP[path]?.help ?? "";
+  }
   if (path.startsWith("settings.")) {
     return SETTINGS_HELP[path.slice("settings.".length)] ?? "";
   }
   return FIELD_HELP[path] ?? "";
 }
 
+function formatDerivedValue(value, formatType) {
+  if (formatType === "currency") {
+    return formatCurrency(num(value, 0));
+  }
+  if (formatType === "percent") {
+    return formatPercent(num(value, 0));
+  }
+  return formatNumber(num(value, 0));
+}
+
 function buildStageImpactItems(metrics, stage) {
   const threePlInboundMonthly = metrics.threePlInboundPerUnit * metrics.monthlyUnits;
   const threePlStorageMonthly = metrics.threePlStoragePerUnit * metrics.monthlyUnits;
-  const threePlOutboundMonthly = metrics.threePlOutboundPerUnit * metrics.monthlyUnits;
+  const threePlOutboundServiceMonthly = metrics.threePlOutboundServicePerUnit * metrics.monthlyUnits;
+  const threePlCarrierMonthly = metrics.threePlCarrierPerUnit * metrics.monthlyUnits;
   const amazonStorageMonthly = metrics.amazonStoragePerUnit * metrics.monthlyUnits;
   const amazonFeesMonthly = metrics.referralMonthly + metrics.fbaFeeUnit * metrics.monthlyUnits + amazonStorageMonthly;
   const orderOpsMonthly = metrics.orderFixedPerUnit * metrics.monthlyUnits;
@@ -2640,11 +3001,11 @@ function buildStageImpactItems(metrics, stage) {
   const unitBase = Math.max(1, metrics.monthlyUnits);
   const shippingImportUnit = metrics.shippingUnit + metrics.customsUnit + metrics.orderFixedPerUnit;
   const amazonFeesUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit;
-  const threePlInboundUnit =
+  const threePlCoreUnit =
     metrics.threePlInboundPerUnit +
     metrics.threePlStoragePerUnit +
-    metrics.threePlOutboundPerUnit +
-    metrics.amazonStoragePerUnit;
+    metrics.threePlOutboundServicePerUnit +
+    metrics.threePlCarrierPerUnit;
   const listingLifecycleUnit = metrics.block2Monthly / unitBase;
   const leakageUnit = metrics.block3Monthly / unitBase;
 
@@ -2658,6 +3019,10 @@ function buildStageImpactItems(metrics, stage) {
       source: "User-Input (Preis/EK/Maße) + Global Settings (Shipping, Kosten-Defaults) + Kategorie-Default (Zoll/Steuer).",
       robustness: "Mittel (mehrere Annahmen entlang der Kette).",
       driverPaths: [
+        "derived.shipping.unitsPerOrder",
+        "derived.shipping.unitsPerCartonAuto",
+        "derived.shipping.cartonsCount",
+        "derived.shipping.chargeableCbm",
         "basic.unitsPerOrder",
         "basic.packLengthCm",
         "basic.packWidthCm",
@@ -2688,22 +3053,39 @@ function buildStageImpactItems(metrics, stage) {
     },
     {
       label: "3PL & Inbound (EUR/Unit)",
-      value: formatCurrency(threePlInboundUnit),
-      impactMonthly: (threePlInboundUnit * metrics.monthlyUnits),
-      explain: "3PL Inbound, 3PL Lagerung, 3PL->Amazon und Amazon-Lageranteil pro Unit.",
-      formula: "3PL & Inbound/Unit = 3PL Inbound + 3PL Lager + 3PL Outbound + Amazon-Lager.",
-      source: "Global costDefaults (3PL/Storage) oder Produkt-Override.",
+      value: formatCurrency(threePlCoreUnit),
+      impactMonthly: (threePlCoreUnit * metrics.monthlyUnits),
+      explain: "3PL Inbound, 3PL Lagerung, Service 3PL->Amazon und Carrier 3PL->Amazon pro Unit.",
+      formula: "3PL gesamt/Unit = Inbound + Lagerung + Outbound Service + Carrier.",
+      source: "Globale 3PL-Settings oder produktbezogener Override.",
       robustness: "Mittel (volumen- und lagerdauerabhängig).",
       driverPaths: [
+        "derived.shipping.unitsPerOrder",
+        "derived.shipping.unitsPerCartonAuto",
+        "derived.shipping.cartonsCount",
+        "derived.threepl.inboundTotal",
+        "derived.threepl.storageTotal",
+        "derived.threepl.outboundServiceTotal",
+        "derived.threepl.carrierTotal",
         "assumptions.extraCosts.overrideLogisticsGroup",
-        "assumptions.extraCosts.threePlInboundPerCartonEur",
-        "assumptions.extraCosts.threePlStoragePerPalletMonthEur",
-        "assumptions.extraCosts.threePlOutboundPerCartonEur",
-        "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
-        "assumptions.extraCosts.avgAmazonStorageMonths",
-        "settings.costDefaults.threePlInboundPerCartonEur",
-        "settings.costDefaults.threePlStoragePerPalletMonthEur",
-        "settings.costDefaults.threePlOutboundPerCartonEur",
+        "assumptions.extraCosts.receivingMode",
+        "assumptions.extraCosts.receivingPerCartonSortedEur",
+        "assumptions.extraCosts.receivingPerCartonMixedEur",
+        "assumptions.extraCosts.storagePerPalletPerMonthEur",
+        "assumptions.extraCosts.unitsPerPallet",
+        "assumptions.extraCosts.avg3PlStorageMonths",
+        "assumptions.extraCosts.outboundBasePerCartonEur",
+        "assumptions.extraCosts.pickPackPerCartonEur",
+        "assumptions.extraCosts.fbaProcessingPerCartonEur",
+        "assumptions.extraCosts.insertsPerCarton",
+        "assumptions.extraCosts.insertPerInsertEur",
+        "assumptions.extraCosts.labelsPerCarton",
+        "assumptions.extraCosts.thirdCountryLabelPerLabelEur",
+        "assumptions.extraCosts.carrierCostPerCartonEur",
+        "settings.threePl.receivingPerCartonSortedEur",
+        "settings.threePl.storagePerPalletPerMonthEur",
+        "settings.threePl.outboundBasePerCartonEur",
+        "settings.threePl.carrierCostPerCartonEur",
       ],
       pinned: true,
     },
@@ -2797,10 +3179,10 @@ function buildStageImpactItems(metrics, stage) {
       source: "Globale 3PL-Defaults oder Produkt-Override.",
       robustness: "Mittel bis hoch (interner Vertrag meist stabil).",
       driverPaths: [
-        "assumptions.extraCosts.threePlStoragePerPalletMonthEur",
+        "assumptions.extraCosts.storagePerPalletPerMonthEur",
         "assumptions.extraCosts.unitsPerPallet",
         "assumptions.extraCosts.avg3PlStorageMonths",
-        "settings.costDefaults.threePlStoragePerPalletMonthEur",
+        "settings.threePl.storagePerPalletPerMonthEur",
       ],
       pinned: true,
     },
@@ -2822,16 +3204,25 @@ function buildStageImpactItems(metrics, stage) {
       pinned: true,
     },
     {
-      label: "3PL Inbound + Outbound / Monat",
-      value: formatCurrency(threePlInboundMonthly + threePlOutboundMonthly),
-      impactMonthly: threePlInboundMonthly + threePlOutboundMonthly,
-      explain: "3PL Wareneingang je Karton plus Versand 3PL -> Amazon je Karton.",
-      formula: "Inbound/Outbound je Unit aus Kartonanzahl und Gebühren je Karton.",
-      source: "Globale 3PL-Defaults + Auto-Kartonisierung.",
+      label: "3PL Inbound + Service + Carrier / Monat",
+      value: formatCurrency(threePlInboundMonthly + threePlOutboundServiceMonthly + threePlCarrierMonthly),
+      impactMonthly: threePlInboundMonthly + threePlOutboundServiceMonthly + threePlCarrierMonthly,
+      explain: "Receiving, Outbound-Service und Carrier auf Basis Kartonanzahl.",
+      formula: "Monatsanteil = (Inbound/Unit + Outbound Service/Unit + Carrier/Unit) × Monatsabsatz.",
+      source: "3PL-Settings + Auto-Kartonisierung.",
       robustness: "Mittel (karton- und mengenabhängig).",
       driverPaths: [
-        "assumptions.extraCosts.threePlInboundPerCartonEur",
-        "assumptions.extraCosts.threePlOutboundPerCartonEur",
+        "derived.shipping.unitsPerOrder",
+        "derived.shipping.unitsPerCartonAuto",
+        "derived.shipping.cartonsCount",
+        "derived.threepl.inboundTotal",
+        "assumptions.extraCosts.receivingMode",
+        "assumptions.extraCosts.receivingPerCartonSortedEur",
+        "assumptions.extraCosts.receivingPerCartonMixedEur",
+        "assumptions.extraCosts.outboundBasePerCartonEur",
+        "assumptions.extraCosts.pickPackPerCartonEur",
+        "assumptions.extraCosts.fbaProcessingPerCartonEur",
+        "assumptions.extraCosts.carrierCostPerCartonEur",
         "basic.unitsPerOrder",
         "basic.packLengthCm",
         "basic.packWidthCm",
@@ -3048,6 +3439,117 @@ function refreshAfterModalInput() {
   applyMouseoverHelp();
 }
 
+function settingsValueText(path, value) {
+  if (typeof value === "boolean") {
+    return value ? "aktiv" : "inaktiv";
+  }
+  if (path.includes("Rate") || path.endsWith("Pct")) {
+    return formatPercent(num(value, 0));
+  }
+  if (path.endsWith("Eur") || path.includes("cost") || path.includes("Cost")) {
+    return formatCurrency(num(value, 0));
+  }
+  return formatNumber(num(value, 0));
+}
+
+function getGroupOverridePath(path) {
+  if (!path.startsWith("assumptions.extraCosts.")) {
+    return null;
+  }
+  if (path.includes("packagingPerUnitEur") || path.includes("otherUnitCostEur")) {
+    return "assumptions.extraCosts.overridePackagingGroup";
+  }
+  if (
+    path.includes("docsPerOrderEur") ||
+    path.includes("freightPapersPerOrderEur") ||
+    path.includes("receiving") ||
+    path.includes("storagePerPallet") ||
+    path.includes("unitsPerPallet") ||
+    path.includes("avg3PlStorageMonths") ||
+    path.includes("outboundBasePerCartonEur") ||
+    path.includes("pickPackPerCartonEur") ||
+    path.includes("fbaProcessingPerCartonEur") ||
+    path.includes("insertsPerCarton") ||
+    path.includes("insertPerInsertEur") ||
+    path.includes("labelsPerCarton") ||
+    path.includes("thirdCountryLabelPerLabelEur") ||
+    path.includes("carrierCostPerCartonEur") ||
+    path.includes("amazonStoragePerCbmMonthEur") ||
+    path.includes("avgAmazonStorageMonths")
+  ) {
+    return "assumptions.extraCosts.overrideLogisticsGroup";
+  }
+  if (
+    path.includes("greetingCardPerLaunchUnitEur") ||
+    path.includes("samplesPerProductEur") ||
+    path.includes("toolingPerProductEur") ||
+    path.includes("certificatesPerProductEur") ||
+    path.includes("inspectionPerProductEur")
+  ) {
+    return "assumptions.extraCosts.overrideLaunchOpsGroup";
+  }
+  return null;
+}
+
+function buildDriverFieldBadges(path, selected, diagnostics, metrics) {
+  const badges = [];
+  if (path.startsWith("derived.")) {
+    badges.push({ tone: "neutral", label: "Abgeleitet", title: "Reiner Rechenwert (read-only)." });
+  } else if (path.startsWith("settings.")) {
+    badges.push({ tone: "info", label: "Global Setting", title: "Dieser Wert gilt produktübergreifend." });
+  } else if (path.startsWith("basic.")) {
+    badges.push({ tone: "primary", label: "User Input", title: "Direkte Produkteingabe." });
+  } else if (path.startsWith("workflow.")) {
+    badges.push({ tone: "primary", label: "Produktstatus", title: "Produktbezogener Workflow-Status." });
+  } else {
+    const overridePath = VALUE_TO_OVERRIDE_MAP.get(path) || getGroupOverridePath(path);
+    if (overridePath) {
+      const active = Boolean(getByPath(selected, overridePath));
+      if (active) {
+        badges.push({ tone: "warn", label: "Produkt Override", title: `Aktiv über ${overridePath}.` });
+      } else {
+        badges.push({ tone: "ok", label: "Default aktiv", title: `Kein Override: Wert kommt aus Defaults/Settings.` });
+      }
+    } else if (path.startsWith("assumptions.")) {
+      badges.push({ tone: "ok", label: "Annahme", title: "Produktannahme im Modell." });
+    }
+
+    const diagKey = diagnosticsKeyFromPath(path);
+    const diag = diagKey ? diagnostics[diagKey] : null;
+    if (diag) {
+      badges.push({ tone: "neutral", label: "Default-Info", title: diag.short });
+    }
+  }
+
+  if (metrics) {
+    const impact = classifyImpact(impactMonthlyFromPath(path, metrics), metrics.totalCostMonthly);
+    badges.push({
+      tone: `impact-${impact.level}`,
+      label: `Impact ${impact.label}`,
+      title: `Anteil an Gesamtkosten: ${formatPercent(impact.sharePct)}.`,
+    });
+  }
+
+  return badges;
+}
+
+function appendModalBadges(container, badgeItems) {
+  const badges = document.createElement("div");
+  badges.className = "modal-badges";
+  badgeItems.forEach((item) => {
+    const badge = document.createElement("span");
+    badge.className = `modal-badge ${item.tone}`;
+    badge.textContent = item.label;
+    if (item.title) {
+      badge.title = item.title;
+    }
+    badges.appendChild(badge);
+  });
+  if (badges.childElementCount > 0) {
+    container.appendChild(badges);
+  }
+}
+
 function renderDriverModal() {
   if (!dom.driverModal || !dom.driverModalFields || !dom.driverModalTitle || !dom.driverModalSubtitle) {
     return;
@@ -3070,38 +3572,36 @@ function renderDriverModal() {
     .join(" · ");
   dom.driverModalFields.innerHTML = "";
 
-  const summary = document.createElement("article");
-  summary.className = "modal-field";
-  const summaryTitle = document.createElement("strong");
-  summaryTitle.textContent = "Was ist das?";
-  summary.appendChild(summaryTitle);
-  const summaryText = document.createElement("small");
-  summaryText.textContent = state.ui.driverModal.explain || "Kostentreiber der aktuellen Kalkulation.";
-  summary.appendChild(summaryText);
+  const modalMetrics = calculateProduct(selected);
+  const modalDiagnostics = buildDefaultDiagnostics(selected, modalMetrics);
 
-  const formulaTitle = document.createElement("strong");
-  formulaTitle.textContent = "Wie wird es berechnet?";
-  formulaTitle.style.marginTop = "8px";
-  summary.appendChild(formulaTitle);
-  const formulaText = document.createElement("small");
-  formulaText.textContent =
+  const summaryGrid = document.createElement("section");
+  summaryGrid.className = "modal-summary-grid";
+  const addSummaryCard = (title, text) => {
+    const card = document.createElement("article");
+    card.className = "modal-summary-card";
+    const heading = document.createElement("strong");
+    heading.textContent = title;
+    card.appendChild(heading);
+    const body = document.createElement("small");
+    body.textContent = text;
+    card.appendChild(body);
+    summaryGrid.appendChild(card);
+  };
+  addSummaryCard("Was ist das?", state.ui.driverModal.explain || "Kostentreiber der aktuellen Kalkulation.");
+  addSummaryCard(
+    "Wie wird es berechnet?",
     state.ui.driverModal.formula ||
-    "Der Wert wird aus den unten gelisteten Inputs/Defaults direkt gemäß Kostenmodell berechnet.";
-  summary.appendChild(formulaText);
-
-  if (state.ui.driverModal.source || state.ui.driverModal.robustness) {
-    const sourceText = document.createElement("small");
-    const parts = [];
-    if (state.ui.driverModal.source) {
-      parts.push(`Herkunft: ${state.ui.driverModal.source}`);
-    }
-    if (state.ui.driverModal.robustness) {
-      parts.push(`Robustheit: ${state.ui.driverModal.robustness}`);
-    }
-    sourceText.textContent = parts.join(" · ");
-    summary.appendChild(sourceText);
-  }
-  dom.driverModalFields.appendChild(summary);
+      "Der Wert wird aus den unten gelisteten Inputs/Defaults direkt gemäß Kostenmodell berechnet.",
+  );
+  addSummaryCard(
+    "Herkunft & Robustheit",
+    [
+      state.ui.driverModal.source ? `Herkunft: ${state.ui.driverModal.source}` : null,
+      state.ui.driverModal.robustness ? `Robustheit: ${state.ui.driverModal.robustness}` : null,
+    ].filter(Boolean).join(" · ") || "Quelle und Robustheit folgen aus den verknüpften Inputs.",
+  );
+  dom.driverModalFields.appendChild(summaryGrid);
 
   const sectionHead = document.createElement("article");
   sectionHead.className = "modal-field";
@@ -3109,11 +3609,43 @@ function renderDriverModal() {
   sectionTitle.textContent = "Relevante Inputs & Annahmen";
   sectionHead.appendChild(sectionTitle);
   const sectionText = document.createElement("small");
-  sectionText.textContent = "Nur die Felder, die diesen Kostentreiber direkt beeinflussen.";
+  sectionText.textContent = "Nach Impact priorisiert: höchste Kosteneffekte zuerst.";
   sectionHead.appendChild(sectionText);
   dom.driverModalFields.appendChild(sectionHead);
 
-  state.ui.driverModal.driverPaths.forEach((path) => {
+  const orderedPaths = sortDriverPathsForModal(state.ui.driverModal.driverPaths, modalMetrics);
+  orderedPaths.forEach((path) => {
+    if (path.startsWith("derived.")) {
+      const definition = DERIVED_DRIVER_MAP[path];
+      if (!definition) {
+        return;
+      }
+      const field = document.createElement("article");
+      field.className = "modal-field";
+
+      const head = document.createElement("div");
+      head.className = "modal-field-head";
+      const strong = document.createElement("strong");
+      strong.textContent = definition.label;
+      head.appendChild(strong);
+      field.appendChild(head);
+
+      appendModalBadges(field, buildDriverFieldBadges(path, selected, modalDiagnostics, modalMetrics));
+
+      const valueText = document.createElement("small");
+      valueText.textContent = `Aktueller Wert: ${formatDerivedValue(definition.read(modalMetrics), definition.format)}`;
+      field.appendChild(valueText);
+
+      if (definition.help) {
+        const help = document.createElement("small");
+        help.textContent = definition.help;
+        field.appendChild(help);
+      }
+
+      dom.driverModalFields.appendChild(field);
+      return;
+    }
+
     const sourceControl = getFieldControl(path);
     const label = extractControlLabel(sourceControl, path);
     const helpText = getPathHelp(path);
@@ -3128,13 +3660,13 @@ function renderDriverModal() {
     head.appendChild(strong);
     field.appendChild(head);
 
+    appendModalBadges(field, buildDriverFieldBadges(path, selected, modalDiagnostics, modalMetrics));
+
     if (path.startsWith("settings.")) {
       const settingsPath = path.slice("settings.".length);
       const value = getByPath(state.settings, settingsPath);
       const text = document.createElement("small");
-      text.textContent = `Globaler Wert: ${
-        typeof value === "boolean" ? (value ? "aktiv" : "inaktiv") : formatNumber(num(value, 0))
-      }`;
+      text.textContent = `Globaler Wert: ${settingsValueText(settingsPath, value)}`;
       field.appendChild(text);
       if (helpText) {
         const help = document.createElement("small");
@@ -3213,6 +3745,14 @@ function renderDriverModal() {
       const help = document.createElement("small");
       help.textContent = helpText;
       field.appendChild(help);
+    }
+
+    const diagKey = diagnosticsKeyFromPath(path);
+    const diag = diagKey ? modalDiagnostics[diagKey] : null;
+    if (diag) {
+      const diagText = document.createElement("small");
+      diagText.textContent = `Default-Logik: ${diag.short}`;
+      field.appendChild(diagText);
     }
 
     dom.driverModalFields.appendChild(field);
@@ -3353,22 +3893,248 @@ function renderShippingDetails(metrics) {
 }
 
 function renderLogisticsChain(metrics) {
-  if (!dom.chainSupplierCost) {
+  if (!dom.chainSupplierChips) {
     return;
   }
 
-  const supplierUnit = metrics.exwUnit + metrics.packagingUnit;
-  const importUnit = metrics.shippingUnit + metrics.customsUnit + metrics.orderFixedPerUnit;
-  const threePlUnit = metrics.threePlInboundPerUnit + metrics.threePlStoragePerUnit;
-  const inboundUnit = metrics.threePlOutboundPerUnit;
-  const amazonUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit + metrics.amazonStoragePerUnit;
+  const renderStation = (container, chips) => {
+    if (!container) {
+      return;
+    }
+    container.innerHTML = "";
+    chips.forEach((chipData) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chain-chip";
+      chip.innerHTML = `<span>${chipData.label}</span><strong>${formatCurrency(chipData.value)}</strong>`;
+      const impact = classifyImpact(chipData.value * metrics.monthlyUnits, metrics.totalCostMonthly);
+      chip.classList.add(`impact-${impact.level}`);
+      chip.title = `${chipData.explain}\nRechenweg: ${chipData.formula}\nImpact: ${impact.label}`;
+      chip.addEventListener("click", () => {
+        openDriverModal({
+          title: chipData.label,
+          value: `${formatCurrency(chipData.value)}/Unit`,
+          explain: chipData.explain,
+          formula: chipData.formula,
+          source: chipData.source,
+          robustness: chipData.robustness,
+          driverPaths: chipData.driverPaths,
+        });
+      });
+      container.appendChild(chip);
+    });
+  };
 
-  const monthlyFactor = metrics.monthlyUnits;
-  dom.chainSupplierCost.textContent = `${formatCurrency(supplierUnit)}/Unit · ${formatCurrency(supplierUnit * monthlyFactor)}/Monat`;
-  dom.chainImportCost.textContent = `${formatCurrency(importUnit)}/Unit · ${formatCurrency(importUnit * monthlyFactor)}/Monat`;
-  dom.chainThreePlCost.textContent = `${formatCurrency(threePlUnit)}/Unit · ${formatCurrency(threePlUnit * monthlyFactor)}/Monat`;
-  dom.chainInboundCost.textContent = `${formatCurrency(inboundUnit)}/Unit · ${formatCurrency(inboundUnit * monthlyFactor)}/Monat`;
-  dom.chainAmazonCost.textContent = `${formatCurrency(amazonUnit)}/Unit · ${formatCurrency(amazonUnit * monthlyFactor)}/Monat`;
+  renderStation(dom.chainSupplierChips, [
+    {
+      label: "EXW (EUR/Unit)",
+      value: metrics.exwUnit,
+      explain: "Einkaufspreis in EUR nach USD->EUR Umrechnung.",
+      formula: "EXW(EUR) = EXW(USD) × FX.",
+      source: "User Input + FX.",
+      robustness: "Mittel",
+      driverPaths: ["basic.exwUnit", "settings.tax.fallbackUsdToEur"],
+    },
+    {
+      label: "Packaging & Other (EUR/Unit)",
+      value: metrics.packagingUnit,
+      explain: "Verpackung und weitere Stückkosten am Lieferanten.",
+      formula: "Packaging Unit = Verpackung/Unit + weitere Kosten/Unit.",
+      source: "Settings/Override.",
+      robustness: "Mittel",
+      driverPaths: [
+        "assumptions.extraCosts.overridePackagingGroup",
+        "assumptions.extraCosts.packagingPerUnitEur",
+        "assumptions.extraCosts.otherUnitCostEur",
+        "settings.costDefaults.packagingPerUnitEur",
+        "settings.costDefaults.otherUnitCostEur",
+      ],
+    },
+  ]);
+
+  renderStation(dom.chainImportChips, [
+    {
+      label: "Shipping D2D (EUR/Unit)",
+      value: metrics.shippingUnit,
+      explain: "China -> DE door-to-door als 12M-Durchschnitt.",
+      formula: "Shipping/Unit = Shipping total / PO Units.",
+      source: "Shipping 12M + Kartonisierung.",
+      robustness: "Mittel",
+      driverPaths: [
+        "basic.unitsPerOrder",
+        "basic.packLengthCm",
+        "basic.packWidthCm",
+        "basic.packHeightCm",
+        "basic.netWeightG",
+        "settings.shipping12m.lclRateEurPerCbm",
+      ],
+    },
+    {
+      label: "Zoll (EUR/Unit)",
+      value: metrics.customsUnit,
+      explain: "Zollkosten pro Unit auf Landed-Basis vor Duty.",
+      formula: "Zoll/Unit = customsDutyRate × landedBeforeDuty.",
+      source: "Import-Defaults/Override.",
+      robustness: "Hoch",
+      driverPaths: ["assumptions.import.customsDutyRate", "basic.exwUnit", "basic.unitsPerOrder"],
+    },
+    {
+      label: "Order-Papiere (EUR/Unit)",
+      value: metrics.orderFixedPerUnit,
+      explain: "Dokumentation und Frachtpapiere je Order auf Unit umgelegt.",
+      formula: "Order-Fix/Unit = (Docs + Frachtpapiere) / PO Units.",
+      source: "Settings/Override.",
+      robustness: "Hoch",
+      driverPaths: [
+        "assumptions.extraCosts.docsPerOrderEur",
+        "assumptions.extraCosts.freightPapersPerOrderEur",
+        "settings.costDefaults.docsPerOrderEur",
+        "settings.costDefaults.freightPapersPerOrderEur",
+      ],
+    },
+  ]);
+
+  renderStation(dom.chainThreePlChips, [
+    {
+      label: "3PL Inbound (EUR/Unit)",
+      value: metrics.threePlInboundPerUnit,
+      explain: "Receiving je Karton (sorted/mixed) auf Unit umgerechnet.",
+      formula: "Inbound/Unit = cartons_count × receiving_per_carton / PO Units.",
+      source: "3PL Settings/Override.",
+      robustness: "Mittel",
+      driverPaths: [
+        "derived.shipping.unitsPerOrder",
+        "derived.shipping.unitsPerCartonAuto",
+        "derived.shipping.cartonsCount",
+        "derived.threepl.inboundTotal",
+        "derived.threepl.outboundServiceTotal",
+        "derived.threepl.carrierTotal",
+        "assumptions.extraCosts.receivingMode",
+        "assumptions.extraCosts.receivingPerCartonSortedEur",
+        "assumptions.extraCosts.receivingPerCartonMixedEur",
+        "basic.unitsPerOrder",
+        "settings.threePl.receivingPerCartonSortedEur",
+        "settings.threePl.receivingPerCartonMixedEur",
+      ],
+    },
+    {
+      label: "3PL Lagerung (EUR/Unit)",
+      value: metrics.threePlStoragePerUnit,
+      explain: "Lagerkosten je Palette/Monat mit Lagerdauer auf Unit umgelegt.",
+      formula: "Storage/Unit = ceil(PO Units / units_per_pallet) × storage_per_pallet_month × months / PO Units.",
+      source: "3PL Settings/Override.",
+      robustness: "Mittel bis hoch",
+      driverPaths: [
+        "derived.shipping.unitsPerOrder",
+        "derived.threepl.palletsCount",
+        "derived.threepl.storageTotal",
+        "assumptions.extraCosts.storagePerPalletPerMonthEur",
+        "assumptions.extraCosts.unitsPerPallet",
+        "assumptions.extraCosts.avg3PlStorageMonths",
+        "basic.unitsPerOrder",
+        "settings.threePl.storagePerPalletPerMonthEur",
+        "settings.threePl.unitsPerPallet",
+        "settings.threePl.avgStorageMonths",
+      ],
+    },
+    {
+      label: "3PL gesamt (EUR/Unit)",
+      value: metrics.threePlTotalPerUnit,
+      explain: "Summe aus Inbound, Lagerung, Outbound-Service und Carrier.",
+      formula: "3PL gesamt/Unit = Inbound + Lager + Service + Carrier.",
+      source: "3PL Settings/Override.",
+      robustness: "Mittel",
+      driverPaths: [
+        "assumptions.extraCosts.receivingMode",
+        "assumptions.extraCosts.storagePerPalletPerMonthEur",
+        "assumptions.extraCosts.outboundBasePerCartonEur",
+        "assumptions.extraCosts.carrierCostPerCartonEur",
+      ],
+    },
+  ]);
+
+  renderStation(dom.chainInboundChips, [
+    {
+      label: "3PL -> Amazon Service (EUR/Unit)",
+      value: metrics.threePlOutboundServicePerUnit,
+      explain: "Warenausgangsleistungen am 3PL je Karton auf Unit umgelegt.",
+      formula: "Service/Unit = cartons_count × (base + pick_pack + fba_processing + inserts + labels) / PO Units.",
+      source: "3PL Outbound Settings/Override.",
+      robustness: "Mittel",
+      driverPaths: [
+        "derived.shipping.unitsPerOrder",
+        "derived.shipping.cartonsCount",
+        "derived.threepl.outboundServiceTotal",
+        "assumptions.extraCosts.outboundBasePerCartonEur",
+        "assumptions.extraCosts.pickPackPerCartonEur",
+        "assumptions.extraCosts.fbaProcessingPerCartonEur",
+        "assumptions.extraCosts.insertsPerCarton",
+        "assumptions.extraCosts.insertPerInsertEur",
+        "assumptions.extraCosts.labelsPerCarton",
+        "assumptions.extraCosts.thirdCountryLabelPerLabelEur",
+        "settings.threePl.outboundBasePerCartonEur",
+        "settings.threePl.pickPackPerCartonEur",
+        "settings.threePl.fbaProcessingPerCartonEur",
+      ],
+    },
+    {
+      label: "3PL -> Amazon Carrier (EUR/Unit)",
+      value: metrics.threePlCarrierPerUnit,
+      explain: "Transportkosten je Karton vom 3PL zu Amazon.",
+      formula: "Carrier/Unit = cartons_count × carrier_cost_per_carton / PO Units.",
+      source: "3PL Carrier Setting/Override.",
+      robustness: "Mittel",
+      driverPaths: [
+        "derived.shipping.unitsPerOrder",
+        "derived.shipping.cartonsCount",
+        "derived.threepl.carrierTotal",
+        "assumptions.extraCosts.carrierCostPerCartonEur",
+        "basic.unitsPerOrder",
+        "settings.threePl.carrierCostPerCartonEur",
+      ],
+    },
+  ]);
+
+  renderStation(dom.chainAmazonChips, [
+    {
+      label: "Referral Fee (EUR/Unit)",
+      value: metrics.referralFeeUnit,
+      explain: "Amazon-Referral auf Brutto-Umsatz mit Mindestfee.",
+      formula: "Referral/Unit = max(Min Fee, Brutto × Referral%).",
+      source: "Kategorie-Default/Override.",
+      robustness: "Hoch",
+      driverPaths: ["assumptions.amazon.referralRate", "basic.priceGross"],
+    },
+    {
+      label: "FBA Fee (EUR/Unit)",
+      value: metrics.fbaFeeUnit,
+      explain: "FBA-Gebühr nach Tier oder manuellem Override.",
+      formula: "FBA/Unit = Auto-Tier(Maße/Gewicht) oder Manual Fee.",
+      source: "Amazon Fee Logic/Override.",
+      robustness: "Mittel bis hoch",
+      driverPaths: [
+        "assumptions.amazon.useManualFbaFee",
+        "assumptions.amazon.manualFbaFee",
+        "basic.netWeightG",
+        "basic.packLengthCm",
+        "basic.packWidthCm",
+        "basic.packHeightCm",
+      ],
+    },
+    {
+      label: "Amazon Lager (EUR/Unit)",
+      value: metrics.amazonStoragePerUnit,
+      explain: "Amazon-Lagerkosten aus EUR/CBM, Lagerdauer und Unit-Volumen.",
+      formula: "Amazon storage/Unit = EUR/CBM/Monat × Amazon-Monate × unit_cbm.",
+      source: "Settings/Override.",
+      robustness: "Mittel",
+      driverPaths: [
+        "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
+        "assumptions.extraCosts.avgAmazonStorageMonths",
+        "settings.costDefaults.amazonStoragePerCbmMonthEur",
+      ],
+    },
+  ]);
 }
 
 function renderSelectedOutputs(metrics) {
@@ -3486,19 +4252,26 @@ function renderSelectedOutputs(metrics) {
         label: "3PL Inbound / Einheit (EUR)",
         value: formatCurrency(metrics.threePlInboundPerUnit),
         targetSection: "advancedOpsSection",
-        explain: "3PL Wareneingang je Karton, verteilt auf Units pro Order.",
-        formula: "3PL Inbound/Unit = (Kartonanzahl × Inbound je Karton) / Units pro Order.",
-        source: "Global costDefaults + Auto-Kartonisierung oder Produkt-Override.",
+        explain: "3PL Wareneingang je Karton (sorted/mixed), verteilt auf Units pro Order.",
+        formula: "3PL Inbound/Unit = (Kartonanzahl × Receiving je Karton) / Units pro Order.",
+        source: "Globale 3PL-Settings + Auto-Kartonisierung oder Produkt-Override.",
         robustness: "Mittel.",
         impactMonthly: metrics.threePlInboundPerUnit * metrics.monthlyUnits,
         driverPaths: [
+          "derived.shipping.unitsPerOrder",
+          "derived.shipping.unitsPerCartonAuto",
+          "derived.shipping.cartonsCount",
+          "derived.threepl.inboundTotal",
           "assumptions.extraCosts.overrideLogisticsGroup",
-          "assumptions.extraCosts.threePlInboundPerCartonEur",
+          "assumptions.extraCosts.receivingMode",
+          "assumptions.extraCosts.receivingPerCartonSortedEur",
+          "assumptions.extraCosts.receivingPerCartonMixedEur",
           "basic.unitsPerOrder",
           "basic.packLengthCm",
           "basic.packWidthCm",
           "basic.packHeightCm",
-          "settings.costDefaults.threePlInboundPerCartonEur",
+          "settings.threePl.receivingPerCartonSortedEur",
+          "settings.threePl.receivingPerCartonMixedEur",
         ],
       },
       {
@@ -3506,35 +4279,95 @@ function renderSelectedOutputs(metrics) {
         value: formatCurrency(metrics.threePlStoragePerUnit),
         targetSection: "advancedOpsSection",
         explain: "3PL Lager je Palette/Monat, umgerechnet auf Unit und Lagerdauer.",
-        formula: "3PL Lager/Unit = (EUR Palette/Monat × 3PL-Monate) / Units je Palette.",
-        source: "Global costDefaults oder Produkt-Override.",
+        formula: "3PL Lager/Unit = (Paletten × EUR Palette/Monat × 3PL-Monate) / Units pro Order.",
+        source: "Globale 3PL-Settings oder Produkt-Override.",
         robustness: "Mittel bis hoch.",
         impactMonthly: metrics.threePlStoragePerUnit * metrics.monthlyUnits,
         driverPaths: [
+          "derived.shipping.unitsPerOrder",
+          "derived.threepl.palletsCount",
+          "derived.threepl.storageTotal",
           "assumptions.extraCosts.overrideLogisticsGroup",
-          "assumptions.extraCosts.threePlStoragePerPalletMonthEur",
+          "assumptions.extraCosts.storagePerPalletPerMonthEur",
           "assumptions.extraCosts.unitsPerPallet",
           "assumptions.extraCosts.avg3PlStorageMonths",
-          "settings.costDefaults.threePlStoragePerPalletMonthEur",
+          "settings.threePl.storagePerPalletPerMonthEur",
+          "settings.threePl.unitsPerPallet",
+          "settings.threePl.avgStorageMonths",
         ],
       },
       {
-        label: "3PL -> Amazon Versand / Einheit (EUR)",
-        value: formatCurrency(metrics.threePlOutboundPerUnit),
+        label: "3PL -> Amazon Service / Einheit (EUR)",
+        value: formatCurrency(metrics.threePlOutboundServicePerUnit),
         targetSection: "advancedOpsSection",
-        explain: "Outbound-Versand von 3PL zu Amazon je Karton, auf Unit verteilt.",
-        formula: "3PL Outbound/Unit = (Kartonanzahl × Outbound je Karton) / Units pro Order.",
-        source: "Global costDefaults + Auto-Kartonisierung oder Produkt-Override.",
+        explain: "3PL Outbound Services je Karton (Basis, Pick&Pack, FBA Processing, optionale Inserts/Labels).",
+        formula: "Service/Unit = (Kartonanzahl × Service je Karton) / Units pro Order.",
+        source: "Globale 3PL-Settings + Auto-Kartonisierung oder Produkt-Override.",
         robustness: "Mittel.",
-        impactMonthly: metrics.threePlOutboundPerUnit * metrics.monthlyUnits,
+        impactMonthly: metrics.threePlOutboundServicePerUnit * metrics.monthlyUnits,
         driverPaths: [
+          "derived.shipping.unitsPerOrder",
+          "derived.shipping.cartonsCount",
+          "derived.threepl.outboundServiceTotal",
           "assumptions.extraCosts.overrideLogisticsGroup",
-          "assumptions.extraCosts.threePlOutboundPerCartonEur",
+          "assumptions.extraCosts.outboundBasePerCartonEur",
+          "assumptions.extraCosts.pickPackPerCartonEur",
+          "assumptions.extraCosts.fbaProcessingPerCartonEur",
+          "assumptions.extraCosts.insertsPerCarton",
+          "assumptions.extraCosts.insertPerInsertEur",
+          "assumptions.extraCosts.labelsPerCarton",
+          "assumptions.extraCosts.thirdCountryLabelPerLabelEur",
           "basic.unitsPerOrder",
           "basic.packLengthCm",
           "basic.packWidthCm",
           "basic.packHeightCm",
-          "settings.costDefaults.threePlOutboundPerCartonEur",
+          "settings.threePl.outboundBasePerCartonEur",
+          "settings.threePl.pickPackPerCartonEur",
+          "settings.threePl.fbaProcessingPerCartonEur",
+          "settings.threePl.insertPerInsertEur",
+          "settings.threePl.thirdCountryLabelPerLabelEur",
+        ],
+      },
+      {
+        label: "3PL -> Amazon Carrier / Einheit (EUR)",
+        value: formatCurrency(metrics.threePlCarrierPerUnit),
+        targetSection: "advancedOpsSection",
+        explain: "Transportkosten vom 3PL zu Amazon je Karton, separat von Outbound-Service.",
+        formula: "Carrier/Unit = (Kartonanzahl × Carrier je Karton) / Units pro Order.",
+        source: "Globales Carrier-Setting oder Produkt-Override.",
+        robustness: "Mittel.",
+        impactMonthly: metrics.threePlCarrierPerUnit * metrics.monthlyUnits,
+        driverPaths: [
+          "derived.shipping.unitsPerOrder",
+          "derived.shipping.cartonsCount",
+          "derived.threepl.carrierTotal",
+          "assumptions.extraCosts.overrideLogisticsGroup",
+          "assumptions.extraCosts.carrierCostPerCartonEur",
+          "basic.unitsPerOrder",
+          "settings.threePl.carrierCostPerCartonEur",
+        ],
+      },
+      {
+        label: "3PL gesamt / Einheit (EUR)",
+        value: formatCurrency(metrics.threePlTotalPerUnit),
+        targetSection: "advancedOpsSection",
+        explain: "Summenzeile über Inbound, Lagerung, Outbound-Service und Carrier.",
+        formula: "3PL gesamt/Unit = Inbound + Lagerung + Service + Carrier.",
+        source: "3PL-Module zusammengeführt.",
+        robustness: "Mittel.",
+        impactMonthly: metrics.threePlTotalPerUnit * metrics.monthlyUnits,
+        driverPaths: [
+          "derived.shipping.unitsPerOrder",
+          "derived.shipping.unitsPerCartonAuto",
+          "derived.shipping.cartonsCount",
+          "derived.threepl.inboundTotal",
+          "derived.threepl.storageTotal",
+          "derived.threepl.outboundServiceTotal",
+          "derived.threepl.carrierTotal",
+          "assumptions.extraCosts.receivingMode",
+          "assumptions.extraCosts.storagePerPalletPerMonthEur",
+          "assumptions.extraCosts.outboundBasePerCartonEur",
+          "assumptions.extraCosts.carrierCostPerCartonEur",
         ],
       },
       {
@@ -3961,7 +4794,7 @@ function syncControlStates(product) {
   });
 
   const logisticsOverride = Boolean(getByPath(product, "assumptions.extraCosts.overrideLogisticsGroup"));
-  document.querySelectorAll('[data-path^="assumptions.extraCosts.docsPerOrderEur"], [data-path^="assumptions.extraCosts.freightPapersPerOrderEur"], [data-path^="assumptions.extraCosts.threePlInboundPerCartonEur"], [data-path^="assumptions.extraCosts.threePlStoragePerPalletMonthEur"], [data-path^="assumptions.extraCosts.threePlOutboundPerCartonEur"], [data-path^="assumptions.extraCosts.unitsPerPallet"], [data-path^="assumptions.extraCosts.avg3PlStorageMonths"], [data-path^="assumptions.extraCosts.amazonStoragePerCbmMonthEur"], [data-path^="assumptions.extraCosts.avgAmazonStorageMonths"]').forEach((field) => {
+  document.querySelectorAll('[data-path^="assumptions.extraCosts.docsPerOrderEur"], [data-path^="assumptions.extraCosts.freightPapersPerOrderEur"], [data-path^="assumptions.extraCosts.receivingMode"], [data-path^="assumptions.extraCosts.receivingPerCartonSortedEur"], [data-path^="assumptions.extraCosts.receivingPerCartonMixedEur"], [data-path^="assumptions.extraCosts.storagePerPalletPerMonthEur"], [data-path^="assumptions.extraCosts.unitsPerPallet"], [data-path^="assumptions.extraCosts.avg3PlStorageMonths"], [data-path^="assumptions.extraCosts.outboundBasePerCartonEur"], [data-path^="assumptions.extraCosts.pickPackPerCartonEur"], [data-path^="assumptions.extraCosts.fbaProcessingPerCartonEur"], [data-path^="assumptions.extraCosts.insertsPerCarton"], [data-path^="assumptions.extraCosts.insertPerInsertEur"], [data-path^="assumptions.extraCosts.labelsPerCarton"], [data-path^="assumptions.extraCosts.thirdCountryLabelPerLabelEur"], [data-path^="assumptions.extraCosts.carrierCostPerCartonEur"], [data-path^="assumptions.extraCosts.amazonStoragePerCbmMonthEur"], [data-path^="assumptions.extraCosts.avgAmazonStorageMonths"]').forEach((field) => {
     field.disabled = !logisticsOverride;
   });
 
@@ -3987,6 +4820,11 @@ function openAdvancedSection(sectionId) {
   const section = document.getElementById(sectionId);
   if (!section) {
     return;
+  }
+
+  const details = section.tagName.toLowerCase() === "details" ? section : section.closest("details");
+  if (details instanceof HTMLDetailsElement) {
+    details.open = true;
   }
 
   if (sectionId.startsWith("settings")) {
@@ -4029,14 +4867,40 @@ function inferAdvancedSectionFromPath(path) {
     return "advancedOpsSection";
   }
   if (path.startsWith("settings.")) {
+    if (path.startsWith("settings.tax.")) {
+      return "settingsTaxSection";
+    }
     if (path.startsWith("settings.shipping12m.")) {
       return "settingsShippingSection";
     }
     if (path.startsWith("settings.cartonRules.")) {
       return "settingsCartonSection";
     }
+    if (path.startsWith("settings.threePl.receiving")) {
+      return "settings3plReceivingSection";
+    }
+    if (path.startsWith("settings.threePl.storage") || path.startsWith("settings.threePl.unitsPerPallet") || path.startsWith("settings.threePl.avgStorageMonths")) {
+      return "settings3plStorageSection";
+    }
+    if (
+      path.startsWith("settings.threePl.outbound") ||
+      path.startsWith("settings.threePl.pickPack") ||
+      path.startsWith("settings.threePl.fbaProcessing") ||
+      path.startsWith("settings.threePl.insert") ||
+      path.startsWith("settings.threePl.thirdCountryLabel") ||
+      path.startsWith("settings.threePl.insertsPerCartonDefault") ||
+      path.startsWith("settings.threePl.labelsPerCartonDefault")
+    ) {
+      return "settings3plOutboundSection";
+    }
+    if (path.startsWith("settings.threePl.carrierCostPerCartonEur")) {
+      return "settings3plCarrierSection";
+    }
+    if (path.startsWith("settings.threePl.shelf")) {
+      return "settings3plStorageSection";
+    }
     if (path.startsWith("settings.costDefaults.")) {
-      return "settingsCostDefaultsSection";
+      return "settingsChainDefaultsSection";
     }
     if (path.startsWith("settings.lifecycle.")) {
       return "settingsLifecycleSection";
@@ -4336,6 +5200,9 @@ function updateSettingsField(path, rawValue) {
   }
 
   sanitizeSettings(state.settings);
+  if (path === "tax.fallbackUsdToEur" && state.fx.source.startsWith("Fallback")) {
+    state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
+  }
   saveSettings();
 }
 
@@ -4524,6 +5391,8 @@ function applyMouseoverHelp() {
     const impact = metrics ? classifyImpact(impactMonthlyFromPath(fullPath, metrics), metrics.totalCostMonthly) : null;
     const robustnessWord = path.startsWith("shipping12m.")
       ? "mittel"
+      : path.startsWith("threePl.")
+        ? "mittel"
       : path.startsWith("categoryDefaults.")
         ? "mittel"
         : "hoch";
@@ -4781,6 +5650,10 @@ function init() {
     if (window.location.hash) {
       const target = document.querySelector(window.location.hash);
       if (target instanceof HTMLElement) {
+        const details = target.tagName.toLowerCase() === "details" ? target : target.closest("details");
+        if (details instanceof HTMLDetailsElement) {
+          details.open = true;
+        }
         target.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }

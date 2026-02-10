@@ -560,6 +560,45 @@ select:disabled {
   text-decoration: none;
 }
 
+.settings-accordion {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-section {
+  border: 1px solid color-mix(in srgb, var(--line) 68%, white);
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+}
+
+.settings-section summary {
+  list-style: none;
+  cursor: pointer;
+  display: grid;
+  gap: 2px;
+}
+
+.settings-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-section summary span {
+  font-size: 0.83rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.settings-section summary small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.settings-section[open] summary {
+  margin-bottom: 8px;
+}
+
 .hidden {
   display: none;
 }
@@ -857,6 +896,8 @@ select:disabled {
   border-radius: 10px;
   background: #fcfcfa;
   padding: 8px;
+  display: grid;
+  gap: 6px;
 }
 
 .chain-grid h4 {
@@ -864,11 +905,48 @@ select:disabled {
   font-size: 0.74rem;
 }
 
-.chain-grid p {
-  margin: 0;
+.chain-chip-list {
+  display: grid;
+  gap: 6px;
+}
+
+.chain-chip {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 9px;
+  background: #fff;
+  text-align: left;
+  padding: 7px;
+  display: grid;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.chain-chip span {
   color: var(--muted);
-  font-size: 0.71rem;
+  font-size: 0.68rem;
   font-weight: 700;
+}
+
+.chain-chip strong {
+  font-size: 0.78rem;
+  color: var(--text);
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.chain-chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 46%, white);
+}
+
+.chain-chip.impact-high {
+  background: color-mix(in srgb, #fff2ef 80%, white);
+}
+
+.chain-chip.impact-medium {
+  background: color-mix(in srgb, #fff8eb 83%, white);
+}
+
+.chain-chip.impact-low {
+  background: color-mix(in srgb, #f1faf6 86%, white);
 }
 
 .block-grid {
@@ -1116,6 +1194,30 @@ tbody tr:hover {
   gap: 9px;
 }
 
+.modal-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.modal-summary-card {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fcfcfa;
+  padding: 9px;
+  display: grid;
+  gap: 6px;
+}
+
+.modal-summary-card strong {
+  font-size: 0.78rem;
+}
+
+.modal-summary-card small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
 .modal-field {
   border: 1px solid color-mix(in srgb, var(--line) 66%, white);
   border-radius: 10px;
@@ -1134,6 +1236,69 @@ tbody tr:hover {
 
 .modal-field strong {
   font-size: 0.78rem;
+}
+
+.modal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modal-badge {
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 2px 7px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.modal-badge.info {
+  color: #35586f;
+  background: #f5f9fc;
+  border-color: #d8e5ef;
+}
+
+.modal-badge.primary {
+  color: #355a53;
+  background: #f5f9f7;
+  border-color: #d5e4df;
+}
+
+.modal-badge.ok {
+  color: #3e665a;
+  background: #f6faf8;
+  border-color: #d8e8e1;
+}
+
+.modal-badge.warn {
+  color: #7d6736;
+  background: #fdfaf3;
+  border-color: #ece2c8;
+}
+
+.modal-badge.neutral {
+  color: #666e7d;
+  background: #f7f8fa;
+  border-color: #e0e3e9;
+}
+
+.modal-badge.impact-high {
+  color: #85524b;
+  background: #fcf6f5;
+  border-color: #ecd9d5;
+}
+
+.modal-badge.impact-medium {
+  color: #7b6a45;
+  background: #fdfaf5;
+  border-color: #ece3d2;
+}
+
+.modal-badge.impact-low {
+  color: #4d6a61;
+  background: #f6faf8;
+  border-color: #dce9e4;
 }
 
 .modal-field small {
@@ -1234,6 +1399,10 @@ tbody tr:hover {
   }
 
   .chain-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-summary-grid {
     grid-template-columns: 1fr;
   }
 

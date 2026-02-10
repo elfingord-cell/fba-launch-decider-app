@@ -21,7 +21,7 @@
         <div>
           <p class="eyebrow">Amazon FBA 80/20 Modell</p>
           <h1>Globale Settings</h1>
-          <p>Diese Werte gelten für alle Produkte und werden getrennt von der Produktbearbeitung gepflegt.</p>
+          <p>Alle Defaults getrennt von der Produktbearbeitung. Änderungen wirken auf alle Produkte.</p>
         </div>
         <div class="meta-grid">
           <article>
@@ -53,44 +53,49 @@
           <section class="card settings-card" id="settingsPanel">
             <div class="section-head">
               <div>
-                <h2>Globale Settings</h2>
-                <p>Shipping, Kartonregeln, Kategorie-Defaults sowie Lifecycle/Launch-Profile.</p>
+                <h2>Settings entlang der Kette</h2>
+                <p>Alle Bereiche sind standardmäßig zugeklappt.</p>
               </div>
             </div>
 
-            <div class="advanced-grid">
-              <section id="settingsShippingSection">
-                <h3>Shipping 12M-Ø</h3>
+            <div class="settings-accordion">
+              <details id="settingsTaxSection" class="settings-section">
+                <summary>
+                  <span>A) Währung & Steuerlogik</span>
+                  <small>FX-Fallback und MwSt-Sätze je Marketplace</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
                 <div class="admin-grid">
-                  <label>
-                    LCL Rate (EUR/CBM, 12M-Ø)
-                    <input data-settings-path="shipping12m.lclRateEurPerCbm" type="number" min="0" step="0.1" />
-                  </label>
-                  <label>
-                    Origin fixed (EUR/Shipment)
-                    <input data-settings-path="shipping12m.originFixedEurPerShipment" type="number" min="0" step="0.1" />
-                  </label>
-                  <label>
-                    Destination fixed (EUR/Shipment)
-                    <input data-settings-path="shipping12m.destinationFixedEurPerShipment" type="number" min="0" step="0.1" />
-                  </label>
-                  <label>
-                    DE On-Carriage fixed (EUR/Shipment)
-                    <input data-settings-path="shipping12m.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" />
-                  </label>
-                  <label class="toggle-row">
-                    <input data-settings-path="shipping12m.customsBrokerEnabled" type="checkbox" />
-                    <span>Customs Broker berücksichtigen</span>
-                  </label>
-                  <label>
-                    Customs Broker fixed (EUR/Shipment)
-                    <input data-settings-path="shipping12m.customsBrokerFixedEurPerShipment" type="number" min="0" step="0.1" />
-                  </label>
+                  <label>Fallback USD -> EUR<input data-settings-path="tax.fallbackUsdToEur" type="number" min="0.2" max="2" step="0.0001" /></label>
+                  <label>MwSt DE (%)<input data-settings-path="tax.vatRates.DE" type="number" min="0" max="30" step="0.1" /></label>
+                  <label>MwSt FR (%)<input data-settings-path="tax.vatRates.FR" type="number" min="0" max="30" step="0.1" /></label>
+                  <label>MwSt IT (%)<input data-settings-path="tax.vatRates.IT" type="number" min="0" max="30" step="0.1" /></label>
+                  <label>MwSt ES (%)<input data-settings-path="tax.vatRates.ES" type="number" min="0" max="30" step="0.1" /></label>
                 </div>
-              </section>
+              </details>
 
-              <section id="settingsCartonSection">
-                <h3>Amazon Kartonregeln</h3>
+              <details id="settingsShippingSection" class="settings-section">
+                <summary>
+                  <span>B) China -> DE Shipping (12M-Ø)</span>
+                  <small>Door-to-door Richtwert, kein Live-Tarif</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <div class="admin-grid">
+                  <label>LCL Rate (EUR/CBM)<input data-settings-path="shipping12m.lclRateEurPerCbm" type="number" min="0" step="0.1" /></label>
+                  <label>Origin fixed (EUR/Shipment)<input data-settings-path="shipping12m.originFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Destination fixed (EUR/Shipment)<input data-settings-path="shipping12m.destinationFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>DE On-Carriage fixed (EUR/Shipment)<input data-settings-path="shipping12m.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label class="toggle-row"><input data-settings-path="shipping12m.customsBrokerEnabled" type="checkbox" /><span>Customs Broker berücksichtigen</span></label>
+                  <label>Customs Broker fixed (EUR/Shipment)<input data-settings-path="shipping12m.customsBrokerFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                </div>
+              </details>
+
+              <details id="settingsCartonSection" class="settings-section">
+                <summary>
+                  <span>C) Kartonisierung (Amazon Kartonlimits)</span>
+                  <small>Grenzwerte und Packfaktor für Auto-Kartonisierung</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
                 <div class="admin-grid">
                   <label>
                     Amazon-Kartonprofil
@@ -100,41 +105,87 @@
                       <option value="custom">Custom</option>
                     </select>
                   </label>
-                  <label>
-                    Karton max Länge (cm)
-                    <input data-settings-path="cartonRules.maxLengthCm" type="number" min="1" step="0.1" />
-                  </label>
-                  <label>
-                    Karton max Breite (cm)
-                    <input data-settings-path="cartonRules.maxWidthCm" type="number" min="1" step="0.1" />
-                  </label>
-                  <label>
-                    Karton max Höhe (cm)
-                    <input data-settings-path="cartonRules.maxHeightCm" type="number" min="1" step="0.1" />
-                  </label>
-                  <label>
-                    Karton max Gewicht (kg)
-                    <input data-settings-path="cartonRules.maxWeightKg" type="number" min="1" step="0.1" />
-                  </label>
-                  <label>
-                    Packfaktor (0-1)
-                    <input data-settings-path="cartonRules.packFactor" type="number" min="0.5" max="0.99" step="0.01" />
-                  </label>
+                  <label>Karton max Länge (cm)<input data-settings-path="cartonRules.maxLengthCm" type="number" min="1" step="0.1" /></label>
+                  <label>Karton max Breite (cm)<input data-settings-path="cartonRules.maxWidthCm" type="number" min="1" step="0.1" /></label>
+                  <label>Karton max Höhe (cm)<input data-settings-path="cartonRules.maxHeightCm" type="number" min="1" step="0.1" /></label>
+                  <label>Karton max Gewicht (kg)<input data-settings-path="cartonRules.maxWeightKg" type="number" min="1" step="0.1" /></label>
+                  <label>Packfaktor<input data-settings-path="cartonRules.packFactor" type="number" min="0.5" max="0.99" step="0.01" /></label>
                 </div>
-              </section>
+              </details>
 
-              <section id="settingsCategorySection">
-                <h3>Kategorie-Defaults</h3>
-                <div id="categoryDefaultsAdmin" class="admin-category-grid"></div>
-              </section>
-
-              <section id="settingsLifecycleSection">
-                <h3>Lifecycle, Listing & Launch-Boost</h3>
+              <details id="settings3plReceivingSection" class="settings-section">
+                <summary>
+                  <span>D) 3PL Deutschland: Wareneingang (Receiving)</span>
+                  <small>Receiving je Karton</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
                 <div class="admin-grid">
-                  <label>
-                    Lifecycle-Horizont (Monate)
-                    <input data-settings-path="lifecycle.defaultMonths" type="number" min="1" step="1" />
-                  </label>
+                  <label>Receiving sorted (EUR/Karton)<input data-settings-path="threePl.receivingPerCartonSortedEur" type="number" min="0" step="0.01" /></label>
+                  <label>Receiving mixed (EUR/Karton)<input data-settings-path="threePl.receivingPerCartonMixedEur" type="number" min="0" step="0.01" /></label>
+                </div>
+              </details>
+
+              <details id="settings3plStorageSection" class="settings-section">
+                <summary>
+                  <span>E) 3PL Deutschland: Lagerung (Storage)</span>
+                  <small>Palettenbasiert, umgerechnet auf EUR/Unit</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <div class="admin-grid">
+                  <label>Lagerung (EUR/Palette/Monat)<input data-settings-path="threePl.storagePerPalletPerMonthEur" type="number" min="0" step="0.01" /></label>
+                  <label>Units je Palette<input data-settings-path="threePl.unitsPerPallet" type="number" min="1" step="1" /></label>
+                  <label>Ø 3PL Lagerdauer (Monate)<input data-settings-path="threePl.avgStorageMonths" type="number" min="0" step="0.1" /></label>
+                  <label>Regalplatz M (Info, EUR/Monat)<input data-settings-path="threePl.shelfMPerMonthEur" type="number" min="0" step="0.01" /></label>
+                  <label>Regalplatz L (Info, EUR/Monat)<input data-settings-path="threePl.shelfLPerMonthEur" type="number" min="0" step="0.01" /></label>
+                </div>
+              </details>
+
+              <details id="settings3plOutboundSection" class="settings-section">
+                <summary>
+                  <span>F) 3PL Deutschland: Warenausgang (Outbound Services)</span>
+                  <small>Servicekosten je Karton</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Validation, Deep-Dive</p>
+                <div class="admin-grid">
+                  <label>Outbound base (EUR/Karton)<input data-settings-path="threePl.outboundBasePerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>Pick & Pack (EUR/Karton)<input data-settings-path="threePl.pickPackPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>FBA Processing (EUR/Karton)<input data-settings-path="threePl.fbaProcessingPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>Insert je Insert (EUR)<input data-settings-path="threePl.insertPerInsertEur" type="number" min="0" step="0.01" /></label>
+                  <label>Drittland-Label je Label (EUR)<input data-settings-path="threePl.thirdCountryLabelPerLabelEur" type="number" min="0" step="0.01" /></label>
+                  <label>Default Inserts je Karton<input data-settings-path="threePl.insertsPerCartonDefault" type="number" min="0" step="1" /></label>
+                  <label>Default Labels je Karton<input data-settings-path="threePl.labelsPerCartonDefault" type="number" min="0" step="1" /></label>
+                </div>
+              </details>
+
+              <details id="settings3plCarrierSection" class="settings-section">
+                <summary>
+                  <span>G) Carrier: 3PL -> Amazon (Transport je Karton)</span>
+                  <small>Separat von 3PL-Servicekosten</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <div class="admin-grid">
+                  <label>Carrier-Kosten (EUR/Karton)<input data-settings-path="threePl.carrierCostPerCartonEur" type="number" min="0" step="0.01" /></label>
+                </div>
+                <p class="hint">Richtwert: mit echten DHL-/Carrier-Kosten überschreiben.</p>
+              </details>
+
+              <details id="settingsCategorySection" class="settings-section">
+                <summary>
+                  <span>H) Kategorie-Defaults</span>
+                  <small>TACoS, Retouren, Referral, Zielmarge</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <div id="categoryDefaultsAdmin" class="admin-category-grid"></div>
+              </details>
+
+              <details id="settingsLifecycleSection" class="settings-section">
+                <summary>
+                  <span>I) Listing & Launch</span>
+                  <small>Lifecycle 36M, Listing-Pakete, Launch-Profile</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <div class="admin-grid">
+                  <label>Lifecycle-Horizont (Monate)<input data-settings-path="lifecycle.defaultMonths" type="number" min="1" step="1" /></label>
                 </div>
 
                 <h4>Listing-Paket: KI</h4>
@@ -181,20 +232,19 @@
                   <label>TACoS End-Boost (%)<input data-settings-path="lifecycle.launchProfiles.high.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
                   <label>Preis-Start-Rabatt (%)<input data-settings-path="lifecycle.launchProfiles.high.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
                 </div>
-              </section>
+              </details>
 
-              <section id="settingsCostDefaultsSection">
-                <h3>Kosten-Defaults entlang der Kette</h3>
+              <details id="settingsChainDefaultsSection" class="settings-section">
+                <summary>
+                  <span>J) Weitere Kosten-Defaults entlang der Kette</span>
+                  <small>Packaging, Dokumente, Launch-Operations, One-Offs</small>
+                </summary>
+                <p class="hint">Wird genutzt in: Validation, Deep-Dive</p>
                 <div class="admin-grid">
                   <label>Verpackung pro Unit (EUR)<input data-settings-path="costDefaults.packagingPerUnitEur" type="number" min="0" step="0.01" /></label>
                   <label>Weitere Kosten pro Unit (EUR)<input data-settings-path="costDefaults.otherUnitCostEur" type="number" min="0" step="0.01" /></label>
                   <label>Dokumentation pro Order (EUR)<input data-settings-path="costDefaults.docsPerOrderEur" type="number" min="0" step="0.1" /></label>
                   <label>Frachtpapiere pro Order (EUR)<input data-settings-path="costDefaults.freightPapersPerOrderEur" type="number" min="0" step="0.1" /></label>
-                  <label>3PL Inbound je Karton (EUR)<input data-settings-path="costDefaults.threePlInboundPerCartonEur" type="number" min="0" step="0.01" /></label>
-                  <label>3PL Lager je Palette/Monat (EUR)<input data-settings-path="costDefaults.threePlStoragePerPalletMonthEur" type="number" min="0" step="0.1" /></label>
-                  <label>3PL -> Amazon je Karton (EUR)<input data-settings-path="costDefaults.threePlOutboundPerCartonEur" type="number" min="0" step="0.01" /></label>
-                  <label>Units je Palette<input data-settings-path="costDefaults.unitsPerPallet" type="number" min="1" step="1" /></label>
-                  <label>Ø 3PL Lagerdauer (Monate)<input data-settings-path="costDefaults.avg3PlStorageMonths" type="number" min="0" step="0.1" /></label>
                   <label>Amazon Lager je CBM/Monat (EUR)<input data-settings-path="costDefaults.amazonStoragePerCbmMonthEur" type="number" min="0" step="0.1" /></label>
                   <label>Ø Amazon Lagerdauer (Monate)<input data-settings-path="costDefaults.avgAmazonStorageMonths" type="number" min="0" step="0.1" /></label>
                   <label>Grußkarte pro Launch-Unit (EUR)<input data-settings-path="costDefaults.greetingCardPerLaunchUnitEur" type="number" min="0" step="0.01" /></label>
@@ -203,7 +253,7 @@
                   <label>Zertifikate je Produkt (EUR)<input data-settings-path="costDefaults.certificatesPerProductEur" type="number" min="0" step="0.1" /></label>
                   <label>Inspection in China (EUR)<input data-settings-path="costDefaults.inspectionPerProductEur" type="number" min="0" step="0.1" /></label>
                 </div>
-              </section>
+              </details>
             </div>
           </section>
         </section>

@@ -478,11 +478,20 @@
                 <div class="admin-grid">
                   <label>Dokumentation pro Order (EUR)<input data-path="assumptions.extraCosts.docsPerOrderEur" type="number" min="0" step="0.1" /></label>
                   <label>Frachtpapiere pro Order (EUR)<input data-path="assumptions.extraCosts.freightPapersPerOrderEur" type="number" min="0" step="0.1" /></label>
-                  <label>3PL Inbound je Karton (EUR)<input data-path="assumptions.extraCosts.threePlInboundPerCartonEur" type="number" min="0" step="0.01" /></label>
-                  <label>3PL Lager je Palette/Monat (EUR)<input data-path="assumptions.extraCosts.threePlStoragePerPalletMonthEur" type="number" min="0" step="0.1" /></label>
-                  <label>3PL -> Amazon je Karton (EUR)<input data-path="assumptions.extraCosts.threePlOutboundPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>Receiving-Modus<select data-path="assumptions.extraCosts.receivingMode"><option value="sorted">sorted</option><option value="mixed">mixed</option></select></label>
+                  <label>3PL Receiving sorted je Karton (EUR)<input data-path="assumptions.extraCosts.receivingPerCartonSortedEur" type="number" min="0" step="0.01" /></label>
+                  <label>3PL Receiving mixed je Karton (EUR)<input data-path="assumptions.extraCosts.receivingPerCartonMixedEur" type="number" min="0" step="0.01" /></label>
+                  <label>3PL Lager je Palette/Monat (EUR)<input data-path="assumptions.extraCosts.storagePerPalletPerMonthEur" type="number" min="0" step="0.1" /></label>
                   <label>Units je Palette<input data-path="assumptions.extraCosts.unitsPerPallet" type="number" min="1" step="1" /></label>
                   <label>Ø 3PL Lagerdauer (Monate)<input data-path="assumptions.extraCosts.avg3PlStorageMonths" type="number" min="0" step="0.1" /></label>
+                  <label>Outbound base je Karton (EUR)<input data-path="assumptions.extraCosts.outboundBasePerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>Pick & Pack je Karton (EUR)<input data-path="assumptions.extraCosts.pickPackPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>FBA Processing je Karton (EUR)<input data-path="assumptions.extraCosts.fbaProcessingPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>Inserts je Karton<input data-path="assumptions.extraCosts.insertsPerCarton" type="number" min="0" step="1" /></label>
+                  <label>Insert je Insert (EUR)<input data-path="assumptions.extraCosts.insertPerInsertEur" type="number" min="0" step="0.01" /></label>
+                  <label>Labels je Karton<input data-path="assumptions.extraCosts.labelsPerCarton" type="number" min="0" step="1" /></label>
+                  <label>Drittland-Label je Label (EUR)<input data-path="assumptions.extraCosts.thirdCountryLabelPerLabelEur" type="number" min="0" step="0.01" /></label>
+                  <label>Carrier 3PL -> Amazon je Karton (EUR)<input data-path="assumptions.extraCosts.carrierCostPerCartonEur" type="number" min="0" step="0.01" /></label>
                   <label>Amazon Lager je CBM/Monat (EUR)<input data-path="assumptions.extraCosts.amazonStoragePerCbmMonthEur" type="number" min="0" step="0.1" /></label>
                   <label>Ø Amazon Lagerdauer (Monate)<input data-path="assumptions.extraCosts.avgAmazonStorageMonths" type="number" min="0" step="0.1" /></label>
                 </div>
@@ -548,23 +557,23 @@
               <div class="chain-grid">
                 <article>
                   <h4>Lieferant</h4>
-                  <p id="chainSupplierCost">-</p>
+                  <div id="chainSupplierChips" class="chain-chip-list"></div>
                 </article>
                 <article>
                   <h4>Shipping zu 3PL</h4>
-                  <p id="chainImportCost">-</p>
+                  <div id="chainImportChips" class="chain-chip-list"></div>
                 </article>
                 <article>
                   <h4>3PL</h4>
-                  <p id="chainThreePlCost">-</p>
+                  <div id="chainThreePlChips" class="chain-chip-list"></div>
                 </article>
                 <article>
                   <h4>Versand zu Amazon</h4>
-                  <p id="chainInboundCost">-</p>
+                  <div id="chainInboundChips" class="chain-chip-list"></div>
                 </article>
                 <article>
                   <h4>Amazon</h4>
-                  <p id="chainAmazonCost">-</p>
+                  <div id="chainAmazonChips" class="chain-chip-list"></div>
                 </article>
               </div>
             </section>
