@@ -91,24 +91,36 @@
                   <small>Door-to-door Richtwert, kein Live-Tarif</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <p class="hint">Rail-Startwerte basieren auf einer realen Forto-Sendung (Jan 2026) und sind als 12M-Richtwert jederzeit überschreibbar.</p>
                 <h4 id="settingsShippingSeaMode">Sea LCL (12M-Ø)</h4>
                 <div class="admin-grid">
-                  <label>Rate (EUR/CBM)<input data-settings-path="shipping12m.modes.sea_lcl.rateEurPerCbm" type="number" min="0" step="0.1" /></label>
-                  <label>Origin fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.sea_lcl.originFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
-                  <label>Destination fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.sea_lcl.destinationFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
-                  <label>DE On-Carriage fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Hauptlauf variabel (EUR/CBM)<input data-settings-path="shipping12m.modes.sea_lcl.rateEurPerCbm" type="number" min="0" step="0.1" /></label>
+                  <label>Vorlauf fix (EUR/Shipment)<input data-settings-path="shipping12m.modes.sea_lcl.originFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Hauptlauf fix (EUR/Shipment)<input data-settings-path="shipping12m.modes.sea_lcl.destinationFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Nachlauf fix (EUR/Shipment)<input data-settings-path="shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
                 </div>
                 <h4 id="settingsShippingRailMode">Rail (12M-Ø)</h4>
                 <div class="admin-grid">
-                  <label>Rate (EUR/CBM)<input data-settings-path="shipping12m.modes.rail.rateEurPerCbm" type="number" min="0" step="0.1" /></label>
-                  <label>Origin fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.originFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
-                  <label>Destination fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.destinationFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
-                  <label>DE On-Carriage fixed (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Hauptlauf variabel (EUR/CBM)<input data-settings-path="shipping12m.modes.rail.rateEurPerCbm" type="number" min="0" step="0.1" /></label>
+                  <label>Vorlauf fix (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.originFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Hauptlauf fix (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.mainRunFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label>Nachlauf fix (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
                 </div>
                 <h4>Gemeinsam</h4>
                 <div class="admin-grid">
-                  <label class="toggle-row"><input data-settings-path="shipping12m.customsBrokerEnabled" type="checkbox" /><span>Customs Broker berücksichtigen</span></label>
-                  <label>Customs Broker fixed (EUR/Shipment)<input data-settings-path="shipping12m.customsBrokerFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                  <label class="toggle-row"><input data-settings-path="shipping12m.customsBrokerEnabled" type="checkbox" /><span>Zollabfertigung berücksichtigen</span></label>
+                  <label>Zollabfertigung fix (EUR/Shipment)<input data-settings-path="shipping12m.customsBrokerFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
+                </div>
+                <h4>Versicherung</h4>
+                <div class="admin-grid">
+                  <label class="toggle-row"><input data-settings-path="shipping12m.insurance.enabled" type="checkbox" /><span>Transportversicherung berücksichtigen</span></label>
+                  <label>
+                    Versicherungsbasis
+                    <select data-settings-path="shipping12m.insurance.basis">
+                      <option value="goods_value_eur">Nur Warenwert (EUR)</option>
+                    </select>
+                  </label>
+                  <label>Versicherungssatz (%)<input data-settings-path="shipping12m.insurance.ratePct" type="number" min="0" step="0.001" /></label>
                 </div>
               </details>
 
