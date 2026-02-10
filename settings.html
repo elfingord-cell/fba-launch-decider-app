@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amazon FBA 80/20 Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="settings">
+    <div class="blob blob-a"></div>
+    <div class="blob blob-b"></div>
+
+    <main class="shell">
+      <header class="card hero">
+        <div>
+          <p class="eyebrow">Amazon FBA 80/20 Modell</p>
+          <h1>Globale Settings</h1>
+          <p>Diese Werte gelten für alle Produkte und werden getrennt von der Produktbearbeitung gepflegt.</p>
+        </div>
+        <div class="meta-grid">
+          <article>
+            <span>Bereich</span>
+            <strong>Settings</strong>
+          </article>
+          <article>
+            <span>Wirkung</span>
+            <strong>Global</strong>
+          </article>
+          <article>
+            <span>Speicher</span>
+            <strong>lokal</strong>
+          </article>
+        </div>
+      </header>
+
+      <section class="layout">
+        <aside class="card sidebar">
+          <div class="sidebar-head">
+            <h2>Navigation</h2>
+          </div>
+          <div class="sidebar-actions">
+            <a href="index.html" class="btn btn-primary settings-link">Zur Produktseite</a>
+          </div>
+        </aside>
+
+        <section class="main-column">
+          <section class="card settings-card" id="settingsPanel">
+            <div class="section-head">
+              <div>
+                <h2>Globale Settings</h2>
+                <p>Shipping, Kartonregeln, Kategorie-Defaults sowie Lifecycle/Launch-Profile.</p>
+              </div>
+            </div>
+
+            <div class="advanced-grid">
+              <section id="settingsShippingSection">
+                <h3>Shipping 12M-Ø</h3>
+                <div class="admin-grid">
+                  <label>
+                    LCL Rate (EUR/CBM, 12M-Ø)
+                    <input data-settings-path="shipping12m.lclRateEurPerCbm" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Origin fixed (EUR/Shipment)
+                    <input data-settings-path="shipping12m.originFixedEurPerShipment" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Destination fixed (EUR/Shipment)
+                    <input data-settings-path="shipping12m.destinationFixedEurPerShipment" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    DE On-Carriage fixed (EUR/Shipment)
+                    <input data-settings-path="shipping12m.deOncarriageFixedEurPerShipment" type="number" min="0" step="0.1" />
+                  </label>
+                  <label class="toggle-row">
+                    <input data-settings-path="shipping12m.customsBrokerEnabled" type="checkbox" />
+                    <span>Customs Broker berücksichtigen</span>
+                  </label>
+                  <label>
+                    Customs Broker fixed (EUR/Shipment)
+                    <input data-settings-path="shipping12m.customsBrokerFixedEurPerShipment" type="number" min="0" step="0.1" />
+                  </label>
+                </div>
+              </section>
+
+              <section id="settingsCartonSection">
+                <h3>Amazon Kartonregeln</h3>
+                <div class="admin-grid">
+                  <label>
+                    Amazon-Kartonprofil
+                    <select id="cartonPresetSelect">
+                      <option value="legacy">Standard (63,5cm / 23kg)</option>
+                      <option value="update_2025">Update 20.06.2025 (91,4/63,5/63,5 / 22,7kg)</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </label>
+                  <label>
+                    Karton max Länge (cm)
+                    <input data-settings-path="cartonRules.maxLengthCm" type="number" min="1" step="0.1" />
+                  </label>
+                  <label>
+                    Karton max Breite (cm)
+                    <input data-settings-path="cartonRules.maxWidthCm" type="number" min="1" step="0.1" />
+                  </label>
+                  <label>
+                    Karton max Höhe (cm)
+                    <input data-settings-path="cartonRules.maxHeightCm" type="number" min="1" step="0.1" />
+                  </label>
+                  <label>
+                    Karton max Gewicht (kg)
+                    <input data-settings-path="cartonRules.maxWeightKg" type="number" min="1" step="0.1" />
+                  </label>
+                  <label>
+                    Packfaktor (0-1)
+                    <input data-settings-path="cartonRules.packFactor" type="number" min="0.5" max="0.99" step="0.01" />
+                  </label>
+                </div>
+              </section>
+
+              <section id="settingsCategorySection">
+                <h3>Kategorie-Defaults</h3>
+                <div id="categoryDefaultsAdmin" class="admin-category-grid"></div>
+              </section>
+
+              <section id="settingsLifecycleSection">
+                <h3>Lifecycle, Listing & Launch-Boost</h3>
+                <div class="admin-grid">
+                  <label>
+                    Lifecycle-Horizont (Monate)
+                    <input data-settings-path="lifecycle.defaultMonths" type="number" min="1" step="1" />
+                  </label>
+                </div>
+
+                <h4>Listing-Paket: KI</h4>
+                <div class="admin-grid">
+                  <label>Listing-Erstellung (EUR)<input data-settings-path="lifecycle.listingPackages.ai.listingCreationEur" type="number" min="0" step="0.1" /></label>
+                  <label>Bilder & Infografiken (EUR)<input data-settings-path="lifecycle.listingPackages.ai.imagesInfographicsEur" type="number" min="0" step="0.1" /></label>
+                  <label>A+ Content (EUR)<input data-settings-path="lifecycle.listingPackages.ai.aPlusContentEur" type="number" min="0" step="0.1" /></label>
+                </div>
+
+                <h4>Listing-Paket: Fotograf</h4>
+                <div class="admin-grid">
+                  <label>Listing-Erstellung (EUR)<input data-settings-path="lifecycle.listingPackages.photographer.listingCreationEur" type="number" min="0" step="0.1" /></label>
+                  <label>Bilder & Infografiken (EUR)<input data-settings-path="lifecycle.listingPackages.photographer.imagesInfographicsEur" type="number" min="0" step="0.1" /></label>
+                  <label>A+ Content (EUR)<input data-settings-path="lifecycle.listingPackages.photographer.aPlusContentEur" type="number" min="0" step="0.1" /></label>
+                </div>
+
+                <h4>Listing-Paket: Visual Advantage</h4>
+                <div class="admin-grid">
+                  <label>Listing-Erstellung (EUR)<input data-settings-path="lifecycle.listingPackages.visual_advantage.listingCreationEur" type="number" min="0" step="0.1" /></label>
+                  <label>Bilder & Infografiken (EUR)<input data-settings-path="lifecycle.listingPackages.visual_advantage.imagesInfographicsEur" type="number" min="0" step="0.1" /></label>
+                  <label>A+ Content (EUR)<input data-settings-path="lifecycle.listingPackages.visual_advantage.aPlusContentEur" type="number" min="0" step="0.1" /></label>
+                </div>
+
+                <h4>Launch-Profil: Low</h4>
+                <div class="admin-grid">
+                  <label>Wochen<input data-settings-path="lifecycle.launchProfiles.low.weeks" type="number" min="1" step="1" /></label>
+                  <label>TACoS Start-Boost (%)<input data-settings-path="lifecycle.launchProfiles.low.startTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                  <label>TACoS End-Boost (%)<input data-settings-path="lifecycle.launchProfiles.low.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                  <label>Preis-Start-Rabatt (%)<input data-settings-path="lifecycle.launchProfiles.low.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
+                </div>
+
+                <h4>Launch-Profil: Medium</h4>
+                <div class="admin-grid">
+                  <label>Wochen<input data-settings-path="lifecycle.launchProfiles.medium.weeks" type="number" min="1" step="1" /></label>
+                  <label>TACoS Start-Boost (%)<input data-settings-path="lifecycle.launchProfiles.medium.startTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                  <label>TACoS End-Boost (%)<input data-settings-path="lifecycle.launchProfiles.medium.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                  <label>Preis-Start-Rabatt (%)<input data-settings-path="lifecycle.launchProfiles.medium.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
+                </div>
+
+                <h4>Launch-Profil: High</h4>
+                <div class="admin-grid">
+                  <label>Wochen<input data-settings-path="lifecycle.launchProfiles.high.weeks" type="number" min="1" step="1" /></label>
+                  <label>TACoS Start-Boost (%)<input data-settings-path="lifecycle.launchProfiles.high.startTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                  <label>TACoS End-Boost (%)<input data-settings-path="lifecycle.launchProfiles.high.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                  <label>Preis-Start-Rabatt (%)<input data-settings-path="lifecycle.launchProfiles.high.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
+                </div>
+              </section>
+
+              <section id="settingsCostDefaultsSection">
+                <h3>Kosten-Defaults entlang der Kette</h3>
+                <div class="admin-grid">
+                  <label>Verpackung pro Unit (EUR)<input data-settings-path="costDefaults.packagingPerUnitEur" type="number" min="0" step="0.01" /></label>
+                  <label>Weitere Kosten pro Unit (EUR)<input data-settings-path="costDefaults.otherUnitCostEur" type="number" min="0" step="0.01" /></label>
+                  <label>Dokumentation pro Order (EUR)<input data-settings-path="costDefaults.docsPerOrderEur" type="number" min="0" step="0.1" /></label>
+                  <label>Frachtpapiere pro Order (EUR)<input data-settings-path="costDefaults.freightPapersPerOrderEur" type="number" min="0" step="0.1" /></label>
+                  <label>3PL Inbound je Karton (EUR)<input data-settings-path="costDefaults.threePlInboundPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>3PL Lager je Palette/Monat (EUR)<input data-settings-path="costDefaults.threePlStoragePerPalletMonthEur" type="number" min="0" step="0.1" /></label>
+                  <label>3PL -> Amazon je Karton (EUR)<input data-settings-path="costDefaults.threePlOutboundPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>Units je Palette<input data-settings-path="costDefaults.unitsPerPallet" type="number" min="1" step="1" /></label>
+                  <label>Ø 3PL Lagerdauer (Monate)<input data-settings-path="costDefaults.avg3PlStorageMonths" type="number" min="0" step="0.1" /></label>
+                  <label>Amazon Lager je CBM/Monat (EUR)<input data-settings-path="costDefaults.amazonStoragePerCbmMonthEur" type="number" min="0" step="0.1" /></label>
+                  <label>Ø Amazon Lagerdauer (Monate)<input data-settings-path="costDefaults.avgAmazonStorageMonths" type="number" min="0" step="0.1" /></label>
+                  <label>Grußkarte pro Launch-Unit (EUR)<input data-settings-path="costDefaults.greetingCardPerLaunchUnitEur" type="number" min="0" step="0.01" /></label>
+                  <label>Samples je Produkt (EUR)<input data-settings-path="costDefaults.samplesPerProductEur" type="number" min="0" step="0.1" /></label>
+                  <label>Tooling je Produkt (EUR)<input data-settings-path="costDefaults.toolingPerProductEur" type="number" min="0" step="0.1" /></label>
+                  <label>Zertifikate je Produkt (EUR)<input data-settings-path="costDefaults.certificatesPerProductEur" type="number" min="0" step="0.1" /></label>
+                  <label>Inspection in China (EUR)<input data-settings-path="costDefaults.inspectionPerProductEur" type="number" min="0" step="0.1" /></label>
+                </div>
+              </section>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

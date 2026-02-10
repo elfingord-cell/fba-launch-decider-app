@@ -1,6 +1,7 @@
 const STORAGE_KEY_PRODUCTS = "fba-margin-calculator.8020.v3.products";
 const STORAGE_KEY_SETTINGS = "fba-margin-calculator.8020.v3.settings";
 const LEGACY_STORAGE_KEY = "fba-margin-calculator.8020.v2";
+const APP_PAGE = document.body?.dataset?.page === "settings" ? "settings" : "product";
 
 const MIN_REFERRAL_FEE = 0.3;
 const DEFAULT_USD_TO_EUR = 0.92;
@@ -11,6 +12,13 @@ const MARKETPLACE_VAT = {
   FR: 20,
   IT: 22,
   ES: 21,
+};
+
+const WORKFLOW_STAGES = ["quick", "validation", "deep_dive"];
+const STAGE_LABELS = {
+  quick: "Quick-Check",
+  validation: "Validation",
+  deep_dive: "Deep-Dive",
 };
 
 const CARTON_PRESETS = {
@@ -114,6 +122,64 @@ const DEFAULT_SETTINGS = {
     packFactor: 0.85,
   },
   categoryDefaults: JSON.parse(JSON.stringify(BASE_CATEGORY_DEFAULTS)),
+  lifecycle: {
+    defaultMonths: 36,
+    listingPackages: {
+      ai: {
+        listingCreationEur: 120,
+        imagesInfographicsEur: 180,
+        aPlusContentEur: 140,
+      },
+      photographer: {
+        listingCreationEur: 340,
+        imagesInfographicsEur: 690,
+        aPlusContentEur: 420,
+      },
+      visual_advantage: {
+        listingCreationEur: 560,
+        imagesInfographicsEur: 1250,
+        aPlusContentEur: 780,
+      },
+    },
+    launchProfiles: {
+      low: {
+        weeks: 6,
+        startTacosBoostPct: 20,
+        endTacosBoostPct: 4,
+        startPriceDiscountPct: 8,
+      },
+      medium: {
+        weeks: 6,
+        startTacosBoostPct: 40,
+        endTacosBoostPct: 8,
+        startPriceDiscountPct: 12,
+      },
+      high: {
+        weeks: 6,
+        startTacosBoostPct: 70,
+        endTacosBoostPct: 12,
+        startPriceDiscountPct: 18,
+      },
+    },
+  },
+  costDefaults: {
+    packagingPerUnitEur: 0.32,
+    otherUnitCostEur: 0.18,
+    docsPerOrderEur: 45,
+    freightPapersPerOrderEur: 28,
+    threePlInboundPerCartonEur: 1.1,
+    threePlStoragePerPalletMonthEur: 19,
+    threePlOutboundPerCartonEur: 3.2,
+    unitsPerPallet: 240,
+    avg3PlStorageMonths: 1.2,
+    amazonStoragePerCbmMonthEur: 28,
+    avgAmazonStorageMonths: 1.5,
+    greetingCardPerLaunchUnitEur: 0.22,
+    samplesPerProductEur: 120,
+    toolingPerProductEur: 220,
+    certificatesPerProductEur: 180,
+    inspectionPerProductEur: 260,
+  },
 };
 
 const FBA_STANDARD_TIERS = [
@@ -192,6 +258,8 @@ const FIELD_HELP = {
   "basic.marketplace": "Marktplatz setzt die lokale USt für Brutto→Netto Berechnung.",
   "basic.fulfillmentModel": "Fulfillment-Flag. v1 rechnet FBA.",
   "basic.launchBudgetTotal": "Einmaliges Launch-Budget in EUR; wird auf Zeitraum amortisiert.",
+  "basic.listingPackage": "Auswahl der Listing-Serviceklasse. Preise kommen aus globalen Settings.",
+  "basic.launchCompetition": "Wettbewerbsniveau der Nische. Steuert Launch-Boost auf TACoS und Einführungspreis.",
 
   "assumptions.ads.tacosRate": "TACoS in % vom Netto-Umsatz. Ads-Kosten je Stück = Netto-Preis × TACoS.",
   "assumptions.ads.launchMultiplier": "Multiplikator für TACoS in den ersten Launch-Monaten.",
@@ -220,6 +288,30 @@ const FIELD_HELP = {
   "assumptions.launchSplit.vine": "Kosten für Amazon Vine in EUR.",
   "assumptions.launchSplit.coupons": "Launch-Kosten für Coupons/Discounts in EUR.",
   "assumptions.launchSplit.other": "Sonstige Launch-Kosten in EUR.",
+
+  "assumptions.extraCosts.overridePackagingGroup": "Wenn aktiv, nutzt das Produkt eigene Verpackungs-/Stückkosten statt globaler Settings.",
+  "assumptions.extraCosts.packagingPerUnitEur": "Zusätzliche Verpackungskosten pro Stück (EUR).",
+  "assumptions.extraCosts.otherUnitCostEur": "Weitere variable Zusatzkosten pro Stück (EUR).",
+  "assumptions.extraCosts.overrideLogisticsGroup": "Wenn aktiv, nutzt das Produkt eigene 3PL-/Lager-/Orderlogistik-Kosten statt globaler Settings.",
+  "assumptions.extraCosts.docsPerOrderEur": "Fixkosten je Order für Dokumentation (EUR).",
+  "assumptions.extraCosts.freightPapersPerOrderEur": "Fixkosten je Order für Frachtpapiere (EUR).",
+  "assumptions.extraCosts.threePlInboundPerCartonEur": "3PL Wareneingang/Handling je Umkarton (EUR).",
+  "assumptions.extraCosts.threePlStoragePerPalletMonthEur": "3PL Lagerkosten je Palette und Monat (EUR).",
+  "assumptions.extraCosts.threePlOutboundPerCartonEur": "Versandkosten 3PL -> Amazon je Umkarton (EUR).",
+  "assumptions.extraCosts.unitsPerPallet": "Annahme, wie viele Units auf einer Palette liegen (für 3PL Storage-Rechnung).",
+  "assumptions.extraCosts.avg3PlStorageMonths": "Durchschnittliche Lagerdauer im 3PL in Monaten.",
+  "assumptions.extraCosts.amazonStoragePerCbmMonthEur": "Amazon-Lagerkosten je CBM und Monat (EUR).",
+  "assumptions.extraCosts.avgAmazonStorageMonths": "Durchschnittliche Lagerdauer bei Amazon in Monaten.",
+  "assumptions.extraCosts.overrideLaunchOpsGroup": "Wenn aktiv, nutzt das Produkt eigene Launch-Operationskosten statt globaler Settings.",
+  "assumptions.extraCosts.greetingCardPerLaunchUnitEur": "Handgeschriebene Grußkarte pro Launch-Unit (EUR).",
+  "assumptions.extraCosts.samplesPerProductEur": "Samples (einmalig) je Produkt (EUR).",
+  "assumptions.extraCosts.toolingPerProductEur": "Tooling-Kosten (einmalig) je Produkt (EUR).",
+  "assumptions.extraCosts.certificatesPerProductEur": "Zertifikate (einmalig) je Produkt (EUR).",
+  "assumptions.extraCosts.inspectionPerProductEur": "Quality Inspection in China (einmalig) je Produkt (EUR).",
+
+  "workflow.deepDive.supplierValidated": "Supplier-Angebot, MOQ und Produktionsfähigkeit wurden verifiziert.",
+  "workflow.deepDive.complianceChecked": "Regulatorische und produktrechtliche Anforderungen wurden geprüft.",
+  "workflow.deepDive.sampleDecisionReady": "Alle relevanten Punkte sind für die finale Sample-Entscheidung vorbereitet.",
 };
 
 const SETTINGS_HELP = {
@@ -234,6 +326,44 @@ const SETTINGS_HELP = {
   "cartonRules.maxHeightCm": "Maximale Karton-Höhe in cm für Auto-Kartonisierung.",
   "cartonRules.maxWeightKg": "Maximales Karton-Gewicht in kg für Auto-Kartonisierung.",
   "cartonRules.packFactor": "Packfaktor für Luft/Polster (z. B. 0,85). Niedriger = konservativeres Packing.",
+  "lifecycle.defaultMonths": "Lifecycle-Horizont für die Amortisation von Listing-Kosten (Monate).",
+  "lifecycle.listingPackages.ai.listingCreationEur": "Kosten für Listing-Erstellung im Paket KI (EUR).",
+  "lifecycle.listingPackages.ai.imagesInfographicsEur": "Kosten für Bilder/Infografiken im Paket KI (EUR).",
+  "lifecycle.listingPackages.ai.aPlusContentEur": "Kosten für A+ Content im Paket KI (EUR).",
+  "lifecycle.listingPackages.photographer.listingCreationEur": "Kosten für Listing-Erstellung im Paket Fotograf (EUR).",
+  "lifecycle.listingPackages.photographer.imagesInfographicsEur": "Kosten für Bilder/Infografiken im Paket Fotograf (EUR).",
+  "lifecycle.listingPackages.photographer.aPlusContentEur": "Kosten für A+ Content im Paket Fotograf (EUR).",
+  "lifecycle.listingPackages.visual_advantage.listingCreationEur": "Kosten für Listing-Erstellung im Paket Visual Advantage (EUR).",
+  "lifecycle.listingPackages.visual_advantage.imagesInfographicsEur": "Kosten für Bilder/Infografiken im Paket Visual Advantage (EUR).",
+  "lifecycle.listingPackages.visual_advantage.aPlusContentEur": "Kosten für A+ Content im Paket Visual Advantage (EUR).",
+  "lifecycle.launchProfiles.low.weeks": "Launch-Dauer in Wochen für Low-Competition Profil.",
+  "lifecycle.launchProfiles.low.startTacosBoostPct": "Start-Boost auf TACoS in % für Low-Competition.",
+  "lifecycle.launchProfiles.low.endTacosBoostPct": "End-Boost auf TACoS in % für Low-Competition.",
+  "lifecycle.launchProfiles.low.startPriceDiscountPct": "Start-Rabatt auf Zielpreis in % für Low-Competition.",
+  "lifecycle.launchProfiles.medium.weeks": "Launch-Dauer in Wochen für Medium-Competition Profil.",
+  "lifecycle.launchProfiles.medium.startTacosBoostPct": "Start-Boost auf TACoS in % für Medium-Competition.",
+  "lifecycle.launchProfiles.medium.endTacosBoostPct": "End-Boost auf TACoS in % für Medium-Competition.",
+  "lifecycle.launchProfiles.medium.startPriceDiscountPct": "Start-Rabatt auf Zielpreis in % für Medium-Competition.",
+  "lifecycle.launchProfiles.high.weeks": "Launch-Dauer in Wochen für High-Competition Profil.",
+  "lifecycle.launchProfiles.high.startTacosBoostPct": "Start-Boost auf TACoS in % für High-Competition.",
+  "lifecycle.launchProfiles.high.endTacosBoostPct": "End-Boost auf TACoS in % für High-Competition.",
+  "lifecycle.launchProfiles.high.startPriceDiscountPct": "Start-Rabatt auf Zielpreis in % für High-Competition.",
+  "costDefaults.packagingPerUnitEur": "Globaler Default für zusätzliche Verpackungskosten pro Stück (EUR).",
+  "costDefaults.otherUnitCostEur": "Globaler Default für weitere variable Zusatzkosten pro Stück (EUR).",
+  "costDefaults.docsPerOrderEur": "Globaler Default für Dokumentation je Order (EUR).",
+  "costDefaults.freightPapersPerOrderEur": "Globaler Default für Frachtpapiere je Order (EUR).",
+  "costDefaults.threePlInboundPerCartonEur": "Globaler Default für 3PL-Wareneingang je Umkarton (EUR).",
+  "costDefaults.threePlStoragePerPalletMonthEur": "Globaler Default für 3PL-Lagerung je Palette/Monat (EUR).",
+  "costDefaults.threePlOutboundPerCartonEur": "Globaler Default für 3PL -> Amazon je Umkarton (EUR).",
+  "costDefaults.unitsPerPallet": "Globaler Default für Units je Palette (für 3PL-Lagerkosten-Umrechnung).",
+  "costDefaults.avg3PlStorageMonths": "Globaler Default für durchschnittliche 3PL-Lagerdauer in Monaten.",
+  "costDefaults.amazonStoragePerCbmMonthEur": "Globaler Default für Amazon-Lagerkosten je CBM/Monat (EUR).",
+  "costDefaults.avgAmazonStorageMonths": "Globaler Default für durchschnittliche Amazon-Lagerdauer in Monaten.",
+  "costDefaults.greetingCardPerLaunchUnitEur": "Globaler Default für handgeschriebene Grußkarte pro Launch-Unit (EUR).",
+  "costDefaults.samplesPerProductEur": "Globaler Default für Samples je Produkt (einmalig, EUR).",
+  "costDefaults.toolingPerProductEur": "Globaler Default für Tooling je Produkt (einmalig, EUR).",
+  "costDefaults.certificatesPerProductEur": "Globaler Default für Zertifikate je Produkt (einmalig, EUR).",
+  "costDefaults.inspectionPerProductEur": "Globaler Default für Quality Inspection in China je Produkt (einmalig, EUR).",
   "categoryDefaults.home.tacosRate": "Default TACoS % für Kategorie Home.",
   "categoryDefaults.home.returnRate": "Default Retourenquote % für Kategorie Home.",
   "categoryDefaults.home.resaleRate": "Default Wiederverkaufsquote % für Kategorie Home.",
@@ -275,6 +405,9 @@ const SETTINGS_HELP = {
 const KPI_HELP = {
   kpiRevenueGross: "Brutto-Umsatz/Monat = Verkaufspreis brutto × Monatsabsatz.",
   kpiRevenueNet: "Netto-Umsatz/Monat = Verkaufspreis netto × Monatsabsatz.",
+  kpiSellerboardMargin:
+    "Sellerboard-Marge % = (Gewinn vor Overhead / Brutto-Umsatz) × 100. Overhead = produktunabhängige Fixkosten.",
+  kpiNetMargin: "Netto-Marge % = Gewinn netto / Netto-Umsatz × 100. Zielbereich: > 20%.",
   kpiShippingUnit: "Door-to-door Shipping je Unit als 12-Monats-Durchschnitt (ein Richtwert).",
   kpiLandedUnit: "Landed je Unit = EXW(EUR) + Shipping + Zoll (+ optional EUSt als Kosten).",
   kpiDb1Unit: "DB1/Stück = Nettoverkaufspreis - Unit Economics je Stück (Landed, Amazon, Ads, Retouren).",
@@ -376,6 +509,12 @@ const BOOLEAN_PATHS = new Set([
   "assumptions.lifecycle.overrideTargetMarginPct",
   "assumptions.lifecycle.overrideOtherMonthlyCost",
   "assumptions.launchSplit.enabled",
+  "assumptions.extraCosts.overridePackagingGroup",
+  "assumptions.extraCosts.overrideLogisticsGroup",
+  "assumptions.extraCosts.overrideLaunchOpsGroup",
+  "workflow.deepDive.supplierValidated",
+  "workflow.deepDive.complianceChecked",
+  "workflow.deepDive.sampleDecisionReady",
 ]);
 
 const STRING_PATHS = new Set([
@@ -385,6 +524,8 @@ const STRING_PATHS = new Set([
   "basic.transportMode",
   "basic.marketplace",
   "basic.fulfillmentModel",
+  "basic.listingPackage",
+  "basic.launchCompetition",
 ]);
 
 const SETTINGS_BOOLEAN_PATHS = new Set(["shipping12m.customsBrokerEnabled"]);
@@ -405,6 +546,10 @@ const OVERRIDE_CONTROL_MAP = [
   ["assumptions.lifecycle.overrideOtherMonthlyCost", "assumptions.lifecycle.otherMonthlyCost"],
 ];
 
+const VALUE_TO_OVERRIDE_MAP = new Map(
+  OVERRIDE_CONTROL_MAP.map(([overridePath, valuePath]) => [valuePath, overridePath]),
+);
+
 const state = {
   products: [],
   settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
@@ -422,6 +567,8 @@ const state = {
     compareFilter: "all",
     focusedDriverPaths: [],
     focusedDriverLabel: "",
+    workspaceTab: "product",
+    driverModal: null,
   },
 };
 
@@ -432,8 +579,16 @@ const dom = {
   addProductBtn: document.getElementById("addProductBtn"),
   duplicateProductBtn: document.getElementById("duplicateProductBtn"),
   deleteProductBtn: document.getElementById("deleteProductBtn"),
+  stageQuickBtn: document.getElementById("stageQuickBtn"),
+  stageValidationBtn: document.getElementById("stageValidationBtn"),
+  stageDeepBtn: document.getElementById("stageDeepBtn"),
+  stageHint: document.getElementById("stageHint"),
+  stageGateStatus: document.getElementById("stageGateStatus"),
+  stageImpactList: document.getElementById("stageImpactList"),
+  advancedToggleWrap: document.getElementById("advancedToggleWrap"),
   advancedToggle: document.getElementById("advancedToggle"),
   advancedPanel: document.getElementById("advancedPanel"),
+  headerProductName: document.getElementById("headerProductName"),
   fxStatus: document.getElementById("fxStatus"),
   refreshFxBtn: document.getElementById("refreshFxBtn"),
   launchSplitBox: document.getElementById("launchSplitBox"),
@@ -450,9 +605,22 @@ const dom = {
   shippingDebugInfo: document.getElementById("shippingDebugInfo"),
   basicShippingUnit: document.getElementById("basicShippingUnit"),
   basicShippingMeta: document.getElementById("basicShippingMeta"),
+  chainSupplierCost: document.getElementById("chainSupplierCost"),
+  chainImportCost: document.getElementById("chainImportCost"),
+  chainThreePlCost: document.getElementById("chainThreePlCost"),
+  chainInboundCost: document.getElementById("chainInboundCost"),
+  chainAmazonCost: document.getElementById("chainAmazonCost"),
+  productWorkspace: document.getElementById("productWorkspace"),
+  driverModal: document.getElementById("driverModal"),
+  driverModalTitle: document.getElementById("driverModalTitle"),
+  driverModalSubtitle: document.getElementById("driverModalSubtitle"),
+  driverModalFields: document.getElementById("driverModalFields"),
+  driverModalCloseBtn: document.getElementById("driverModalCloseBtn"),
 
   kpiRevenueGross: document.getElementById("kpiRevenueGross"),
   kpiRevenueNet: document.getElementById("kpiRevenueNet"),
+  kpiSellerboardMargin: document.getElementById("kpiSellerboardMargin"),
+  kpiNetMargin: document.getElementById("kpiNetMargin"),
   kpiShippingUnit: document.getElementById("kpiShippingUnit"),
   kpiLandedUnit: document.getElementById("kpiLandedUnit"),
   kpiDb1Unit: document.getElementById("kpiDb1Unit"),
@@ -542,6 +710,24 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 
+function listingPackageLabel(key) {
+  const labels = {
+    ai: "KI",
+    photographer: "Fotograf",
+    visual_advantage: "Visual Advantage",
+  };
+  return labels[key] ?? key;
+}
+
+function launchCompetitionLabel(key) {
+  const labels = {
+    low: "Low",
+    medium: "Medium",
+    high: "High",
+  };
+  return labels[key] ?? key;
+}
+
 function robustnessLabel(score) {
   if (score >= 80) {
     return "hoch";
@@ -577,6 +763,14 @@ function defaultProduct(index = 1) {
   return {
     id: uid(),
     name: `Produkt ${index}`,
+    workflow: {
+      stage: "quick",
+      deepDive: {
+        supplierValidated: false,
+        complianceChecked: false,
+        sampleDecisionReady: false,
+      },
+    },
     basic: {
       priceGross: 29.99,
       category: "home",
@@ -593,19 +787,21 @@ function defaultProduct(index = 1) {
       marketplace: "DE",
       fulfillmentModel: "fba",
       launchBudgetTotal: 0,
+      listingPackage: "ai",
+      launchCompetition: "medium",
     },
     assumptions: {
       ads: {
-        overrideTacos: false,
-        tacosRate: 12,
+        overrideTacos: true,
+        tacosRate: 10,
         overrideLaunchMultiplier: false,
         launchMultiplier: 1.5,
         overrideLaunchMonths: false,
         launchMonths: 3,
       },
       returns: {
-        overrideReturnRate: false,
-        returnRate: 6,
+        overrideReturnRate: true,
+        returnRate: 10,
         overrideResaleRate: false,
         resaleRate: 45,
         overrideUnsellableShare: false,
@@ -644,6 +840,29 @@ function defaultProduct(index = 1) {
         coupons: 0,
         other: 0,
       },
+      extraCosts: {
+        overridePackagingGroup: false,
+        packagingPerUnitEur: DEFAULT_SETTINGS.costDefaults.packagingPerUnitEur,
+        otherUnitCostEur: DEFAULT_SETTINGS.costDefaults.otherUnitCostEur,
+
+        overrideLogisticsGroup: false,
+        docsPerOrderEur: DEFAULT_SETTINGS.costDefaults.docsPerOrderEur,
+        freightPapersPerOrderEur: DEFAULT_SETTINGS.costDefaults.freightPapersPerOrderEur,
+        threePlInboundPerCartonEur: DEFAULT_SETTINGS.costDefaults.threePlInboundPerCartonEur,
+        threePlStoragePerPalletMonthEur: DEFAULT_SETTINGS.costDefaults.threePlStoragePerPalletMonthEur,
+        threePlOutboundPerCartonEur: DEFAULT_SETTINGS.costDefaults.threePlOutboundPerCartonEur,
+        unitsPerPallet: DEFAULT_SETTINGS.costDefaults.unitsPerPallet,
+        avg3PlStorageMonths: DEFAULT_SETTINGS.costDefaults.avg3PlStorageMonths,
+        amazonStoragePerCbmMonthEur: DEFAULT_SETTINGS.costDefaults.amazonStoragePerCbmMonthEur,
+        avgAmazonStorageMonths: DEFAULT_SETTINGS.costDefaults.avgAmazonStorageMonths,
+
+        overrideLaunchOpsGroup: false,
+        greetingCardPerLaunchUnitEur: DEFAULT_SETTINGS.costDefaults.greetingCardPerLaunchUnitEur,
+        samplesPerProductEur: DEFAULT_SETTINGS.costDefaults.samplesPerProductEur,
+        toolingPerProductEur: DEFAULT_SETTINGS.costDefaults.toolingPerProductEur,
+        certificatesPerProductEur: DEFAULT_SETTINGS.costDefaults.certificatesPerProductEur,
+        inspectionPerProductEur: DEFAULT_SETTINGS.costDefaults.inspectionPerProductEur,
+      },
     },
   };
 }
@@ -661,6 +880,38 @@ function ensureCategoryDefaults(rawDefaults) {
   });
 
   return base;
+}
+
+function ensureLifecycleSettings(rawLifecycle) {
+  const base = deepClone(DEFAULT_SETTINGS.lifecycle);
+  const source = rawLifecycle && typeof rawLifecycle === "object" ? rawLifecycle : {};
+
+  base.defaultMonths = source.defaultMonths ?? base.defaultMonths;
+
+  const packageKeys = Object.keys(base.listingPackages);
+  packageKeys.forEach((key) => {
+    base.listingPackages[key] = {
+      ...base.listingPackages[key],
+      ...(source.listingPackages?.[key] ?? {}),
+    };
+  });
+
+  const profileKeys = Object.keys(base.launchProfiles);
+  profileKeys.forEach((key) => {
+    base.launchProfiles[key] = {
+      ...base.launchProfiles[key],
+      ...(source.launchProfiles?.[key] ?? {}),
+    };
+  });
+
+  return base;
+}
+
+function ensureCostDefaults(rawCostDefaults) {
+  return {
+    ...deepClone(DEFAULT_SETTINGS.costDefaults),
+    ...(rawCostDefaults && typeof rawCostDefaults === "object" ? rawCostDefaults : {}),
+  };
 }
 
 function applyCartonPreset(preset, settings) {
@@ -705,6 +956,40 @@ function sanitizeSettings(settings) {
     item.targetMarginPct = clamp(num(item.targetMarginPct, 15), 0, 50);
   });
 
+  settings.lifecycle.defaultMonths = clamp(roundInt(settings.lifecycle.defaultMonths, 36), 1, 120);
+
+  Object.keys(settings.lifecycle.listingPackages).forEach((key) => {
+    const pack = settings.lifecycle.listingPackages[key];
+    pack.listingCreationEur = clamp(num(pack.listingCreationEur, 0), 0, 20000);
+    pack.imagesInfographicsEur = clamp(num(pack.imagesInfographicsEur, 0), 0, 20000);
+    pack.aPlusContentEur = clamp(num(pack.aPlusContentEur, 0), 0, 20000);
+  });
+
+  Object.keys(settings.lifecycle.launchProfiles).forEach((key) => {
+    const profile = settings.lifecycle.launchProfiles[key];
+    profile.weeks = clamp(num(profile.weeks, 6), 1, 24);
+    profile.startTacosBoostPct = clamp(num(profile.startTacosBoostPct, 0), 0, 300);
+    profile.endTacosBoostPct = clamp(num(profile.endTacosBoostPct, 0), 0, 300);
+    profile.startPriceDiscountPct = clamp(num(profile.startPriceDiscountPct, 0), 0, 60);
+  });
+
+  settings.costDefaults.packagingPerUnitEur = clamp(num(settings.costDefaults.packagingPerUnitEur, 0), 0, 50);
+  settings.costDefaults.otherUnitCostEur = clamp(num(settings.costDefaults.otherUnitCostEur, 0), 0, 50);
+  settings.costDefaults.docsPerOrderEur = clamp(num(settings.costDefaults.docsPerOrderEur, 0), 0, 5000);
+  settings.costDefaults.freightPapersPerOrderEur = clamp(num(settings.costDefaults.freightPapersPerOrderEur, 0), 0, 5000);
+  settings.costDefaults.threePlInboundPerCartonEur = clamp(num(settings.costDefaults.threePlInboundPerCartonEur, 0), 0, 100);
+  settings.costDefaults.threePlStoragePerPalletMonthEur = clamp(num(settings.costDefaults.threePlStoragePerPalletMonthEur, 0), 0, 500);
+  settings.costDefaults.threePlOutboundPerCartonEur = clamp(num(settings.costDefaults.threePlOutboundPerCartonEur, 0), 0, 200);
+  settings.costDefaults.unitsPerPallet = clamp(roundInt(settings.costDefaults.unitsPerPallet, 240), 1, 10000);
+  settings.costDefaults.avg3PlStorageMonths = clamp(num(settings.costDefaults.avg3PlStorageMonths, 1.2), 0, 12);
+  settings.costDefaults.amazonStoragePerCbmMonthEur = clamp(num(settings.costDefaults.amazonStoragePerCbmMonthEur, 0), 0, 1000);
+  settings.costDefaults.avgAmazonStorageMonths = clamp(num(settings.costDefaults.avgAmazonStorageMonths, 1.5), 0, 12);
+  settings.costDefaults.greetingCardPerLaunchUnitEur = clamp(num(settings.costDefaults.greetingCardPerLaunchUnitEur, 0), 0, 20);
+  settings.costDefaults.samplesPerProductEur = clamp(num(settings.costDefaults.samplesPerProductEur, 0), 0, 10000);
+  settings.costDefaults.toolingPerProductEur = clamp(num(settings.costDefaults.toolingPerProductEur, 0), 0, 50000);
+  settings.costDefaults.certificatesPerProductEur = clamp(num(settings.costDefaults.certificatesPerProductEur, 0), 0, 10000);
+  settings.costDefaults.inspectionPerProductEur = clamp(num(settings.costDefaults.inspectionPerProductEur, 0), 0, 10000);
+
   return settings;
 }
 
@@ -722,6 +1007,11 @@ function migrateProduct(raw, index) {
     ...base,
     ...raw,
     id: raw.id || uid(),
+    workflow: {
+      ...base.workflow,
+      ...(raw.workflow ?? {}),
+      deepDive: { ...base.workflow.deepDive, ...(raw.workflow?.deepDive ?? {}) },
+    },
     basic: {
       ...base.basic,
       ...(raw.basic ?? {}),
@@ -736,6 +1026,7 @@ function migrateProduct(raw, index) {
       amazon: { ...base.assumptions.amazon, ...(raw.assumptions?.amazon ?? {}) },
       lifecycle: { ...base.assumptions.lifecycle, ...(raw.assumptions?.lifecycle ?? {}) },
       launchSplit: { ...base.assumptions.launchSplit, ...(raw.assumptions?.launchSplit ?? {}) },
+      extraCosts: { ...base.assumptions.extraCosts, ...(raw.assumptions?.extraCosts ?? {}) },
     },
   };
 
@@ -750,10 +1041,19 @@ function migrateProduct(raw, index) {
   if (!["sea_lcl", "rail", "air"].includes(merged.basic.transportMode)) {
     merged.basic.transportMode = "sea_lcl";
   }
+  if (!["ai", "photographer", "visual_advantage"].includes(merged.basic.listingPackage)) {
+    merged.basic.listingPackage = "ai";
+  }
+  if (!["low", "medium", "high"].includes(merged.basic.launchCompetition)) {
+    merged.basic.launchCompetition = "medium";
+  }
 
   merged.basic.horizonMonths = clamp(roundInt(merged.basic.horizonMonths, base.basic.horizonMonths), 1, 36);
   merged.basic.unitsPerOrder = Math.max(1, roundInt(merged.basic.unitsPerOrder, base.basic.unitsPerOrder));
   merged.basic.netWeightG = Math.max(0, num(merged.basic.netWeightG, base.basic.netWeightG));
+  if (!WORKFLOW_STAGES.includes(merged.workflow.stage)) {
+    merged.workflow.stage = "quick";
+  }
 
   return merged;
 }
@@ -780,6 +1080,8 @@ function loadSettings() {
         ...(parsed?.cartonRules ?? {}),
       },
       categoryDefaults: ensureCategoryDefaults(parsed?.categoryDefaults),
+      lifecycle: ensureLifecycleSettings(parsed?.lifecycle),
+      costDefaults: ensureCostDefaults(parsed?.costDefaults),
     };
     state.settings = sanitizeSettings(merged);
   } catch (_error) {
@@ -1050,10 +1352,25 @@ function resolveAssumptions(product) {
   const basic = product.basic;
   const assumptions = product.assumptions;
   const category = state.settings.categoryDefaults[basic.category] ?? state.settings.categoryDefaults.generic;
+  const costDefaults = state.settings.costDefaults ?? DEFAULT_SETTINGS.costDefaults;
+  const listingPackages = state.settings.lifecycle?.listingPackages ?? DEFAULT_SETTINGS.lifecycle.listingPackages;
+  const launchProfiles = state.settings.lifecycle?.launchProfiles ?? DEFAULT_SETTINGS.lifecycle.launchProfiles;
+  const isOverrideActive = (flag) => Boolean(flag);
+
+  const listingPackageKey = basic.listingPackage in listingPackages ? basic.listingPackage : "ai";
+  const listingPackage = listingPackages[listingPackageKey] ?? listingPackages.ai;
+  const launchProfileKey = basic.launchCompetition in launchProfiles ? basic.launchCompetition : "medium";
+  const launchProfile = launchProfiles[launchProfileKey] ?? launchProfiles.medium;
 
   const defaultTacos = clamp(category.tacosRate, 0, 100);
   const defaultLaunchMultiplier = GLOBAL_DEFAULTS.launchAdsMultiplier;
-  const defaultLaunchMonths = Math.max(1, Math.min(roundInt(basic.horizonMonths, 1), GLOBAL_DEFAULTS.launchBoostMonths));
+  const defaultLaunchMonths = Math.max(
+    1,
+    Math.min(
+      roundInt(basic.horizonMonths, 1),
+      Math.max(GLOBAL_DEFAULTS.launchBoostMonths, Math.ceil(clamp(num(launchProfile.weeks, 6), 1, 24) / 4.345)),
+    ),
+  );
 
   const defaultReturnRate = clamp(category.returnRate, 0, 100);
   const defaultResaleRate = clamp(category.resaleRate, 0, 100);
@@ -1065,6 +1382,117 @@ function resolveAssumptions(product) {
   const defaultImportVatRate = clamp(GLOBAL_DEFAULTS.importVatRate, 0, 30);
   const defaultReferralRate = clamp(category.referralRate, 0, 25);
   const defaultTargetMargin = clamp(category.targetMarginPct, 0, 50);
+  const defaultLifecycleMonths = clamp(roundInt(state.settings.lifecycle?.defaultMonths, 36), 1, 120);
+  const defaultListingPackageTotal =
+    num(listingPackage.listingCreationEur) +
+    num(listingPackage.imagesInfographicsEur) +
+    num(listingPackage.aPlusContentEur);
+
+  const extra = assumptions.extraCosts ?? {};
+  const usePackagingOverride = Boolean(extra.overridePackagingGroup);
+  const useLogisticsOverride = Boolean(extra.overrideLogisticsGroup);
+  const useLaunchOpsOverride = Boolean(extra.overrideLaunchOpsGroup);
+
+  const packagingPerUnitEur = clamp(
+    usePackagingOverride ? num(extra.packagingPerUnitEur, costDefaults.packagingPerUnitEur) : num(costDefaults.packagingPerUnitEur, 0),
+    0,
+    50,
+  );
+  const otherUnitCostEur = clamp(
+    usePackagingOverride ? num(extra.otherUnitCostEur, costDefaults.otherUnitCostEur) : num(costDefaults.otherUnitCostEur, 0),
+    0,
+    50,
+  );
+
+  const docsPerOrderEur = clamp(
+    useLogisticsOverride ? num(extra.docsPerOrderEur, costDefaults.docsPerOrderEur) : num(costDefaults.docsPerOrderEur, 0),
+    0,
+    5000,
+  );
+  const freightPapersPerOrderEur = clamp(
+    useLogisticsOverride
+      ? num(extra.freightPapersPerOrderEur, costDefaults.freightPapersPerOrderEur)
+      : num(costDefaults.freightPapersPerOrderEur, 0),
+    0,
+    5000,
+  );
+  const threePlInboundPerCartonEur = clamp(
+    useLogisticsOverride
+      ? num(extra.threePlInboundPerCartonEur, costDefaults.threePlInboundPerCartonEur)
+      : num(costDefaults.threePlInboundPerCartonEur, 0),
+    0,
+    100,
+  );
+  const threePlStoragePerPalletMonthEur = clamp(
+    useLogisticsOverride
+      ? num(extra.threePlStoragePerPalletMonthEur, costDefaults.threePlStoragePerPalletMonthEur)
+      : num(costDefaults.threePlStoragePerPalletMonthEur, 0),
+    0,
+    500,
+  );
+  const threePlOutboundPerCartonEur = clamp(
+    useLogisticsOverride
+      ? num(extra.threePlOutboundPerCartonEur, costDefaults.threePlOutboundPerCartonEur)
+      : num(costDefaults.threePlOutboundPerCartonEur, 0),
+    0,
+    200,
+  );
+  const unitsPerPallet = clamp(
+    roundInt(useLogisticsOverride ? num(extra.unitsPerPallet, costDefaults.unitsPerPallet) : num(costDefaults.unitsPerPallet, 240), 240),
+    1,
+    10000,
+  );
+  const avg3PlStorageMonths = clamp(
+    useLogisticsOverride
+      ? num(extra.avg3PlStorageMonths, costDefaults.avg3PlStorageMonths)
+      : num(costDefaults.avg3PlStorageMonths, 1.2),
+    0,
+    12,
+  );
+  const amazonStoragePerCbmMonthEur = clamp(
+    useLogisticsOverride
+      ? num(extra.amazonStoragePerCbmMonthEur, costDefaults.amazonStoragePerCbmMonthEur)
+      : num(costDefaults.amazonStoragePerCbmMonthEur, 0),
+    0,
+    1000,
+  );
+  const avgAmazonStorageMonths = clamp(
+    useLogisticsOverride
+      ? num(extra.avgAmazonStorageMonths, costDefaults.avgAmazonStorageMonths)
+      : num(costDefaults.avgAmazonStorageMonths, 1.5),
+    0,
+    12,
+  );
+
+  const greetingCardPerLaunchUnitEur = clamp(
+    useLaunchOpsOverride
+      ? num(extra.greetingCardPerLaunchUnitEur, costDefaults.greetingCardPerLaunchUnitEur)
+      : num(costDefaults.greetingCardPerLaunchUnitEur, 0),
+    0,
+    20,
+  );
+  const samplesPerProductEur = clamp(
+    useLaunchOpsOverride ? num(extra.samplesPerProductEur, costDefaults.samplesPerProductEur) : num(costDefaults.samplesPerProductEur, 0),
+    0,
+    10000,
+  );
+  const toolingPerProductEur = clamp(
+    useLaunchOpsOverride ? num(extra.toolingPerProductEur, costDefaults.toolingPerProductEur) : num(costDefaults.toolingPerProductEur, 0),
+    0,
+    50000,
+  );
+  const certificatesPerProductEur = clamp(
+    useLaunchOpsOverride
+      ? num(extra.certificatesPerProductEur, costDefaults.certificatesPerProductEur)
+      : num(costDefaults.certificatesPerProductEur, 0),
+    0,
+    10000,
+  );
+  const inspectionPerProductEur = clamp(
+    useLaunchOpsOverride ? num(extra.inspectionPerProductEur, costDefaults.inspectionPerProductEur) : num(costDefaults.inspectionPerProductEur, 0),
+    0,
+    10000,
+  );
 
   const defaultBase = {
     defaultTacos,
@@ -1079,22 +1507,24 @@ function resolveAssumptions(product) {
     defaultImportVatRate,
     defaultReferralRate,
     defaultTargetMargin,
+    defaultLifecycleMonths,
+    defaultListingPackageTotal,
     categoryBase: category,
   };
 
   const resolved = {
     vatRate: MARKETPLACE_VAT[basic.marketplace] ?? 19,
 
-    tacosRate: resolveValue(assumptions.ads.overrideTacos, assumptions.ads.tacosRate, defaultTacos, 0, 100),
+    tacosRate: resolveValue(isOverrideActive(assumptions.ads.overrideTacos), assumptions.ads.tacosRate, defaultTacos, 0, 100),
     launchAdsMultiplier: resolveValue(
-      assumptions.ads.overrideLaunchMultiplier,
+      isOverrideActive(assumptions.ads.overrideLaunchMultiplier),
       assumptions.ads.launchMultiplier,
       defaultLaunchMultiplier,
       1,
       5,
     ),
     launchBoostMonths: resolveValue(
-      assumptions.ads.overrideLaunchMonths,
+      isOverrideActive(assumptions.ads.overrideLaunchMonths),
       assumptions.ads.launchMonths,
       defaultLaunchMonths,
       1,
@@ -1102,28 +1532,28 @@ function resolveAssumptions(product) {
     ),
 
     returnRate: resolveValue(
-      assumptions.returns.overrideReturnRate,
+      isOverrideActive(assumptions.returns.overrideReturnRate),
       assumptions.returns.returnRate,
       defaultReturnRate,
       0,
       100,
     ),
     resaleRate: resolveValue(
-      assumptions.returns.overrideResaleRate,
+      isOverrideActive(assumptions.returns.overrideResaleRate),
       assumptions.returns.resaleRate,
       defaultResaleRate,
       0,
       100,
     ),
     unsellableShare: resolveValue(
-      assumptions.returns.overrideUnsellableShare,
+      isOverrideActive(assumptions.returns.overrideUnsellableShare),
       assumptions.returns.unsellableShare,
       defaultUnsellableShare,
       0,
       100,
     ),
     returnHandlingCost: resolveValue(
-      assumptions.returns.overrideHandlingCost,
+      isOverrideActive(assumptions.returns.overrideHandlingCost),
       assumptions.returns.handlingCost,
       defaultReturnHandling,
       0,
@@ -1131,7 +1561,7 @@ function resolveAssumptions(product) {
     ),
 
     leakageRatePct: resolveValue(
-      assumptions.leakage.overrideRatePct,
+      isOverrideActive(assumptions.leakage.overrideRatePct),
       assumptions.leakage.ratePct,
       defaultLeakage,
       0,
@@ -1139,14 +1569,14 @@ function resolveAssumptions(product) {
     ),
 
     customsDutyRate: resolveValue(
-      assumptions.import.overrideCustomsDutyRate,
+      isOverrideActive(assumptions.import.overrideCustomsDutyRate),
       assumptions.import.customsDutyRate,
       defaultCustomsRate,
       0,
       40,
     ),
     importVatRate: resolveValue(
-      assumptions.import.overrideImportVatRate,
+      isOverrideActive(assumptions.import.overrideImportVatRate),
       assumptions.import.importVatRate,
       defaultImportVatRate,
       0,
@@ -1156,7 +1586,7 @@ function resolveAssumptions(product) {
     includeImportVatInCashRoi: Boolean(assumptions.import.includeImportVatInCashRoi),
 
     referralRate: resolveValue(
-      assumptions.amazon.overrideReferralRate,
+      isOverrideActive(assumptions.amazon.overrideReferralRate),
       assumptions.amazon.referralRate,
       defaultReferralRate,
       0,
@@ -1166,14 +1596,14 @@ function resolveAssumptions(product) {
     manualFbaFee: clamp(num(assumptions.amazon.manualFbaFee, 0), 0, 50),
 
     targetMarginPct: resolveValue(
-      assumptions.lifecycle.overrideTargetMarginPct,
+      isOverrideActive(assumptions.lifecycle.overrideTargetMarginPct),
       assumptions.lifecycle.targetMarginPct,
       defaultTargetMargin,
       0,
       50,
     ),
     otherMonthlyCost: resolveValue(
-      assumptions.lifecycle.overrideOtherMonthlyCost,
+      isOverrideActive(assumptions.lifecycle.overrideOtherMonthlyCost),
       assumptions.lifecycle.otherMonthlyCost,
       0,
       0,
@@ -1181,6 +1611,38 @@ function resolveAssumptions(product) {
     ),
 
     categoryLabel: category.label,
+    listingPackageKey,
+    listingPackage,
+    listingPackageTotal: Math.max(0, defaultListingPackageTotal),
+    lifecycleMonths: defaultLifecycleMonths,
+    launchProfileKey,
+    launchProfile: {
+      weeks: clamp(num(launchProfile.weeks, 6), 1, 24),
+      startTacosBoostPct: clamp(num(launchProfile.startTacosBoostPct, 0), 0, 300),
+      endTacosBoostPct: clamp(num(launchProfile.endTacosBoostPct, 0), 0, 300),
+      startPriceDiscountPct: clamp(num(launchProfile.startPriceDiscountPct, 0), 0, 60),
+    },
+    extraCosts: {
+      packagingPerUnitEur,
+      otherUnitCostEur,
+      docsPerOrderEur,
+      freightPapersPerOrderEur,
+      threePlInboundPerCartonEur,
+      threePlStoragePerPalletMonthEur,
+      threePlOutboundPerCartonEur,
+      unitsPerPallet,
+      avg3PlStorageMonths,
+      amazonStoragePerCbmMonthEur,
+      avgAmazonStorageMonths,
+      greetingCardPerLaunchUnitEur,
+      samplesPerProductEur,
+      toolingPerProductEur,
+      certificatesPerProductEur,
+      inspectionPerProductEur,
+      usePackagingOverride,
+      useLogisticsOverride,
+      useLaunchOpsOverride,
+    },
 
     launchBudgetSplitTotal:
       num(assumptions.launchSplit.listing) +
@@ -1197,80 +1659,85 @@ function resolveAssumptions(product) {
       : Math.max(0, num(basic.launchBudgetTotal));
 
   resolved.assumedLabels = {
-    "ads.tacosRate": assumedText(assumptions.ads.overrideTacos, defaultTacos, resolved.tacosRate, formatPercent),
+    "ads.tacosRate": assumedText(
+      isOverrideActive(assumptions.ads.overrideTacos),
+      defaultTacos,
+      resolved.tacosRate,
+      formatPercent,
+    ),
     "ads.launchMultiplier": assumedText(
-      assumptions.ads.overrideLaunchMultiplier,
+      isOverrideActive(assumptions.ads.overrideLaunchMultiplier),
       defaultLaunchMultiplier,
       resolved.launchAdsMultiplier,
       formatNumber,
     ),
     "ads.launchMonths": assumedText(
-      assumptions.ads.overrideLaunchMonths,
+      isOverrideActive(assumptions.ads.overrideLaunchMonths),
       defaultLaunchMonths,
       resolved.launchBoostMonths,
       formatNumber,
     ),
 
     "returns.returnRate": assumedText(
-      assumptions.returns.overrideReturnRate,
+      isOverrideActive(assumptions.returns.overrideReturnRate),
       defaultReturnRate,
       resolved.returnRate,
       formatPercent,
     ),
     "returns.resaleRate": assumedText(
-      assumptions.returns.overrideResaleRate,
+      isOverrideActive(assumptions.returns.overrideResaleRate),
       defaultResaleRate,
       resolved.resaleRate,
       formatPercent,
     ),
     "returns.unsellableShare": assumedText(
-      assumptions.returns.overrideUnsellableShare,
+      isOverrideActive(assumptions.returns.overrideUnsellableShare),
       defaultUnsellableShare,
       resolved.unsellableShare,
       formatPercent,
     ),
     "returns.handlingCost": assumedText(
-      assumptions.returns.overrideHandlingCost,
+      isOverrideActive(assumptions.returns.overrideHandlingCost),
       defaultReturnHandling,
       resolved.returnHandlingCost,
       formatCurrency,
     ),
 
     "leakage.ratePct": assumedText(
-      assumptions.leakage.overrideRatePct,
+      isOverrideActive(assumptions.leakage.overrideRatePct),
       defaultLeakage,
       resolved.leakageRatePct,
       formatPercent,
     ),
 
     "import.customsDutyRate": assumedText(
-      assumptions.import.overrideCustomsDutyRate,
+      isOverrideActive(assumptions.import.overrideCustomsDutyRate),
       defaultCustomsRate,
       resolved.customsDutyRate,
       formatPercent,
     ),
     "import.importVatRate": assumedText(
-      assumptions.import.overrideImportVatRate,
+      isOverrideActive(assumptions.import.overrideImportVatRate),
       defaultImportVatRate,
       resolved.importVatRate,
       formatPercent,
     ),
 
     "amazon.referralRate": assumedText(
-      assumptions.amazon.overrideReferralRate,
+      isOverrideActive(assumptions.amazon.overrideReferralRate),
       defaultReferralRate,
       resolved.referralRate,
       formatPercent,
     ),
 
     "lifecycle.targetMarginPct": assumedText(
-      assumptions.lifecycle.overrideTargetMarginPct,
+      isOverrideActive(assumptions.lifecycle.overrideTargetMarginPct),
       defaultTargetMargin,
       resolved.targetMarginPct,
       formatPercent,
     ),
     "lifecycle.otherMonthlyCost": assumedText(
-      assumptions.lifecycle.overrideOtherMonthlyCost,
+      isOverrideActive(assumptions.lifecycle.overrideOtherMonthlyCost),
       0,
       resolved.otherMonthlyCost,
       formatCurrency,
@@ -1288,6 +1755,83 @@ function unitsMonthlyFromBasic(basic) {
   return demand;
 }
 
+function getProductStage(product) {
+  const stage = product?.workflow?.stage;
+  if (WORKFLOW_STAGES.includes(stage)) {
+    return stage;
+  }
+  return "quick";
+}
+
+function buildStageState(product, metrics) {
+  const stage = getProductStage(product);
+  const deepDive = product.workflow?.deepDive ?? {};
+
+  const quickPass = metrics.netMarginPct > 20 && metrics.db1Unit > 0;
+  const validationPass =
+    quickPass &&
+    metrics.sensitivity.worst.profitMonthly > 0 &&
+    metrics.paybackMonths !== null &&
+    metrics.paybackMonths <= 8;
+  const deepChecklistPass =
+    Boolean(deepDive.supplierValidated) &&
+    Boolean(deepDive.complianceChecked) &&
+    Boolean(deepDive.sampleDecisionReady);
+  const deepPass = validationPass && deepChecklistPass;
+
+  const readinessByStage = {
+    quick: quickPass,
+    validation: validationPass,
+    deep_dive: deepPass,
+  };
+
+  const hintByStage = {
+    quick:
+      "Quick-Check: Ballpark-Marge und Unit-Economics prüfen (Netto-Marge > 20%, DB1 > 0 als Leitwert).",
+    validation:
+      "Validation: kritische Annahmen validieren (Worst-Case > 0, Payback <= 8 Monate als Leitwert).",
+    deep_dive:
+      "Deep-Dive: finale Risikoprüfung und Sample-Entscheidung.",
+  };
+
+  let statusClass = "warn";
+  let statusText = "Status: in Prüfung";
+  if (readinessByStage[stage]) {
+    statusClass = "pass";
+    statusText = `Status: ${STAGE_LABELS[stage]} bereit`;
+  } else if (stage === "quick") {
+    statusClass = "fail";
+    statusText = "Status: Quick-Check offen";
+  } else {
+    statusClass = "warn";
+    statusText = `Status: ${STAGE_LABELS[stage]} offen`;
+  }
+
+  const blockers = [];
+  if (!quickPass) {
+    blockers.push("Quick-Check offen: Netto-Marge > 20% und DB1 > 0 noch nicht erreicht.");
+  }
+  if (stage !== "quick" && !validationPass) {
+    blockers.push("Validation offen: Worst-Case oder Payback-Leitwert ist noch kritisch.");
+  }
+  if (stage === "deep_dive" && !deepChecklistPass) {
+    blockers.push("Deep-Dive Checklist unvollständig.");
+  }
+
+  return {
+    stage,
+    quickPass,
+    validationPass,
+    deepPass,
+    deepChecklistPass,
+    readinessByStage,
+    hint: hintByStage[stage],
+    statusClass,
+    statusText,
+    blockers,
+  };
+}
+
 function calculateProduct(product, scenario = {}, options = { includeDerived: true }) {
   const resolved = resolveAssumptions(product);
   const basic = product.basic;
@@ -1300,33 +1844,67 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const unitsHorizon = monthlyUnits * horizonMonths;
 
   const priceGrossBase = Math.max(0, num(basic.priceGross));
-  const priceGross = Math.max(
+  const priceGrossTarget = Math.max(
     0,
     (scenario.priceGross ?? priceGrossBase) * (scenario.priceFactor ?? 1),
   );
 
   const vatFactor = 1 + resolved.vatRate / 100;
-  const priceNet = vatFactor > 0 ? priceGross / vatFactor : priceGross;
+  const targetPriceNet = vatFactor > 0 ? priceGrossTarget / vatFactor : priceGrossTarget;
   const fxUsdToEur = Math.max(0, num(state.fx.usdToEur, DEFAULT_USD_TO_EUR));
 
   const shipping = calculateShippingDoorToDoor(product);
+  const extra = resolved.extraCosts;
 
   const exwUnitUsd = Math.max(0, num(basic.exwUnit));
   const exwUnit = exwUnitUsd * fxUsdToEur;
   const shippingUnit = shipping.shippingPerUnit;
+  const packagingUnit = extra.packagingPerUnitEur + extra.otherUnitCostEur;
+  const orderFixedPerUnit =
+    (extra.docsPerOrderEur + extra.freightPapersPerOrderEur) / Math.max(1, shipping.unitsPerOrder);
+  const threePlInboundPerUnit =
+    (shipping.cartonsCount * extra.threePlInboundPerCartonEur) / Math.max(1, shipping.unitsPerOrder);
+  const threePlOutboundPerUnit =
+    (shipping.cartonsCount * extra.threePlOutboundPerCartonEur) / Math.max(1, shipping.unitsPerOrder);
+  const threePlStoragePerUnit =
+    (extra.threePlStoragePerPalletMonthEur * extra.avg3PlStorageMonths) / Math.max(1, extra.unitsPerPallet);
+  const amazonStoragePerUnit = extra.amazonStoragePerCbmMonthEur * extra.avgAmazonStorageMonths * shipping.unitCbm;
+  const logisticsExtraUnit =
+    orderFixedPerUnit +
+    threePlInboundPerUnit +
+    threePlOutboundPerUnit +
+    threePlStoragePerUnit +
+    amazonStoragePerUnit;
 
-  const landedBeforeDuty = exwUnit + shippingUnit;
+  const landedBeforeDuty = exwUnit + shippingUnit + packagingUnit + logisticsExtraUnit;
   const customsUnit = landedBeforeDuty * (resolved.customsDutyRate / 100);
   const importVatUnit = (landedBeforeDuty + customsUnit) * (resolved.importVatRate / 100);
 
   const landedUnit = landedBeforeDuty + customsUnit + (resolved.includeImportVatAsCost ? importVatUnit : 0);
 
   const fba = estimateFbaFee(product, resolved);
+
+  const launchProfileWeeks = clamp(num(resolved.launchProfile.weeks, 6), 1, 24);
+  const launchMonthsFromProfile = Math.min(horizonMonths, Math.max(launchProfileWeeks / 4.345, 0.25));
+  const launchBoostMonths = Math.min(
+    horizonMonths,
+    Math.max(launchMonthsFromProfile, Math.max(1, roundInt(resolved.launchBoostMonths, 1))),
+  );
+  const averageLaunchPriceDiscountPct = resolved.launchProfile.startPriceDiscountPct / 2;
+  const launchPriceFactor = Math.max(0.55, 1 - averageLaunchPriceDiscountPct / 100);
+  const launchPriceWeightFactor =
+    (launchBoostMonths * launchPriceFactor + (horizonMonths - launchBoostMonths)) / horizonMonths;
+
+  const priceGross = priceGrossTarget * launchPriceWeightFactor;
+  const priceNet = vatFactor > 0 ? priceGross / vatFactor : priceGross;
   const referralFeeUnit = Math.max(priceGross * (resolved.referralRate / 100), MIN_REFERRAL_FEE);
 
-  const launchBoostMonths = Math.min(horizonMonths, Math.max(1, roundInt(resolved.launchBoostMonths, 1)));
+  const averageLaunchTacosBoostPct =
+    (resolved.launchProfile.startTacosBoostPct + resolved.launchProfile.endTacosBoostPct) / 2;
+  const profileLaunchMultiplier = 1 + averageLaunchTacosBoostPct / 100;
+  const launchAdsMultiplierEffective = resolved.launchAdsMultiplier * profileLaunchMultiplier;
   const launchWeightFactor =
-    (launchBoostMonths * resolved.launchAdsMultiplier + (horizonMonths - launchBoostMonths)) /
+    (launchBoostMonths * launchAdsMultiplierEffective + (horizonMonths - launchBoostMonths)) /
     horizonMonths;
 
   const baseTacosRate =
@@ -1355,7 +1933,9 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const db1MarginPct = priceNet > 0 ? (db1Unit / priceNet) * 100 : 0;
 
   const grossRevenueMonthly = priceGross * monthlyUnits;
+  const grossRevenueTargetMonthly = priceGrossTarget * monthlyUnits;
   const netRevenueMonthly = priceNet * monthlyUnits;
+  const netRevenueTargetMonthly = targetPriceNet * monthlyUnits;
 
   const block1Monthly = unitEconomicsUnit * monthlyUnits;
   const shippingMonthly = shippingUnit * monthlyUnits;
@@ -1369,10 +1949,22 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const launchAdsIncrementMonthly = Math.max(0, (adsUnit - launchAdsBaseUnit) * monthlyUnits);
 
   const launchBudget = resolved.launchBudgetEffective;
+  const listingPackageCost = resolved.listingPackageTotal;
+  const listingUnit = unitsHorizon > 0 ? listingPackageCost / unitsHorizon : 0;
+  const listingMonthly = listingPackageCost / resolved.lifecycleMonths;
   const launchUnit = unitsHorizon > 0 ? launchBudget / unitsHorizon : 0;
   const launchMonthly = launchBudget / horizonMonths;
+  const launchUnits = monthlyUnits * launchBoostMonths;
+  const greetingCardTotal = extra.greetingCardPerLaunchUnitEur * launchUnits;
+  const setupOneOffTotal =
+    extra.samplesPerProductEur +
+    extra.toolingPerProductEur +
+    extra.certificatesPerProductEur +
+    extra.inspectionPerProductEur;
+  const launchOpsUnit = unitsHorizon > 0 ? (greetingCardTotal + setupOneOffTotal) / unitsHorizon : 0;
+  const launchOpsMonthly = (greetingCardTotal + setupOneOffTotal) / horizonMonths;
 
-  const lifecycleMonthly = launchMonthly + resolved.otherMonthlyCost;
+  const lifecycleMonthly = launchMonthly + listingMonthly + launchOpsMonthly + resolved.otherMonthlyCost;
   const block2Monthly = lifecycleMonthly;
 
   const leakageMonthly = netRevenueMonthly * (resolved.leakageRatePct / 100);
@@ -1380,17 +1972,19 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
 
   const grossProfitMonthly = db1Unit * monthlyUnits;
   const profitMonthly = grossProfitMonthly - block2Monthly - block3Monthly;
+  const profitBeforeOverheadMonthly = grossProfitMonthly - block2Monthly;
   const profitHorizon = profitMonthly * horizonMonths;
   const netMarginPct = netRevenueMonthly > 0 ? (profitMonthly / netRevenueMonthly) * 100 : 0;
+  const sellerboardMarginPct = grossRevenueMonthly > 0 ? (profitBeforeOverheadMonthly / grossRevenueMonthly) * 100 : 0;
 
-  const investedCapital = landedUnit * unitsHorizon + launchBudget;
+  const investedCapital = landedUnit * unitsHorizon + launchBudget + listingPackageCost + setupOneOffTotal;
   const productRoiPct = investedCapital > 0 ? (profitHorizon / investedCapital) * 100 : 0;
 
   const importVatPrefinance = resolved.includeImportVatInCashRoi ? importVatUnit * unitsHorizon : 0;
   const cashCapital = investedCapital + importVatPrefinance;
   const cashRoiPct = cashCapital > 0 ? (profitHorizon / cashCapital) * 100 : 0;
 
-  const paybackBase = launchBudget + landedUnit * monthlyUnits;
+  const paybackBase = launchBudget + listingPackageCost + setupOneOffTotal + landedUnit * monthlyUnits;
   const paybackMonths = profitMonthly > 0 ? paybackBase / profitMonthly : null;
 
   const result = {
@@ -1401,8 +1995,17 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     monthlyUnits,
     horizonMonths,
     unitsHorizon,
+    priceGrossTarget,
     priceGross,
+    targetPriceNet,
     priceNet,
+    launchProfileWeeks,
+    launchMonthsFromProfile,
+    launchBoostMonths,
+    averageLaunchPriceDiscountPct,
+    launchPriceWeightFactor,
+    averageLaunchTacosBoostPct,
+    launchAdsMultiplierEffective,
     fxUsdToEur,
     vatRate: resolved.vatRate,
 
@@ -1412,6 +2015,13 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
 
     exwUnitUsd,
     exwUnit,
+    packagingUnit,
+    logisticsExtraUnit,
+    orderFixedPerUnit,
+    threePlInboundPerUnit,
+    threePlOutboundPerUnit,
+    threePlStoragePerUnit,
+    amazonStoragePerUnit,
     customsUnit,
     importVatUnit,
     landedUnit,
@@ -1443,6 +2053,15 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     launchBudget,
     launchUnit,
     launchMonthly,
+    listingPackageCost,
+    listingUnit,
+    listingMonthly,
+    launchUnits,
+    greetingCardTotal,
+    setupOneOffTotal,
+    launchOpsUnit,
+    launchOpsMonthly,
+    lifecycleMonthsSetting: resolved.lifecycleMonths,
     otherLifecycleMonthly: resolved.otherMonthlyCost,
     block2Monthly,
 
@@ -1453,10 +2072,14 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     db1Unit,
     db1MarginPct,
     grossRevenueMonthly,
+    grossRevenueTargetMonthly,
     netRevenueMonthly,
+    netRevenueTargetMonthly,
     grossProfitMonthly,
     profitMonthly,
+    profitBeforeOverheadMonthly,
     netMarginPct,
+    sellerboardMarginPct,
     profitHorizon,
 
     investedCapital,
@@ -1557,27 +2180,27 @@ function solveMaxTacosRateForTargetMargin(product, targetMarginPct) {
 }
 
 function classifyTraffic(baseMetrics, worstMetrics, targetMarginPct) {
-  if (baseMetrics.profitMonthly <= 0 || baseMetrics.db1Unit <= 0) {
+  if (baseMetrics.profitMonthly <= 0 || baseMetrics.db1Unit <= 0 || baseMetrics.netMarginPct < 15) {
     return {
       color: "red",
       label: "Rot",
-      text: "Unprofitabel im Basisszenario",
+      text: "Netto-Marge kritisch (<15%) oder unprofitabel",
     };
   }
 
-  if (worstMetrics.profitMonthly <= 0) {
+  if (baseMetrics.netMarginPct < 20 || worstMetrics.profitMonthly <= 0) {
     return {
       color: "yellow",
       label: "Gelb",
-      text: "Basisszenario profitabel, Worst Case kritisch",
+      text: "Profitabel, aber noch nicht robust (>20% Netto-Marge)",
     };
   }
 
-  if (baseMetrics.netMarginPct >= targetMarginPct) {
+  if (baseMetrics.netMarginPct >= 20 && baseMetrics.netMarginPct >= targetMarginPct) {
     return {
       color: "green",
       label: "Grün",
-      text: "Robust über Zielmarge",
+      text: "Launch-ready: Netto-Marge > 20% und robust",
     };
   }
 
@@ -1585,6 +2208,33 @@ function classifyTraffic(baseMetrics, worstMetrics, targetMarginPct) {
     color: "yellow",
     label: "Gelb",
     text: "Profitabel, aber unter Zielmarge",
+  };
+}
+
+function classifyLaunchDecision(metrics) {
+  const netMargin = num(metrics.netMarginPct, 0);
+  const db1 = num(metrics.db1Unit, 0);
+
+  if (netMargin > 20 && db1 > 0) {
+    return {
+      color: "green",
+      label: "GO",
+      text: "Netto-Marge > 20% und DB1/Stück > 0.",
+    };
+  }
+
+  if (netMargin < 15 || db1 <= 0) {
+    return {
+      color: "red",
+      label: "NO-GO",
+      text: "Netto-Marge < 15% oder DB1/Stück ≤ 0.",
+    };
+  }
+
+  return {
+    color: "yellow",
+    label: "WATCH",
+    text: "Netto-Marge 15-20% oder DB1 knapp positiv.",
   };
 }
 
@@ -1621,6 +2271,7 @@ function buildDefaultDiagnostics(product, metrics) {
   const assumptions = product.assumptions;
   const resolved = metrics.resolved;
   const defaults = resolved.defaultBase;
+  const overrideOn = (flag) => Boolean(flag);
   const totalCostMonthly = Math.max(metrics.totalCostMonthly, 0.0001);
 
   const formatterByType = {
@@ -1657,7 +2308,7 @@ function buildDefaultDiagnostics(product, metrics) {
 
   return {
     "ads.tacosRate": makeEntry("ads.tacosRate", {
-      override: assumptions.ads.overrideTacos,
+      override: overrideOn(assumptions.ads.overrideTacos),
       activeValue: resolved.tacosRate,
       formatType: "percent",
       source: `Kategorie-Default (${resolved.categoryLabel}) = ${formatPercent(defaults.defaultTacos)}.`,
@@ -1665,7 +2316,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Direkter Treiber der Ads-Kosten im Unit-Economics-Block.",
     }),
     "ads.launchMultiplier": makeEntry("ads.launchMultiplier", {
-      override: assumptions.ads.overrideLaunchMultiplier,
+      override: overrideOn(assumptions.ads.overrideLaunchMultiplier),
       activeValue: resolved.launchAdsMultiplier,
       formatType: "number",
       source: `Globaler Launch-Boost = ${formatNumber(defaults.defaultLaunchMultiplier)}.`,
@@ -1673,7 +2324,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Verändert nur den zusätzlichen Ads-Druck in Launch-Monaten.",
     }),
     "ads.launchMonths": makeEntry("ads.launchMonths", {
-      override: assumptions.ads.overrideLaunchMonths,
+      override: overrideOn(assumptions.ads.overrideLaunchMonths),
       activeValue: resolved.launchBoostMonths,
       formatType: "number",
       source: `Default = min(Zeitraum, ${formatNumber(GLOBAL_DEFAULTS.launchBoostMonths)} Monate).`,
@@ -1681,7 +2332,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Bestimmt die Dauer des erhöhten TACoS-Fensters.",
     }),
     "returns.returnRate": makeEntry("returns.returnRate", {
-      override: assumptions.returns.overrideReturnRate,
+      override: overrideOn(assumptions.returns.overrideReturnRate),
       activeValue: resolved.returnRate,
       formatType: "percent",
       source: `Kategorie-Default (${resolved.categoryLabel}) = ${formatPercent(defaults.defaultReturnRate)}.`,
@@ -1689,7 +2340,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Treiber für Retourenverluste und Handlingkosten.",
     }),
     "returns.resaleRate": makeEntry("returns.resaleRate", {
-      override: assumptions.returns.overrideResaleRate,
+      override: overrideOn(assumptions.returns.overrideResaleRate),
       activeValue: resolved.resaleRate,
       formatType: "percent",
       source: `Kategorie-Default (${resolved.categoryLabel}) = ${formatPercent(defaults.defaultResaleRate)}.`,
@@ -1697,7 +2348,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Je höher, desto geringer der Verlust aus rückführbarer Ware.",
     }),
     "returns.unsellableShare": makeEntry("returns.unsellableShare", {
-      override: assumptions.returns.overrideUnsellableShare,
+      override: overrideOn(assumptions.returns.overrideUnsellableShare),
       activeValue: resolved.unsellableShare,
       formatType: "percent",
       source: `Kategorie-Default (${resolved.categoryLabel}) = ${formatPercent(defaults.defaultUnsellableShare)}.`,
@@ -1705,7 +2356,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Erhöht direkt den Anteil der Retouren mit vollem Landed-Loss.",
     }),
     "returns.handlingCost": makeEntry("returns.handlingCost", {
-      override: assumptions.returns.overrideHandlingCost,
+      override: overrideOn(assumptions.returns.overrideHandlingCost),
       activeValue: resolved.returnHandlingCost,
       formatType: "currency",
       source: `Globaler Default für Retourenhandling = ${formatCurrency(defaults.defaultReturnHandling)} pro Retoure.`,
@@ -1713,7 +2364,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Fixer Kostensatz je Retoure zusätzlich zum Warenwertverlust.",
     }),
     "leakage.ratePct": makeEntry("leakage.ratePct", {
-      override: assumptions.leakage.overrideRatePct,
+      override: overrideOn(assumptions.leakage.overrideRatePct),
       activeValue: resolved.leakageRatePct,
       formatType: "percent",
       source: `Globales Leakage = ${formatPercent(defaults.defaultLeakage)}.`,
@@ -1721,7 +2372,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Sicherheitsblock für nicht explizit modellierte Kosten.",
     }),
     "import.customsDutyRate": makeEntry("import.customsDutyRate", {
-      override: assumptions.import.overrideCustomsDutyRate,
+      override: overrideOn(assumptions.import.overrideCustomsDutyRate),
       activeValue: resolved.customsDutyRate,
       formatType: "percent",
       source: `Default China→DE = ${formatPercent(defaults.defaultCustomsRate)}.`,
@@ -1729,7 +2380,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Zoll fällt auf importierten Warenwert inkl. Shippinganteil an.",
     }),
     "import.importVatRate": makeEntry("import.importVatRate", {
-      override: assumptions.import.overrideImportVatRate,
+      override: overrideOn(assumptions.import.overrideImportVatRate),
       activeValue: resolved.importVatRate,
       formatType: "percent",
       source: `Default EUSt = ${formatPercent(defaults.defaultImportVatRate)}.`,
@@ -1739,7 +2390,7 @@ function buildDefaultDiagnostics(product, metrics) {
         : "Nur für Cash-Bindung relevant, nicht als Kostenblock im P&L.",
     }),
     "amazon.referralRate": makeEntry("amazon.referralRate", {
-      override: assumptions.amazon.overrideReferralRate,
+      override: overrideOn(assumptions.amazon.overrideReferralRate),
       activeValue: resolved.referralRate,
       formatType: "percent",
       source: `Kategorie-Default Referral Fee (${resolved.categoryLabel}) = ${formatPercent(defaults.defaultReferralRate)}.`,
@@ -1747,7 +2398,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Prozentual auf Brutto-Verkaufspreis mit Mindestgebühr.",
     }),
     "lifecycle.targetMarginPct": makeEntry("lifecycle.targetMarginPct", {
-      override: assumptions.lifecycle.overrideTargetMarginPct,
+      override: overrideOn(assumptions.lifecycle.overrideTargetMarginPct),
       activeValue: resolved.targetMarginPct,
       formatType: "percent",
       source: `Kategorie-Zielmarge (${resolved.categoryLabel}) = ${formatPercent(defaults.defaultTargetMargin)}.`,
@@ -1755,7 +2406,7 @@ function buildDefaultDiagnostics(product, metrics) {
       costNote: "Beeinflusst keine Kosten direkt, sondern den KPI 'Max TACoS'.",
     }),
     "lifecycle.otherMonthlyCost": makeEntry("lifecycle.otherMonthlyCost", {
-      override: assumptions.lifecycle.overrideOtherMonthlyCost,
+      override: overrideOn(assumptions.lifecycle.overrideOtherMonthlyCost),
       activeValue: resolved.otherMonthlyCost,
       formatType: "currency",
       source: "Default ist 0 EUR, bis zusätzliche Lifecycle-Kosten hinterlegt werden.",
@@ -1808,6 +2459,67 @@ function classifyImpact(impactMonthly, totalCostMonthly) {
     return { level: "medium", label: "mittel", sharePct: share * 100 };
   }
   return { level: "low", label: "niedrig", sharePct: share * 100 };
+}
+
+function diagnosticsKeyFromPath(path) {
+  if (!path) {
+    return null;
+  }
+  const map = {
+    "assumptions.ads.tacosRate": "ads.tacosRate",
+    "assumptions.ads.launchMultiplier": "ads.launchMultiplier",
+    "assumptions.ads.launchMonths": "ads.launchMonths",
+    "assumptions.returns.returnRate": "returns.returnRate",
+    "assumptions.returns.resaleRate": "returns.resaleRate",
+    "assumptions.returns.unsellableShare": "returns.unsellableShare",
+    "assumptions.returns.handlingCost": "returns.handlingCost",
+    "assumptions.leakage.ratePct": "leakage.ratePct",
+    "assumptions.import.customsDutyRate": "import.customsDutyRate",
+    "assumptions.import.importVatRate": "import.importVatRate",
+    "assumptions.amazon.referralRate": "amazon.referralRate",
+    "assumptions.lifecycle.targetMarginPct": "lifecycle.targetMarginPct",
+    "assumptions.lifecycle.otherMonthlyCost": "lifecycle.otherMonthlyCost",
+  };
+  return map[path] ?? null;
+}
+
+function impactMonthlyFromPath(path, metrics) {
+  if (!path || !metrics) {
+    return 0;
+  }
+  if (path.startsWith("assumptions.ads.")) {
+    return metrics.adsMonthly;
+  }
+  if (path.startsWith("assumptions.returns.")) {
+    return metrics.returnsMonthly;
+  }
+  if (path.startsWith("assumptions.leakage.")) {
+    return metrics.block3Monthly;
+  }
+  if (path.startsWith("assumptions.import.customsDutyRate")) {
+    return metrics.customsMonthly;
+  }
+  if (path.startsWith("assumptions.amazon.")) {
+    return metrics.referralMonthly + metrics.fbaFeeUnit * metrics.monthlyUnits;
+  }
+  if (path.startsWith("assumptions.extraCosts.")) {
+    return (
+      (metrics.orderFixedPerUnit +
+        metrics.threePlInboundPerUnit +
+        metrics.threePlStoragePerUnit +
+        metrics.threePlOutboundPerUnit +
+        metrics.amazonStoragePerUnit +
+        metrics.packagingUnit) *
+      metrics.monthlyUnits
+    );
+  }
+  if (path.startsWith("settings.shipping12m.") || path.startsWith("settings.cartonRules.")) {
+    return metrics.shippingMonthly;
+  }
+  if (path.startsWith("settings.costDefaults.")) {
+    return metrics.block1Monthly + metrics.block2Monthly;
+  }
+  return 0;
 }
 
 function getDriverControl(path) {
@@ -1877,6 +2589,680 @@ function applyDriverFocus(paths, labelText = "") {
   }
 }
 
+function setWorkspaceTab(tab) {
+  state.ui.workspaceTab = tab === "settings" ? "settings" : "product";
+  renderWorkspaceTabs();
+}
+
+function renderWorkspaceTabs() {
+  if (APP_PAGE === "product" && dom.productWorkspace) {
+    dom.productWorkspace.classList.remove("hidden");
+  }
+}
+
+function getFieldControl(path) {
+  if (path.startsWith("settings.")) {
+    const settingsPath = path.slice("settings.".length);
+    return document.querySelector(`[data-settings-path="${settingsPath}"]`);
+  }
+  return document.querySelector(`[data-path="${path}"]`);
+}
+
+function extractControlLabel(control, fallback) {
+  if (!(control instanceof HTMLElement)) {
+    return fallback;
+  }
+  const label = control.closest("label");
+  if (!(label instanceof HTMLElement)) {
+    return fallback;
+  }
+  const clone = label.cloneNode(true);
+  clone.querySelectorAll("input, select, small, button").forEach((node) => node.remove());
+  const text = clone.textContent?.replace(/\s+/g, " ").trim();
+  return text || fallback;
+}
+
+function getPathHelp(path) {
+  if (path.startsWith("settings.")) {
+    return SETTINGS_HELP[path.slice("settings.".length)] ?? "";
+  }
+  return FIELD_HELP[path] ?? "";
+}
+
+function buildStageImpactItems(metrics, stage) {
+  const threePlInboundMonthly = metrics.threePlInboundPerUnit * metrics.monthlyUnits;
+  const threePlStorageMonthly = metrics.threePlStoragePerUnit * metrics.monthlyUnits;
+  const threePlOutboundMonthly = metrics.threePlOutboundPerUnit * metrics.monthlyUnits;
+  const amazonStorageMonthly = metrics.amazonStoragePerUnit * metrics.monthlyUnits;
+  const amazonFeesMonthly = metrics.referralMonthly + metrics.fbaFeeUnit * metrics.monthlyUnits + amazonStorageMonthly;
+  const orderOpsMonthly = metrics.orderFixedPerUnit * metrics.monthlyUnits;
+  const setupAmortizedMonthly = metrics.setupOneOffTotal / Math.max(1, metrics.horizonMonths);
+  const unitBase = Math.max(1, metrics.monthlyUnits);
+  const shippingImportUnit = metrics.shippingUnit + metrics.customsUnit + metrics.orderFixedPerUnit;
+  const amazonFeesUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit;
+  const threePlInboundUnit =
+    metrics.threePlInboundPerUnit +
+    metrics.threePlStoragePerUnit +
+    metrics.threePlOutboundPerUnit +
+    metrics.amazonStoragePerUnit;
+  const listingLifecycleUnit = metrics.block2Monthly / unitBase;
+  const leakageUnit = metrics.block3Monthly / unitBase;
+
+  const quickItems = [
+    {
+      label: "Shipping & Import (EUR/Unit)",
+      value: formatCurrency(shippingImportUnit),
+      impactMonthly: (shippingImportUnit * metrics.monthlyUnits),
+      explain: "Door-to-Door Shipping, Zoll und orderbezogene Import-Fixkosten pro Unit.",
+      formula: "Shipping & Import/Unit = Shipping/Unit + Zoll/Unit + Order-Fix/Unit.",
+      source: "User-Input (Preis/EK/Maße) + Global Settings (Shipping, Kosten-Defaults) + Kategorie-Default (Zoll/Steuer).",
+      robustness: "Mittel (mehrere Annahmen entlang der Kette).",
+      driverPaths: [
+        "basic.unitsPerOrder",
+        "basic.packLengthCm",
+        "basic.packWidthCm",
+        "basic.packHeightCm",
+        "basic.netWeightG",
+        "assumptions.import.customsDutyRate",
+        "assumptions.extraCosts.overridePackagingGroup",
+        "settings.shipping12m.lclRateEurPerCbm",
+      ],
+      pinned: true,
+    },
+    {
+      label: "Amazon Fees (Referral + FBA) (EUR/Unit)",
+      value: formatCurrency(amazonFeesUnit),
+      impactMonthly: amazonFeesMonthly,
+      explain: "Amazon-Transaktionskosten pro Unit aus Referral Fee und FBA Fee.",
+      formula: "Amazon Fees/Unit = Referral/Unit + FBA Fee/Unit.",
+      source: "Kategorie-Defaults + FBA-Tierlogik + globale Lager-Defaults.",
+      robustness: "Mittel bis hoch (Referral stabil, FBA/Lager je nach Maße und Lagerdauer).",
+      driverPaths: [
+        "assumptions.amazon.referralRate",
+        "assumptions.amazon.useManualFbaFee",
+        "assumptions.amazon.manualFbaFee",
+        "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
+        "assumptions.extraCosts.avgAmazonStorageMonths",
+      ],
+      pinned: true,
+    },
+    {
+      label: "3PL & Inbound (EUR/Unit)",
+      value: formatCurrency(threePlInboundUnit),
+      impactMonthly: (threePlInboundUnit * metrics.monthlyUnits),
+      explain: "3PL Inbound, 3PL Lagerung, 3PL->Amazon und Amazon-Lageranteil pro Unit.",
+      formula: "3PL & Inbound/Unit = 3PL Inbound + 3PL Lager + 3PL Outbound + Amazon-Lager.",
+      source: "Global costDefaults (3PL/Storage) oder Produkt-Override.",
+      robustness: "Mittel (volumen- und lagerdauerabhängig).",
+      driverPaths: [
+        "assumptions.extraCosts.overrideLogisticsGroup",
+        "assumptions.extraCosts.threePlInboundPerCartonEur",
+        "assumptions.extraCosts.threePlStoragePerPalletMonthEur",
+        "assumptions.extraCosts.threePlOutboundPerCartonEur",
+        "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
+        "assumptions.extraCosts.avgAmazonStorageMonths",
+        "settings.costDefaults.threePlInboundPerCartonEur",
+        "settings.costDefaults.threePlStoragePerPalletMonthEur",
+        "settings.costDefaults.threePlOutboundPerCartonEur",
+      ],
+      pinned: true,
+    },
+    {
+      label: "Werbung/Ads inkl. Launch-Boost (EUR/Unit)",
+      value: formatCurrency(metrics.adsUnit),
+      impactMonthly: metrics.adsMonthly,
+      explain: "TACoS-basiert inkl. Launch-Boost-Profil.",
+      formula: "Ads/Unit = Netto-Preis × effektiver TACoS%; effektiver TACoS berücksichtigt Launch-Boost.",
+      source: "User-Input TACoS + Kategorie-/Launch-Defaults.",
+      robustness: "Niedrig bis mittel (stark markt- und rankingabhängig).",
+      driverPaths: [
+        "assumptions.ads.tacosRate",
+        "assumptions.ads.launchMultiplier",
+        "assumptions.ads.launchMonths",
+        "basic.launchCompetition",
+      ],
+      pinned: true,
+    },
+    {
+      label: "Retourenverlust (EUR/Unit)",
+      value: formatCurrency(metrics.returnsUnit),
+      impactMonthly: metrics.returnsMonthly,
+      explain: "Retourenverlust plus Handlingkosten.",
+      formula: "Retouren/Unit = Retourenquote × (unsellable × Landed + sellable × Loss-Faktor × Landed + Handling).",
+      source: "Kategorie-Defaults für Retouren + User-Override.",
+      robustness: "Niedrig bis mittel (qualitäts- und listingabhängig).",
+      driverPaths: [
+        "assumptions.returns.returnRate",
+        "assumptions.returns.resaleRate",
+        "assumptions.returns.unsellableShare",
+        "assumptions.returns.handlingCost",
+      ],
+    },
+    {
+      label: "Listing & Lifecycle (EUR/Unit)",
+      value: formatCurrency(listingLifecycleUnit),
+      impactMonthly: metrics.block2Monthly,
+      explain: "Amortisierte Listing-, Launch- und Lifecycle-Kosten pro Unit.",
+      formula: "Listing & Lifecycle/Unit = Block 2/Monat ÷ Monatsabsatz.",
+      source: "Global Listing/Lifecycle Settings + Launchbudget.",
+      robustness: "Mittel bis hoch.",
+      driverPaths: [
+        "basic.launchBudgetTotal",
+        "basic.listingPackage",
+        "basic.horizonMonths",
+        "settings.lifecycle.defaultMonths",
+        "assumptions.lifecycle.otherMonthlyCost",
+      ],
+    },
+    {
+      label: "Leakage/Overhead (EUR/Unit)",
+      value: formatCurrency(leakageUnit),
+      impactMonthly: metrics.block3Monthly,
+      explain: "Pauschaler Overhead-Block auf Netto-Umsatz.",
+      formula: "Leakage/Unit = (Netto-Umsatz/Monat × Leakage%-Satz) / Monatsabsatz.",
+      source: "Globales Leakage-Setting (2-5% üblich).",
+      robustness: "Mittel (bewusster Sicherheitsblock).",
+      driverPaths: ["assumptions.leakage.ratePct", "basic.priceGross", "basic.demandValue", "basic.demandBasis"],
+    },
+  ];
+
+  const validationItems = [
+    {
+      label: "Door-to-Door Shipping / Monat",
+      value: formatCurrency(metrics.shippingMonthly),
+      impactMonthly: metrics.shippingMonthly,
+      explain: "Internationaler D2D-Anteil aus Fixblöcken + LCL variabel (W/M).",
+      formula: "Shipping Total = Origin + Destination + On-Carriage + optional Broker + (chargeable CBM × LCL-Rate).",
+      source: "Globale 12M-Settings + Produktmaße/-gewicht/-Menge.",
+      robustness: "Mittel (Richtwert, kein Live-Spot-Tarif).",
+      driverPaths: [
+        "basic.unitsPerOrder",
+        "basic.netWeightG",
+        "basic.packLengthCm",
+        "basic.packWidthCm",
+        "basic.packHeightCm",
+        "settings.shipping12m.lclRateEurPerCbm",
+        "settings.shipping12m.originFixedEurPerShipment",
+        "settings.shipping12m.destinationFixedEurPerShipment",
+        "settings.shipping12m.deOncarriageFixedEurPerShipment",
+      ],
+      pinned: true,
+    },
+    {
+      label: "3PL Lagerung / Monat",
+      value: formatCurrency(threePlStorageMonthly),
+      impactMonthly: threePlStorageMonthly,
+      explain: "3PL Lagerkosten aus Palette/Monat, Lagerdauer und Units je Palette.",
+      formula: "3PL Lager/Unit = (EUR je Palette/Monat × Lagerdauer) / Units je Palette.",
+      source: "Globale 3PL-Defaults oder Produkt-Override.",
+      robustness: "Mittel bis hoch (interner Vertrag meist stabil).",
+      driverPaths: [
+        "assumptions.extraCosts.threePlStoragePerPalletMonthEur",
+        "assumptions.extraCosts.unitsPerPallet",
+        "assumptions.extraCosts.avg3PlStorageMonths",
+        "settings.costDefaults.threePlStoragePerPalletMonthEur",
+      ],
+      pinned: true,
+    },
+    {
+      label: "Amazon Lagerung / Monat",
+      value: formatCurrency(amazonStorageMonthly),
+      impactMonthly: amazonStorageMonthly,
+      explain: "Amazon-Lagerkosten aus EUR/CBM, Lagerdauer und Unit-CBM.",
+      formula: "Amazon Lager/Unit = EUR je CBM/Monat × Amazon-Lagerdauer × Unit-CBM.",
+      source: "Globale Lager-Defaults + Produktmaße.",
+      robustness: "Mittel (saisonal und dimensionsabhängig).",
+      driverPaths: [
+        "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
+        "assumptions.extraCosts.avgAmazonStorageMonths",
+        "basic.packLengthCm",
+        "basic.packWidthCm",
+        "basic.packHeightCm",
+      ],
+      pinned: true,
+    },
+    {
+      label: "3PL Inbound + Outbound / Monat",
+      value: formatCurrency(threePlInboundMonthly + threePlOutboundMonthly),
+      impactMonthly: threePlInboundMonthly + threePlOutboundMonthly,
+      explain: "3PL Wareneingang je Karton plus Versand 3PL -> Amazon je Karton.",
+      formula: "Inbound/Outbound je Unit aus Kartonanzahl und Gebühren je Karton.",
+      source: "Globale 3PL-Defaults + Auto-Kartonisierung.",
+      robustness: "Mittel (karton- und mengenabhängig).",
+      driverPaths: [
+        "assumptions.extraCosts.threePlInboundPerCartonEur",
+        "assumptions.extraCosts.threePlOutboundPerCartonEur",
+        "basic.unitsPerOrder",
+        "basic.packLengthCm",
+        "basic.packWidthCm",
+        "basic.packHeightCm",
+      ],
+    },
+    {
+      label: "Order-Fixkosten / Monat",
+      value: formatCurrency(orderOpsMonthly),
+      impactMonthly: orderOpsMonthly,
+      explain: "Dokumentation und Frachtpapiere je Import-Order.",
+      formula: "Order-Fix/Unit = (Dokumentation + Frachtpapiere) / Units pro Order.",
+      source: "Global costDefaults oder Produkt-Override.",
+      robustness: "Hoch (fixe Prozesskosten).",
+      driverPaths: [
+        "assumptions.extraCosts.docsPerOrderEur",
+        "assumptions.extraCosts.freightPapersPerOrderEur",
+        "settings.costDefaults.docsPerOrderEur",
+        "settings.costDefaults.freightPapersPerOrderEur",
+      ],
+    },
+    {
+      label: "Launch-PPC Mehrkosten / Monat",
+      value: formatCurrency(metrics.launchAdsIncrementMonthly),
+      impactMonthly: metrics.launchAdsIncrementMonthly,
+      explain: "Zusätzlicher Ads-Kostenanteil durch Launch-Boost-Profil.",
+      formula: "Launch-PPC Mehrkosten = (Ads mit Boost - Ads ohne Boost) × Monatsabsatz.",
+      source: "Launch-Profil in Settings + TACoS-Annahmen.",
+      robustness: "Niedrig bis mittel (kampagnenabhängig).",
+      driverPaths: [
+        "assumptions.ads.launchMultiplier",
+        "assumptions.ads.launchMonths",
+        "basic.launchCompetition",
+      ],
+    },
+    {
+      label: "Leakage / Monat",
+      value: formatCurrency(metrics.block3Monthly),
+      impactMonthly: metrics.block3Monthly,
+      explain: "Pauschaler Overhead-Block auf Netto-Umsatz.",
+      driverPaths: ["assumptions.leakage.ratePct", "basic.priceGross", "basic.demandValue", "basic.demandBasis"],
+    },
+  ];
+
+  const deepDiveItems = [
+    {
+      label: "Setupkosten gesamt (einmalig)",
+      value: formatCurrency(metrics.setupOneOffTotal),
+      impactMonthly: setupAmortizedMonthly,
+      explain: "Samples, Tooling, Zertifikate und Quality Inspection (einmalig).",
+      formula: "Setup total = Samples + Tooling + Zertifikate + Inspection; optional amortisiert pro Monat.",
+      source: "Global costDefaults oder Produkt-Override.",
+      robustness: "Hoch (einmalige, planbare Kosten).",
+      driverPaths: [
+        "assumptions.extraCosts.overrideLaunchOpsGroup",
+        "assumptions.extraCosts.samplesPerProductEur",
+        "assumptions.extraCosts.toolingPerProductEur",
+        "assumptions.extraCosts.certificatesPerProductEur",
+        "assumptions.extraCosts.inspectionPerProductEur",
+        "settings.costDefaults.samplesPerProductEur",
+        "settings.costDefaults.toolingPerProductEur",
+      ],
+      pinned: true,
+    },
+    {
+      label: "Listing-Paket gesamt (einmalig)",
+      value: formatCurrency(metrics.listingPackageCost),
+      impactMonthly: metrics.listingMonthly,
+      explain: "Listing-Erstellung, Bilder/Infografiken und A+ Content.",
+      formula: "Listing total = Listing + Bilder/Infografiken + A+ (je Paket).",
+      source: "Globale Listing-Paket-Settings (KI/Fotograf/Visual Advantage).",
+      robustness: "Hoch (dienstleistungsbasiert, gut planbar).",
+      driverPaths: [
+        "basic.listingPackage",
+        "settings.lifecycle.listingPackages.ai.listingCreationEur",
+        "settings.lifecycle.listingPackages.photographer.imagesInfographicsEur",
+        "settings.lifecycle.listingPackages.visual_advantage.aPlusContentEur",
+      ],
+      pinned: true,
+    },
+    {
+      label: "Launch-Budget / Monat",
+      value: formatCurrency(metrics.launchMonthly),
+      impactMonthly: metrics.launchMonthly,
+      explain: "Launchbudget amortisiert auf den Betrachtungszeitraum.",
+      formula: "Launch/Monat = Launchbudget gesamt / Betrachtungszeitraum (Monate).",
+      source: "User-Input + ggf. Launch-Split.",
+      robustness: "Hoch (direkte Budgetvorgabe).",
+      driverPaths: ["basic.launchBudgetTotal", "basic.horizonMonths"],
+    },
+    {
+      label: "Launch Ops (Grußkarte + Setup) / Monat",
+      value: formatCurrency(metrics.launchOpsMonthly),
+      impactMonthly: metrics.launchOpsMonthly,
+      explain: "Launch-Operationskosten inklusive Grußkarten und Einmalkosten.",
+      formula: "Launch Ops/Monat = (Grußkarten total + Setup total) / Betrachtungszeitraum.",
+      source: "Global costDefaults oder Produkt-Override.",
+      robustness: "Mittel bis hoch (teilweise volumenabhängig).",
+      driverPaths: [
+        "assumptions.extraCosts.greetingCardPerLaunchUnitEur",
+        "assumptions.extraCosts.samplesPerProductEur",
+        "assumptions.extraCosts.toolingPerProductEur",
+        "assumptions.extraCosts.certificatesPerProductEur",
+        "assumptions.extraCosts.inspectionPerProductEur",
+      ],
+    },
+    {
+      label: "Zoll / Monat",
+      value: formatCurrency(metrics.customsMonthly),
+      impactMonthly: metrics.customsMonthly,
+      explain: "Zoll auf importierten Warenwert (inkl. Shippinganteile im Landed-Teil).",
+      formula: "Zoll/Unit = Zollsatz × Landed before duty; danach × Monatsabsatz.",
+      source: "Default China->DE (oder Override) + Landed-Basis.",
+      robustness: "Hoch (tariflich vorgegeben).",
+      driverPaths: ["assumptions.import.customsDutyRate", "basic.exwUnit", "basic.unitsPerOrder"],
+    },
+    {
+      label: "Leakage / Monat",
+      value: formatCurrency(metrics.block3Monthly),
+      impactMonthly: metrics.block3Monthly,
+      explain: "Pauschaler Overhead-Block auf Netto-Umsatz.",
+      driverPaths: ["assumptions.leakage.ratePct", "basic.priceGross", "basic.demandValue", "basic.demandBasis"],
+    },
+  ];
+
+  const stageMap = {
+    quick: quickItems,
+    validation: validationItems,
+    deep_dive: deepDiveItems,
+  };
+
+  const allItems = (stageMap[stage] ?? quickItems).map((item, index) => ({ ...item, id: `${stage}-${index}` }));
+  const pinned = allItems.filter((item) => item.pinned);
+  const nonPinned = allItems
+    .filter((item) => !item.pinned)
+    .sort((a, b) => Math.max(0, num(b.impactMonthly, 0)) - Math.max(0, num(a.impactMonthly, 0)));
+
+  const limit = stage === "quick" ? 7 : 6;
+  return [...pinned, ...nonPinned].slice(0, limit);
+}
+
+function openDriverModal(payload) {
+  const paths = [...new Set((payload?.driverPaths ?? []).filter(Boolean))];
+  if (!payload || paths.length === 0) {
+    return;
+  }
+  state.ui.driverModal = {
+    title: payload.title || payload.label || "Treiber-Maske",
+    value: payload.value ?? "",
+    explain: payload.explain ?? "",
+    formula: payload.formula ?? "",
+    source: payload.source ?? "",
+    robustness: payload.robustness ?? "",
+    driverPaths: paths,
+  };
+  applyDriverFocus(paths, state.ui.driverModal.title);
+  renderDriverModal();
+}
+
+function closeDriverModal() {
+  state.ui.driverModal = null;
+  if (dom.driverModal) {
+    dom.driverModal.classList.add("hidden");
+  }
+  applyDriverFocus([], "");
+}
+
+function cloneControlForModal(sourceControl) {
+  if (sourceControl instanceof HTMLSelectElement) {
+    const select = document.createElement("select");
+    Array.from(sourceControl.options).forEach((option) => {
+      const clone = document.createElement("option");
+      clone.value = option.value;
+      clone.textContent = option.textContent;
+      clone.disabled = option.disabled;
+      select.appendChild(clone);
+    });
+    return select;
+  }
+
+  if (sourceControl instanceof HTMLInputElement && sourceControl.type === "checkbox") {
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    return checkbox;
+  }
+
+  const input = document.createElement("input");
+  if (sourceControl instanceof HTMLInputElement) {
+    input.type = sourceControl.type || "text";
+    if (sourceControl.min !== "") {
+      input.min = sourceControl.min;
+    }
+    if (sourceControl.max !== "") {
+      input.max = sourceControl.max;
+    }
+    if (sourceControl.step !== "") {
+      input.step = sourceControl.step;
+    }
+    input.placeholder = sourceControl.placeholder;
+  } else {
+    input.type = "number";
+    input.step = "0.01";
+  }
+  return input;
+}
+
+function refreshAfterModalInput() {
+  renderComputedViews();
+  const selected = getSelectedProduct();
+  if (selected) {
+    renderInputs(selected);
+  }
+  renderDriverModal();
+  applyMouseoverHelp();
+}
+
+function renderDriverModal() {
+  if (!dom.driverModal || !dom.driverModalFields || !dom.driverModalTitle || !dom.driverModalSubtitle) {
+    return;
+  }
+  if (!state.ui.driverModal) {
+    dom.driverModal.classList.add("hidden");
+    return;
+  }
+
+  const selected = getSelectedProduct();
+  if (!selected) {
+    closeDriverModal();
+    return;
+  }
+
+  dom.driverModal.classList.remove("hidden");
+  dom.driverModalTitle.textContent = state.ui.driverModal.title;
+  dom.driverModalSubtitle.textContent = [state.ui.driverModal.value]
+    .filter((item) => Boolean(item))
+    .join(" · ");
+  dom.driverModalFields.innerHTML = "";
+
+  const summary = document.createElement("article");
+  summary.className = "modal-field";
+  const summaryTitle = document.createElement("strong");
+  summaryTitle.textContent = "Was ist das?";
+  summary.appendChild(summaryTitle);
+  const summaryText = document.createElement("small");
+  summaryText.textContent = state.ui.driverModal.explain || "Kostentreiber der aktuellen Kalkulation.";
+  summary.appendChild(summaryText);
+
+  const formulaTitle = document.createElement("strong");
+  formulaTitle.textContent = "Wie wird es berechnet?";
+  formulaTitle.style.marginTop = "8px";
+  summary.appendChild(formulaTitle);
+  const formulaText = document.createElement("small");
+  formulaText.textContent =
+    state.ui.driverModal.formula ||
+    "Der Wert wird aus den unten gelisteten Inputs/Defaults direkt gemäß Kostenmodell berechnet.";
+  summary.appendChild(formulaText);
+
+  if (state.ui.driverModal.source || state.ui.driverModal.robustness) {
+    const sourceText = document.createElement("small");
+    const parts = [];
+    if (state.ui.driverModal.source) {
+      parts.push(`Herkunft: ${state.ui.driverModal.source}`);
+    }
+    if (state.ui.driverModal.robustness) {
+      parts.push(`Robustheit: ${state.ui.driverModal.robustness}`);
+    }
+    sourceText.textContent = parts.join(" · ");
+    summary.appendChild(sourceText);
+  }
+  dom.driverModalFields.appendChild(summary);
+
+  const sectionHead = document.createElement("article");
+  sectionHead.className = "modal-field";
+  const sectionTitle = document.createElement("strong");
+  sectionTitle.textContent = "Relevante Inputs & Annahmen";
+  sectionHead.appendChild(sectionTitle);
+  const sectionText = document.createElement("small");
+  sectionText.textContent = "Nur die Felder, die diesen Kostentreiber direkt beeinflussen.";
+  sectionHead.appendChild(sectionText);
+  dom.driverModalFields.appendChild(sectionHead);
+
+  state.ui.driverModal.driverPaths.forEach((path) => {
+    const sourceControl = getFieldControl(path);
+    const label = extractControlLabel(sourceControl, path);
+    const helpText = getPathHelp(path);
+
+    const field = document.createElement("article");
+    field.className = "modal-field";
+
+    const head = document.createElement("div");
+    head.className = "modal-field-head";
+    const strong = document.createElement("strong");
+    strong.textContent = label;
+    head.appendChild(strong);
+    field.appendChild(head);
+
+    if (path.startsWith("settings.")) {
+      const settingsPath = path.slice("settings.".length);
+      const value = getByPath(state.settings, settingsPath);
+      const text = document.createElement("small");
+      text.textContent = `Globaler Wert: ${
+        typeof value === "boolean" ? (value ? "aktiv" : "inaktiv") : formatNumber(num(value, 0))
+      }`;
+      field.appendChild(text);
+      if (helpText) {
+        const help = document.createElement("small");
+        help.textContent = helpText;
+        field.appendChild(help);
+      }
+      const actions = document.createElement("div");
+      actions.className = "modal-actions";
+      const button = document.createElement("button");
+      button.className = "btn btn-ghost";
+      button.type = "button";
+      button.textContent = "In Settings öffnen";
+      button.addEventListener("click", () => {
+        closeDriverModal();
+        focusMetricDrivers([path], inferAdvancedSectionFromPath(path), label);
+      });
+      actions.appendChild(button);
+      field.appendChild(actions);
+      dom.driverModalFields.appendChild(field);
+      return;
+    }
+
+    const overridePath = VALUE_TO_OVERRIDE_MAP.get(path);
+    const overrideEnabled = overridePath ? Boolean(getByPath(selected, overridePath)) : true;
+
+    if (overridePath) {
+      const overrideWrap = document.createElement("label");
+      overrideWrap.className = "toggle-row";
+      const toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.checked = overrideEnabled;
+      toggle.addEventListener("change", () => {
+        updateSelectedField(overridePath, toggle.checked);
+        refreshAfterModalInput();
+      });
+      const text = document.createElement("span");
+      text.textContent = "Override aktivieren";
+      overrideWrap.append(toggle, text);
+      field.appendChild(overrideWrap);
+    }
+
+    const control = cloneControlForModal(sourceControl);
+    if (control instanceof HTMLInputElement && control.type === "checkbox") {
+      control.checked = Boolean(getByPath(selected, path));
+      control.disabled = !overrideEnabled;
+      control.addEventListener("change", () => {
+        updateSelectedField(path, control.checked);
+        refreshAfterModalInput();
+      });
+      const checkboxWrap = document.createElement("label");
+      checkboxWrap.className = "toggle-row";
+      const text = document.createElement("span");
+      text.textContent = label;
+      checkboxWrap.append(control, text);
+      field.appendChild(checkboxWrap);
+    } else if (control instanceof HTMLSelectElement) {
+      control.value = String(getByPath(selected, path) ?? "");
+      control.disabled = !overrideEnabled;
+      control.addEventListener("change", () => {
+        updateSelectedField(path, control.value);
+        refreshAfterModalInput();
+      });
+      field.appendChild(control);
+    } else if (control instanceof HTMLInputElement) {
+      const currentValue = getByPath(selected, path);
+      control.value = currentValue ?? "";
+      control.disabled = !overrideEnabled;
+      control.addEventListener("change", () => {
+        updateSelectedField(path, control.value);
+        refreshAfterModalInput();
+      });
+      field.appendChild(control);
+    }
+
+    if (helpText) {
+      const help = document.createElement("small");
+      help.textContent = helpText;
+      field.appendChild(help);
+    }
+
+    dom.driverModalFields.appendChild(field);
+  });
+}
+
+function renderStageImpactList(stage, metrics) {
+  if (!dom.stageImpactList) {
+    return;
+  }
+  dom.stageImpactList.innerHTML = "";
+  const items = buildStageImpactItems(metrics, stage);
+
+  items.forEach((item) => {
+    const impact = classifyImpact(item.impactMonthly, metrics.totalCostMonthly);
+    const li = document.createElement("li");
+    li.classList.add("clickable-row", `impact-${impact.level}`);
+    const formula = item.formula ? `\nRechenweg: ${item.formula}` : "";
+    const defaultSource = item.source ? `\nHerkunft: ${item.source}` : "";
+    const robustness = item.robustness ? `\nRobustheit: ${item.robustness}` : "";
+    li.title = `${item.explain}${formula}\nImpact: ${impact.label} (${formatPercent(impact.sharePct)} der Gesamtkosten).${defaultSource}${robustness}`;
+
+    const label = document.createElement("span");
+    label.textContent = item.label;
+
+    const chip = document.createElement("em");
+    chip.className = `impact-chip ${impact.level}`;
+    chip.textContent = impact.label;
+    label.appendChild(chip);
+
+    const value = document.createElement("strong");
+    value.textContent = item.value;
+
+    li.append(label, value);
+    li.addEventListener("click", () => {
+      openDriverModal({
+        title: item.label,
+        value: item.value,
+        explain: item.explain,
+        formula: item.formula,
+        source: item.source,
+        robustness: item.robustness,
+        driverPaths: item.driverPaths,
+      });
+    });
+
+    dom.stageImpactList.appendChild(li);
+  });
+}
+
 function renderBlockList(container, lines, options = { totalCostMonthly: 1 }) {
   container.innerHTML = "";
 
@@ -1903,9 +3289,16 @@ function renderBlockList(container, lines, options = { totalCostMonthly: 1 }) {
       li.dataset.driverPaths = JSON.stringify(driverPaths);
     }
     li.dataset.lineLabel = line.label;
+    li.dataset.lineExplain = line.explain ?? "";
+    li.dataset.lineFormula = line.formula ?? "";
+    li.dataset.lineSource = line.source ?? "";
+    li.dataset.lineRobustness = line.robustness ?? "";
 
     if (line.explain) {
-      li.title = `${line.explain}\nImpact: ${impact.label} (${formatPercent(impact.sharePct)} der Gesamtkosten).`;
+      const formula = line.formula ? `\nRechenweg: ${line.formula}` : "";
+      const defaultSource = line.source ? `\nHerkunft: ${line.source}` : "";
+      const robustness = line.robustness ? `\nRobustheit: ${line.robustness}` : "";
+      li.title = `${line.explain}${formula}\nImpact: ${impact.label} (${formatPercent(impact.sharePct)} der Gesamtkosten).${defaultSource}${robustness}`;
       label.title = li.title;
       value.title = li.title;
     }
@@ -1916,8 +3309,8 @@ function renderBlockList(container, lines, options = { totalCostMonthly: 1 }) {
       }
       li.classList.add("clickable-row");
       li.title = line.explain
-        ? `${line.explain}\nKlick: Treiber-Inputs hervorheben und in Advanced zum Override springen.`
-        : "Klick: Treiber-Inputs hervorheben und in Advanced zum Override springen.";
+        ? `${line.explain}\nKlick: Treiber-Maske mit relevanten Inputs öffnen.`
+        : "Klick: Treiber-Maske mit relevanten Inputs öffnen.";
     }
 
     li.append(label, value);
@@ -1959,9 +3352,30 @@ function renderShippingDetails(metrics) {
   }
 }
 
+function renderLogisticsChain(metrics) {
+  if (!dom.chainSupplierCost) {
+    return;
+  }
+
+  const supplierUnit = metrics.exwUnit + metrics.packagingUnit;
+  const importUnit = metrics.shippingUnit + metrics.customsUnit + metrics.orderFixedPerUnit;
+  const threePlUnit = metrics.threePlInboundPerUnit + metrics.threePlStoragePerUnit;
+  const inboundUnit = metrics.threePlOutboundPerUnit;
+  const amazonUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit + metrics.amazonStoragePerUnit;
+
+  const monthlyFactor = metrics.monthlyUnits;
+  dom.chainSupplierCost.textContent = `${formatCurrency(supplierUnit)}/Unit · ${formatCurrency(supplierUnit * monthlyFactor)}/Monat`;
+  dom.chainImportCost.textContent = `${formatCurrency(importUnit)}/Unit · ${formatCurrency(importUnit * monthlyFactor)}/Monat`;
+  dom.chainThreePlCost.textContent = `${formatCurrency(threePlUnit)}/Unit · ${formatCurrency(threePlUnit * monthlyFactor)}/Monat`;
+  dom.chainInboundCost.textContent = `${formatCurrency(inboundUnit)}/Unit · ${formatCurrency(inboundUnit * monthlyFactor)}/Monat`;
+  dom.chainAmazonCost.textContent = `${formatCurrency(amazonUnit)}/Unit · ${formatCurrency(amazonUnit * monthlyFactor)}/Monat`;
+}
+
 function renderSelectedOutputs(metrics) {
   setKpi(dom.kpiRevenueGross, metrics.grossRevenueMonthly, "currency");
   setKpi(dom.kpiRevenueNet, metrics.netRevenueMonthly, "currency");
+  setKpi(dom.kpiSellerboardMargin, metrics.sellerboardMarginPct, "percent");
+  setKpi(dom.kpiNetMargin, metrics.netMarginPct, "percent");
   setKpi(dom.kpiShippingUnit, metrics.shippingUnit, "currency");
   setKpi(dom.kpiLandedUnit, metrics.landedUnit, "currency");
   setKpi(dom.kpiDb1Unit, metrics.db1Unit, "currency");
@@ -1980,7 +3394,19 @@ function renderSelectedOutputs(metrics) {
   setKpi(dom.kpiCashRoi, metrics.cashRoiPct, "percent");
   setKpi(dom.kpiPayback, metrics.paybackMonths, "months");
 
+  if (dom.kpiNetMargin) {
+    dom.kpiNetMargin.classList.remove("margin-good", "margin-mid", "margin-low");
+    if (metrics.netMarginPct > 20) {
+      dom.kpiNetMargin.classList.add("margin-good");
+    } else if (metrics.netMarginPct >= 15) {
+      dom.kpiNetMargin.classList.add("margin-mid");
+    } else {
+      dom.kpiNetMargin.classList.add("margin-low");
+    }
+  }
+
   renderShippingDetails(metrics);
+  renderLogisticsChain(metrics);
 
   renderBlockList(
     dom.unitBlockList,
@@ -2000,10 +3426,30 @@ function renderSelectedOutputs(metrics) {
         driverPaths: ["basic.exwUnit"],
       },
       {
+        label: "Verpackung + weitere Stückkosten / Einheit (EUR)",
+        value: formatCurrency(metrics.packagingUnit),
+        targetSection: "advancedOpsSection",
+        explain: "Zusätzliche Verpackungskosten und weitere variable Kosten pro Unit.",
+        formula: "Verpackung/Unit + weitere Kosten/Unit.",
+        source: "Global costDefaults oder produktbezogener Override.",
+        robustness: "Mittel bis hoch (lieferanten- und materialabhängig).",
+        impactMonthly: metrics.packagingUnit * metrics.monthlyUnits,
+        driverPaths: [
+          "assumptions.extraCosts.overridePackagingGroup",
+          "assumptions.extraCosts.packagingPerUnitEur",
+          "assumptions.extraCosts.otherUnitCostEur",
+          "settings.costDefaults.packagingPerUnitEur",
+          "settings.costDefaults.otherUnitCostEur",
+        ],
+      },
+      {
         label: "Shipping door-to-door / Einheit (EUR)",
         value: formatCurrency(metrics.shippingUnit),
         targetSection: "advancedShippingSection",
         explain: "12M-Ø Door-to-Door-Modell: fixe Kosten + LCL variabel über chargeable CBM.",
+        formula: "Shipping/Unit = Shipping total (Fixkosten + LCL W/M) / Units pro Order.",
+        source: "Globale 12M Shipping-Settings + Produktmaße/-gewicht.",
+        robustness: "Mittel (Richtwert, kein Live-Spot).",
         impactMonthly: metrics.shippingMonthly,
         driverPaths: [
           "basic.unitsPerOrder",
@@ -2019,10 +3465,105 @@ function renderSelectedOutputs(metrics) {
         ],
       },
       {
+        label: "Order-Fixkosten (Docs + Frachtpapiere) / Einheit (EUR)",
+        value: formatCurrency(metrics.orderFixedPerUnit),
+        targetSection: "advancedOpsSection",
+        explain: "Fixkosten je Order, verteilt auf Units pro Order.",
+        formula: "Order-Fix/Unit = (Dokumentation + Frachtpapiere) / Units pro Order.",
+        source: "Global costDefaults oder Produkt-Override.",
+        robustness: "Hoch (fixe Prozesskosten).",
+        impactMonthly: metrics.orderFixedPerUnit * metrics.monthlyUnits,
+        driverPaths: [
+          "assumptions.extraCosts.overrideLogisticsGroup",
+          "assumptions.extraCosts.docsPerOrderEur",
+          "assumptions.extraCosts.freightPapersPerOrderEur",
+          "basic.unitsPerOrder",
+          "settings.costDefaults.docsPerOrderEur",
+          "settings.costDefaults.freightPapersPerOrderEur",
+        ],
+      },
+      {
+        label: "3PL Inbound / Einheit (EUR)",
+        value: formatCurrency(metrics.threePlInboundPerUnit),
+        targetSection: "advancedOpsSection",
+        explain: "3PL Wareneingang je Karton, verteilt auf Units pro Order.",
+        formula: "3PL Inbound/Unit = (Kartonanzahl × Inbound je Karton) / Units pro Order.",
+        source: "Global costDefaults + Auto-Kartonisierung oder Produkt-Override.",
+        robustness: "Mittel.",
+        impactMonthly: metrics.threePlInboundPerUnit * metrics.monthlyUnits,
+        driverPaths: [
+          "assumptions.extraCosts.overrideLogisticsGroup",
+          "assumptions.extraCosts.threePlInboundPerCartonEur",
+          "basic.unitsPerOrder",
+          "basic.packLengthCm",
+          "basic.packWidthCm",
+          "basic.packHeightCm",
+          "settings.costDefaults.threePlInboundPerCartonEur",
+        ],
+      },
+      {
+        label: "3PL Lagerung / Einheit (EUR)",
+        value: formatCurrency(metrics.threePlStoragePerUnit),
+        targetSection: "advancedOpsSection",
+        explain: "3PL Lager je Palette/Monat, umgerechnet auf Unit und Lagerdauer.",
+        formula: "3PL Lager/Unit = (EUR Palette/Monat × 3PL-Monate) / Units je Palette.",
+        source: "Global costDefaults oder Produkt-Override.",
+        robustness: "Mittel bis hoch.",
+        impactMonthly: metrics.threePlStoragePerUnit * metrics.monthlyUnits,
+        driverPaths: [
+          "assumptions.extraCosts.overrideLogisticsGroup",
+          "assumptions.extraCosts.threePlStoragePerPalletMonthEur",
+          "assumptions.extraCosts.unitsPerPallet",
+          "assumptions.extraCosts.avg3PlStorageMonths",
+          "settings.costDefaults.threePlStoragePerPalletMonthEur",
+        ],
+      },
+      {
+        label: "3PL -> Amazon Versand / Einheit (EUR)",
+        value: formatCurrency(metrics.threePlOutboundPerUnit),
+        targetSection: "advancedOpsSection",
+        explain: "Outbound-Versand von 3PL zu Amazon je Karton, auf Unit verteilt.",
+        formula: "3PL Outbound/Unit = (Kartonanzahl × Outbound je Karton) / Units pro Order.",
+        source: "Global costDefaults + Auto-Kartonisierung oder Produkt-Override.",
+        robustness: "Mittel.",
+        impactMonthly: metrics.threePlOutboundPerUnit * metrics.monthlyUnits,
+        driverPaths: [
+          "assumptions.extraCosts.overrideLogisticsGroup",
+          "assumptions.extraCosts.threePlOutboundPerCartonEur",
+          "basic.unitsPerOrder",
+          "basic.packLengthCm",
+          "basic.packWidthCm",
+          "basic.packHeightCm",
+          "settings.costDefaults.threePlOutboundPerCartonEur",
+        ],
+      },
+      {
+        label: "Amazon Lagerung / Einheit (EUR)",
+        value: formatCurrency(metrics.amazonStoragePerUnit),
+        targetSection: "advancedOpsSection",
+        explain: "Amazon-Lagerkosten aus EUR/CBM, Lagerdauer und Unit-CBM.",
+        formula: "Amazon Lager/Unit = EUR je CBM/Monat × Amazon-Monate × Unit-CBM.",
+        source: "Global costDefaults oder Produkt-Override.",
+        robustness: "Mittel (saisonal/volumenabhängig).",
+        impactMonthly: metrics.amazonStoragePerUnit * metrics.monthlyUnits,
+        driverPaths: [
+          "assumptions.extraCosts.overrideLogisticsGroup",
+          "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
+          "assumptions.extraCosts.avgAmazonStorageMonths",
+          "basic.packLengthCm",
+          "basic.packWidthCm",
+          "basic.packHeightCm",
+          "settings.costDefaults.amazonStoragePerCbmMonthEur",
+        ],
+      },
+      {
         label: "Zoll / Einheit (EUR)",
         value: formatCurrency(metrics.customsUnit),
         targetSection: "advancedImportSection",
         explain: "Zoll auf EXW + Shipping bis Import.",
+        formula: "Zoll/Unit = customsDutyRate × landedBeforeDuty.",
+        source: "Default (Route/Kategorie) oder Produkt-Override.",
+        robustness: "Hoch.",
         impactMonthly: metrics.customsMonthly,
         driverPaths: ["assumptions.import.customsDutyRate", "basic.exwUnit", "basic.unitsPerOrder"],
       },
@@ -2031,6 +3572,9 @@ function renderSelectedOutputs(metrics) {
         value: formatCurrency(metrics.landedUnit),
         targetSection: "advancedShippingSection",
         explain: "Landed = EXW(EUR) + Shipping + Zoll (+ optional EUSt als Kosten).",
+        formula: "Landed/Unit = EXW(EUR) + Shipping + Zoll (+ optional EUSt).",
+        source: "User Inputs + globale Defaults.",
+        robustness: "Mittel.",
         impactMonthly: metrics.landedUnit * metrics.monthlyUnits,
         driverPaths: [
           "basic.exwUnit",
@@ -2045,6 +3589,9 @@ function renderSelectedOutputs(metrics) {
         value: formatCurrency(metrics.referralFeeUnit),
         targetSection: "advancedImportSection",
         explain: "Referral Fee in % auf Brutto-Preis, mindestens Mindestgebühr.",
+        formula: "Referral/Unit = max(Mindestfee, Brutto-Preis × Referral%).",
+        source: "Kategorie-Default oder Produkt-Override.",
+        robustness: "Hoch.",
         impactMonthly: metrics.referralMonthly,
         driverPaths: ["assumptions.amazon.referralRate", "basic.category", "basic.priceGross"],
       },
@@ -2053,6 +3600,9 @@ function renderSelectedOutputs(metrics) {
         value: formatCurrency(metrics.fbaFeeUnit),
         targetSection: "advancedImportSection",
         explain: "Automatische FBA-Tier-Erkennung (oder manueller Override).",
+        formula: "FBA Fee = Auto-Tier aus Maßen/Gewicht oder manueller Wert.",
+        source: "FBA-Tierlogik + optionales Produkt-Override.",
+        robustness: "Mittel bis hoch.",
         impactMonthly: metrics.fbaFeeUnit * metrics.monthlyUnits,
         driverPaths: [
           "assumptions.amazon.useManualFbaFee",
@@ -2067,12 +3617,19 @@ function renderSelectedOutputs(metrics) {
         label: `Ads / Einheit (EUR, eff. ${formatPercent(metrics.effectiveTacosRate)} auf Netto-Umsatz)`,
         value: formatCurrency(metrics.adsUnit),
         targetSection: "advancedAdsSection",
-        explain: "Ads-Kosten = Netto-Preis × effektiver TACoS inkl. Launch-Bias.",
+        explain: "Ads-Kosten = Netto-Preis × effektiver TACoS inkl. Launch-Boost-Profil.",
+        formula: "Ads/Unit = Netto-Preis × effektiver TACoS%.",
+        source: "User TACoS + Launch-Profil-Defaults.",
+        robustness: "Niedrig bis mittel.",
         impactMonthly: metrics.adsMonthly,
         driverPaths: [
           "assumptions.ads.tacosRate",
           "assumptions.ads.launchMultiplier",
           "assumptions.ads.launchMonths",
+          "basic.launchCompetition",
+          "settings.lifecycle.launchProfiles.low.startTacosBoostPct",
+          "settings.lifecycle.launchProfiles.medium.startTacosBoostPct",
+          "settings.lifecycle.launchProfiles.high.startTacosBoostPct",
           "basic.category",
         ],
       },
@@ -2081,6 +3638,9 @@ function renderSelectedOutputs(metrics) {
         value: formatCurrency(metrics.returnLossUnit + metrics.returnHandlingUnit),
         targetSection: "advancedReturnsSection",
         explain: "Retourenquote, Unsellable-Anteil, Wiederverkaufsquote und Handling kombiniert.",
+        formula: "Retouren/Unit = Verlustanteile aus Landed + Handlinganteil je Retoure.",
+        source: "Kategorie-Defaults oder Produkt-Override.",
+        robustness: "Niedrig bis mittel.",
         impactMonthly: metrics.returnsMonthly,
         driverPaths: [
           "assumptions.returns.returnRate",
@@ -2094,6 +3654,9 @@ function renderSelectedOutputs(metrics) {
         value: formatCurrency(metrics.block1Monthly),
         targetSection: "advancedShippingSection",
         explain: "Summe aller Unit-Economics-Kostenblöcke.",
+        formula: "Block 1 = (Landed + Amazon Fees + Ads + Retouren) × Monatsabsatz.",
+        source: "Aggregierter Kostenblock aus allen Unit-Treibern.",
+        robustness: "Mittel.",
         impactMonthly: metrics.block1Monthly,
         driverPaths: [
           "basic.exwUnit",
@@ -2111,12 +3674,60 @@ function renderSelectedOutputs(metrics) {
     dom.launchBlockList,
     [
       {
+        label: `Launch-Profil (${launchCompetitionLabel(metrics.basic.launchCompetition)})`,
+        value: `TACoS +${formatPercent(metrics.averageLaunchTacosBoostPct)} · Preis -${formatPercent(metrics.averageLaunchPriceDiscountPct)}`,
+        targetSection: "settingsLifecycleSection",
+        explain: "Profil steuert Launch-PPC-Druck und Einführungspreis in den ersten Wochen.",
+        impactMonthly:
+          Math.abs(metrics.netRevenueTargetMonthly - metrics.netRevenueMonthly) + metrics.launchAdsIncrementMonthly,
+        driverPaths: [
+          "basic.launchCompetition",
+          "settings.lifecycle.launchProfiles.low.weeks",
+          "settings.lifecycle.launchProfiles.low.startTacosBoostPct",
+          "settings.lifecycle.launchProfiles.low.endTacosBoostPct",
+          "settings.lifecycle.launchProfiles.low.startPriceDiscountPct",
+          "settings.lifecycle.launchProfiles.medium.weeks",
+          "settings.lifecycle.launchProfiles.medium.startTacosBoostPct",
+          "settings.lifecycle.launchProfiles.medium.endTacosBoostPct",
+          "settings.lifecycle.launchProfiles.medium.startPriceDiscountPct",
+          "settings.lifecycle.launchProfiles.high.weeks",
+          "settings.lifecycle.launchProfiles.high.startTacosBoostPct",
+          "settings.lifecycle.launchProfiles.high.endTacosBoostPct",
+          "settings.lifecycle.launchProfiles.high.startPriceDiscountPct",
+        ],
+      },
+      {
         label: "Launch-Budget gesamt (EUR)",
         value: formatCurrency(metrics.launchBudget),
         targetSection: "advancedLifecycleSection",
         explain: "Einmaliges Budget, über Zeitraum amortisiert.",
+        formula: "Launch gesamt = Pflichtfeld oder Summe Launch-Split.",
+        source: "User-Input (produktbezogen).",
+        robustness: "Hoch.",
         impactMonthly: metrics.launchMonthly,
         driverPaths: ["basic.launchBudgetTotal", "assumptions.launchSplit.enabled"],
+      },
+      {
+        label: `Listing-Paket (${listingPackageLabel(metrics.resolved.listingPackageKey)}) gesamt (EUR)`,
+        value: formatCurrency(metrics.listingPackageCost),
+        targetSection: "settingsLifecycleSection",
+        explain: "Listing-Erstellung, Bilder/Infografiken und A+ Content aus globalem Paketpreis.",
+        formula: "Listing total = Summe Paketkomponenten (Listing + Bilder + A+).",
+        source: "Global Settings (Listing-Pakete).",
+        robustness: "Hoch.",
+        impactMonthly: metrics.listingMonthly,
+        driverPaths: [
+          "basic.listingPackage",
+          "settings.lifecycle.listingPackages.ai.listingCreationEur",
+          "settings.lifecycle.listingPackages.ai.imagesInfographicsEur",
+          "settings.lifecycle.listingPackages.ai.aPlusContentEur",
+          "settings.lifecycle.listingPackages.photographer.listingCreationEur",
+          "settings.lifecycle.listingPackages.photographer.imagesInfographicsEur",
+          "settings.lifecycle.listingPackages.photographer.aPlusContentEur",
+          "settings.lifecycle.listingPackages.visual_advantage.listingCreationEur",
+          "settings.lifecycle.listingPackages.visual_advantage.imagesInfographicsEur",
+          "settings.lifecycle.listingPackages.visual_advantage.aPlusContentEur",
+        ],
       },
       {
         label: "Launch / Einheit über Zeitraum (EUR)",
@@ -2135,6 +3746,14 @@ function renderSelectedOutputs(metrics) {
         driverPaths: ["basic.launchBudgetTotal", "basic.horizonMonths"],
       },
       {
+        label: `Listing amortisiert / Monat (EUR, ${formatNumber(metrics.lifecycleMonthsSetting)} Monate)`,
+        value: formatCurrency(metrics.listingMonthly),
+        targetSection: "settingsLifecycleSection",
+        explain: "Listing-Paketkosten werden über den globalen Lifecycle-Horizont verteilt.",
+        impactMonthly: metrics.listingMonthly,
+        driverPaths: ["basic.listingPackage", "settings.lifecycle.defaultMonths"],
+      },
+      {
         label: "Weitere Lifecycle / Monat (EUR)",
         value: formatCurrency(metrics.otherLifecycleMonthly),
         targetSection: "advancedLifecycleSection",
@@ -2146,9 +3765,17 @@ function renderSelectedOutputs(metrics) {
         label: "Block 2 gesamt / Monat (EUR)",
         value: formatCurrency(metrics.block2Monthly),
         targetSection: "advancedLifecycleSection",
-        explain: "Summe Launch-Amortisation und Lifecycle-Monatskosten.",
+        explain: "Summe aus Launch-Amortisation, Listing-Amortisation und weiteren Lifecycle-Kosten.",
+        formula: "Block 2 = Launch/Monat + Listing/Monat + Launch Ops/Monat + weitere Lifecycle-Kosten.",
+        source: "Aggregierter Launch/Lifecycle-Block.",
+        robustness: "Mittel bis hoch.",
         impactMonthly: metrics.block2Monthly,
-        driverPaths: ["basic.launchBudgetTotal", "assumptions.lifecycle.otherMonthlyCost"],
+        driverPaths: [
+          "basic.launchBudgetTotal",
+          "basic.listingPackage",
+          "settings.lifecycle.defaultMonths",
+          "assumptions.lifecycle.otherMonthlyCost",
+        ],
       },
     ],
     { totalCostMonthly: metrics.totalCostMonthly },
@@ -2162,22 +3789,32 @@ function renderSelectedOutputs(metrics) {
         value: formatCurrency(metrics.block3Monthly),
         targetSection: "advancedLeakageSection",
         explain: "Pauschaler Sicherheitsabschlag für vergessene/indirekte Kosten.",
+        formula: "Leakage/Monat = Netto-Umsatz × Leakage%.",
+        source: "Globales Leakage-Setting oder Produkt-Override.",
+        robustness: "Mittel.",
         impactMonthly: metrics.block3Monthly,
         driverPaths: ["assumptions.leakage.ratePct", "basic.priceGross", "basic.demandValue", "basic.demandBasis"],
       },
       {
         label: "Netto-Umsatz / Monat (EUR)",
         value: formatCurrency(metrics.netRevenueMonthly),
-        explain: "Basis für Leakage-Berechnung und Netto-Margen.",
+        explain: "Bemessungsgrundlage für den pauschalen Leakage-Block.",
+        formula: "Netto-Umsatz = (Brutto-Preis / (1+USt)) × Monatsabsatz.",
+        source: "User-Input Preis + Marketplace-USt + Absatzannahme.",
+        robustness: "Hoch.",
         impactMonthly: metrics.block3Monthly,
         driverPaths: ["basic.priceGross", "basic.marketplace", "basic.demandValue", "basic.demandBasis"],
       },
       {
-        label: "Gewinn netto / Monat nach 3 Blöcken (EUR)",
-        value: formatCurrency(metrics.profitMonthly),
-        explain: "Ergebnis nach Unit Economics, Launch/Lifecycle und Leakage.",
-        impactMonthly: Math.max(0, metrics.profitMonthly),
-        driverPaths: ["basic.priceGross", "basic.exwUnit", "assumptions.ads.tacosRate", "assumptions.leakage.ratePct"],
+        label: "Block 3 gesamt / Monat (EUR)",
+        value: formatCurrency(metrics.block3Monthly),
+        targetSection: "advancedLeakageSection",
+        explain: "Gesamter Leakage-Kostenblock pro Monat.",
+        formula: "Block 3 = Leakage-Rate × Netto-Umsatz/Monat.",
+        source: "Globales Leakage-Setting + Umsatztreiber.",
+        robustness: "Mittel.",
+        impactMonthly: metrics.block3Monthly,
+        driverPaths: ["assumptions.leakage.ratePct", "basic.priceGross", "basic.demandValue", "basic.demandBasis"],
       },
     ],
     { totalCostMonthly: metrics.totalCostMonthly },
@@ -2189,10 +3826,12 @@ function renderSelectedOutputs(metrics) {
   setKpi(dom.sensWorst, metrics.sensitivity.worst.profitMonthly, "currency");
   setKpi(dom.sensBest, metrics.sensitivity.best.profitMonthly, "currency");
 
-  dom.trafficLight.className = `traffic-badge traffic-${metrics.sensitivity.traffic.color}`;
-  dom.trafficLight.textContent = `Ampel: ${metrics.sensitivity.traffic.label} · ${metrics.sensitivity.traffic.text}`;
-  dom.trafficLight.title =
-    "Ampel-Logik: Rot = Basisszenario unprofitabel, Gelb = Basis profitabel aber Worst-Case kritisch, Grün = robust über Zielmarge.";
+  const launchDecision = classifyLaunchDecision(metrics);
+  if (dom.trafficLight) {
+    dom.trafficLight.className = `traffic-badge traffic-${launchDecision.color}`;
+    dom.trafficLight.textContent = launchDecision.label;
+    dom.trafficLight.title = `Launch-Entscheidung: ${launchDecision.text}`;
+  }
 
   applyDriverFocus(state.ui.focusedDriverPaths, state.ui.focusedDriverLabel);
 }
@@ -2216,42 +3855,119 @@ function renderLaunchHint(product, resolved) {
   const splitEnabled = Boolean(product.assumptions.launchSplit.enabled);
   const splitTotal = resolved.launchBudgetSplitTotal;
   const baseLaunch = num(product.basic.launchBudgetTotal);
+  const listingMonthly = resolved.listingPackageTotal / resolved.lifecycleMonths;
+  const listingText = `Listing-Paket (${listingPackageLabel(resolved.listingPackageKey)}): ${formatCurrency(resolved.listingPackageTotal)} gesamt, ${formatCurrency(listingMonthly)}/Monat über ${formatNumber(resolved.lifecycleMonths)} Monate.`;
 
   if (!splitEnabled) {
-    dom.launchSplitHint.textContent = `Aktiv: Pflichtfeld Launch-Budget (${formatCurrency(baseLaunch)}).`;
+    dom.launchSplitHint.textContent = `Aktiv: Pflichtfeld Launch-Budget (${formatCurrency(baseLaunch)}). ${listingText}`;
     return;
   }
 
   if (splitTotal <= 0) {
     dom.launchSplitHint.textContent =
-      "Launch-Split aktiviert, aber Summe = 0. Es wird auf Launch-Budget gesamt zurückgefallen.";
+      `Launch-Split aktiviert, aber Summe = 0. Es wird auf Launch-Budget gesamt zurückgefallen. ${listingText}`;
     return;
   }
 
-  dom.launchSplitHint.textContent = `Launch-Split aktiv: ${formatCurrency(splitTotal)} (ersetzt Pflichtfeld-Wert).`;
+  dom.launchSplitHint.textContent = `Launch-Split aktiv: ${formatCurrency(splitTotal)} (ersetzt Pflichtfeld-Wert). ${listingText}`;
+}
+
+function renderStagePanel(product, metrics) {
+  const stageState = buildStageState(product, metrics);
+
+  if (dom.stageHint) {
+    dom.stageHint.textContent = stageState.hint;
+  }
+
+  if (dom.stageGateStatus) {
+    dom.stageGateStatus.classList.remove("pass", "warn", "fail");
+    dom.stageGateStatus.classList.add(stageState.statusClass);
+    dom.stageGateStatus.textContent = stageState.blockers.length > 0
+      ? `${stageState.statusText} · ${stageState.blockers[0]}`
+      : stageState.statusText;
+  }
+
+  const stageButtonMap = {
+    quick: dom.stageQuickBtn,
+    validation: dom.stageValidationBtn,
+    deep_dive: dom.stageDeepBtn,
+  };
+
+  WORKFLOW_STAGES.forEach((stageKey) => {
+    const btn = stageButtonMap[stageKey];
+    if (!btn) {
+      return;
+    }
+    btn.classList.toggle("active", stageKey === stageState.stage);
+    btn.disabled = false;
+  });
+
+  return stageState;
+}
+
+function applyStageVisibility(product, stageState) {
+  const stage = stageState.stage;
+  const isDeep = stage === "deep_dive";
+  const isQuick = stage === "quick";
+
+  if (dom.advancedToggleWrap) {
+    dom.advancedToggleWrap.classList.toggle("hidden", isQuick);
+  }
+
+  if (isQuick) {
+    state.ui.advancedVisible = false;
+  }
+
+  dom.advancedPanel.classList.toggle("hidden", !state.ui.advancedVisible);
+  if (dom.advancedToggle) {
+    dom.advancedToggle.checked = state.ui.advancedVisible;
+    dom.advancedToggle.disabled = isQuick;
+  }
+
+  const deepDiveSection = document.getElementById("advancedDeepDiveSection");
+  if (deepDiveSection) {
+    deepDiveSection.classList.toggle("hidden", !isDeep);
+  }
+
+  const deepDiveCheckboxes = document.querySelectorAll('[data-path^="workflow.deepDive."]');
+  deepDiveCheckboxes.forEach((node) => {
+    node.disabled = !isDeep;
+  });
 }
 
 function syncControlStates(product) {
-  dom.advancedPanel.classList.toggle("hidden", !state.ui.advancedVisible);
-  dom.advancedToggle.checked = state.ui.advancedVisible;
-
   OVERRIDE_CONTROL_MAP.forEach(([flagPath, valuePath]) => {
     const flag = Boolean(getByPath(product, flagPath));
-    const input = document.querySelector(`[data-path="${valuePath}"]`);
-    if (input) {
+    const inputs = document.querySelectorAll(`[data-path="${valuePath}"]`);
+    inputs.forEach((input) => {
       input.disabled = !flag;
-    }
+    });
   });
 
-  const manualFbaFeeInput = document.querySelector('[data-path="assumptions.amazon.manualFbaFee"]');
-  if (manualFbaFeeInput) {
+  const manualFbaFeeInputs = document.querySelectorAll('[data-path="assumptions.amazon.manualFbaFee"]');
+  manualFbaFeeInputs.forEach((manualFbaFeeInput) => {
     manualFbaFeeInput.disabled = !Boolean(getByPath(product, "assumptions.amazon.useManualFbaFee"));
-  }
+  });
 
   const launchSplitEnabled = Boolean(getByPath(product, "assumptions.launchSplit.enabled"));
   const launchSplitFields = dom.launchSplitBox.querySelectorAll("input[data-path]");
   launchSplitFields.forEach((field) => {
     field.disabled = !launchSplitEnabled;
+  });
+
+  const packagingOverride = Boolean(getByPath(product, "assumptions.extraCosts.overridePackagingGroup"));
+  document.querySelectorAll('[data-path^="assumptions.extraCosts.packagingPerUnitEur"], [data-path^="assumptions.extraCosts.otherUnitCostEur"]').forEach((field) => {
+    field.disabled = !packagingOverride;
+  });
+
+  const logisticsOverride = Boolean(getByPath(product, "assumptions.extraCosts.overrideLogisticsGroup"));
+  document.querySelectorAll('[data-path^="assumptions.extraCosts.docsPerOrderEur"], [data-path^="assumptions.extraCosts.freightPapersPerOrderEur"], [data-path^="assumptions.extraCosts.threePlInboundPerCartonEur"], [data-path^="assumptions.extraCosts.threePlStoragePerPalletMonthEur"], [data-path^="assumptions.extraCosts.threePlOutboundPerCartonEur"], [data-path^="assumptions.extraCosts.unitsPerPallet"], [data-path^="assumptions.extraCosts.avg3PlStorageMonths"], [data-path^="assumptions.extraCosts.amazonStoragePerCbmMonthEur"], [data-path^="assumptions.extraCosts.avgAmazonStorageMonths"]').forEach((field) => {
+    field.disabled = !logisticsOverride;
+  });
+
+  const launchOpsOverride = Boolean(getByPath(product, "assumptions.extraCosts.overrideLaunchOpsGroup"));
+  document.querySelectorAll('[data-path^="assumptions.extraCosts.greetingCardPerLaunchUnitEur"], [data-path^="assumptions.extraCosts.samplesPerProductEur"], [data-path^="assumptions.extraCosts.toolingPerProductEur"], [data-path^="assumptions.extraCosts.certificatesPerProductEur"], [data-path^="assumptions.extraCosts.inspectionPerProductEur"]').forEach((field) => {
+    field.disabled = !launchOpsOverride;
   });
 
   const customsBrokerField = document.querySelector('[data-settings-path="shipping12m.customsBrokerFixedEurPerShipment"]');
@@ -2263,14 +3979,24 @@ function syncControlStates(product) {
 }
 
 function openAdvancedSection(sectionId) {
+  if (APP_PAGE === "product" && sectionId.startsWith("settings")) {
+    window.location.href = `settings.html#${sectionId}`;
+    return;
+  }
+
   const section = document.getElementById(sectionId);
   if (!section) {
     return;
   }
 
-  state.ui.advancedVisible = true;
-  dom.advancedPanel.classList.remove("hidden");
-  dom.advancedToggle.checked = true;
+  if (sectionId.startsWith("settings")) {
+    setWorkspaceTab("settings");
+  } else {
+    setWorkspaceTab("product");
+    state.ui.advancedVisible = true;
+    dom.advancedPanel.classList.remove("hidden");
+    dom.advancedToggle.checked = true;
+  }
 
   section.scrollIntoView({ behavior: "smooth", block: "center" });
   section.classList.add("advanced-focus");
@@ -2299,8 +4025,26 @@ function inferAdvancedSectionFromPath(path) {
   if (path.startsWith("assumptions.lifecycle.") || path.startsWith("assumptions.launchSplit.")) {
     return "advancedLifecycleSection";
   }
+  if (path.startsWith("assumptions.extraCosts.")) {
+    return "advancedOpsSection";
+  }
   if (path.startsWith("settings.")) {
-    return "advancedAdminSection";
+    if (path.startsWith("settings.shipping12m.")) {
+      return "settingsShippingSection";
+    }
+    if (path.startsWith("settings.cartonRules.")) {
+      return "settingsCartonSection";
+    }
+    if (path.startsWith("settings.costDefaults.")) {
+      return "settingsCostDefaultsSection";
+    }
+    if (path.startsWith("settings.lifecycle.")) {
+      return "settingsLifecycleSection";
+    }
+    return "settingsCategorySection";
+  }
+  if (path.startsWith("workflow.deepDive.")) {
+    return "advancedDeepDiveSection";
   }
   if (
     path === "basic.unitsPerOrder" ||
@@ -2317,49 +4061,26 @@ function inferAdvancedSectionFromPath(path) {
 
 function focusMetricDrivers(driverPaths, targetSection, lineLabel = "") {
   const paths = [...new Set((driverPaths ?? []).filter(Boolean))];
-  const firstAssumptionPath = paths.find((path) => path.startsWith("assumptions.") || path.startsWith("settings."));
-  const inferredSection = targetSection || inferAdvancedSectionFromPath(firstAssumptionPath || paths[0]);
-  const requiresAdvanced = Boolean(inferredSection) || paths.some((path) => path.startsWith("assumptions.") || path.startsWith("settings."));
-
-  if (requiresAdvanced && inferredSection) {
+  const firstFocusedPath = paths.find((path) => path.startsWith("assumptions.") || path.startsWith("settings.")) ?? paths[0];
+  const inferredSection = targetSection || inferAdvancedSectionFromPath(firstFocusedPath);
+  if (inferredSection) {
     openAdvancedSection(inferredSection);
+  } else if (paths.some((path) => path.startsWith("settings."))) {
+    setWorkspaceTab("settings");
+  } else if (paths.length > 0) {
+    setWorkspaceTab("product");
   }
 
   applyDriverFocus(paths, lineLabel);
 
-  const preferredPaths = requiresAdvanced && firstAssumptionPath ? [firstAssumptionPath, ...paths] : paths;
-  const firstMatch = preferredPaths.map((path) => getDriverControl(path)).find((node) => node instanceof HTMLElement);
+  const preferredPaths = firstFocusedPath ? [firstFocusedPath, ...paths] : paths;
+  const firstMatch = preferredPaths
+    .map((path) => getDriverControl(path))
+    .find((node) => node instanceof HTMLElement);
 
   if (firstMatch instanceof HTMLElement) {
     firstMatch.scrollIntoView({ behavior: "smooth", block: "center" });
   }
-}
-
-function openAdvancedByBlock(blockKey) {
-  const targets = {
-    unit: "advancedShippingSection",
-    launch: "advancedLifecycleSection",
-    leakage: "advancedLeakageSection",
-  };
-
-  const blockDrivers = {
-    unit: [
-      "basic.exwUnit",
-      "basic.unitsPerOrder",
-      "assumptions.ads.tacosRate",
-      "settings.shipping12m.lclRateEurPerCbm",
-      "assumptions.amazon.referralRate",
-    ],
-    launch: ["basic.launchBudgetTotal", "assumptions.lifecycle.otherMonthlyCost"],
-    leakage: ["assumptions.leakage.ratePct", "basic.priceGross", "basic.demandValue"],
-  };
-
-  const target = targets[blockKey];
-  if (!target || !blockDrivers[blockKey]) {
-    return;
-  }
-
-  focusMetricDrivers(blockDrivers[blockKey], target, `Block ${blockKey}`);
 }
 
 function renderInputs(product) {
@@ -2383,6 +4104,7 @@ function renderProductList(metricsById = new Map()) {
 
   state.products.forEach((product) => {
     const metrics = metricsById.get(product.id) ?? calculateProduct(product);
+    const stageState = buildStageState(product, metrics);
     const fragment = dom.productItemTemplate.content.cloneNode(true);
     const button = fragment.querySelector(".product-btn");
     const name = fragment.querySelector(".name");
@@ -2390,14 +4112,14 @@ function renderProductList(metricsById = new Map()) {
     const pill = fragment.querySelector(".pill");
 
     name.textContent = product.name || "Unbenannt";
-    meta.textContent = `${formatCurrency(product.basic.priceGross)} brutto · ${formatCurrency(metrics.shippingUnit)} Shipping · ${formatCurrency(metrics.profitMonthly)} netto`;
+    meta.textContent = `${formatCurrency(product.basic.priceGross)} brutto · ${formatPercent(metrics.netMarginPct)} Netto-Marge · ${formatPercent(metrics.sellerboardMarginPct)} Sellerboard`;
 
-    pill.textContent = metrics.sensitivity.traffic.label;
+    pill.textContent = `${STAGE_LABELS[stageState.stage]}`;
     pill.classList.remove("yellow", "red");
-    if (metrics.sensitivity.traffic.color === "yellow") {
+    if (!stageState.readinessByStage[stageState.stage]) {
       pill.classList.add("yellow");
     }
-    if (metrics.sensitivity.traffic.color === "red") {
+    if (stageState.stage === "quick" && !stageState.quickPass) {
       pill.classList.add("red");
     }
 
@@ -2407,6 +4129,7 @@ function renderProductList(metricsById = new Map()) {
 
     button.addEventListener("click", () => {
       state.selectedId = product.id;
+      setWorkspaceTab("product");
       renderAll();
     });
 
@@ -2513,11 +4236,19 @@ function renderSelectedProductPanels(metricsById = new Map()) {
     return;
   }
 
+  if (dom.headerProductName) {
+    const displayName = product.name?.trim() || "Unbenanntes Produkt";
+    dom.headerProductName.textContent = `Produkt: ${displayName}`;
+  }
+
   renderFxStatus();
 
   const metrics = metricsById.get(product.id) ?? calculateProduct(product);
   const resolved = metrics.resolved;
   const diagnostics = buildDefaultDiagnostics(product, metrics);
+  const stageState = renderStagePanel(product, metrics);
+  applyStageVisibility(product, stageState);
+  renderStageImpactList(stageState.stage, metrics);
 
   renderSelectedOutputs(metrics);
   renderAssumedLabels(resolved.assumedLabels, diagnostics);
@@ -2546,9 +4277,11 @@ function renderAll() {
     return;
   }
 
+  renderWorkspaceTabs();
   renderInputs(selected);
   renderSettingsInputs();
   renderComputedViews();
+  renderDriverModal();
   applyMouseoverHelp();
 }
 
@@ -2650,6 +4383,17 @@ function deleteProduct() {
   renderAll();
 }
 
+function setSelectedStage(stage) {
+  const selected = getSelectedProduct();
+  if (!selected || !WORKFLOW_STAGES.includes(stage)) {
+    return;
+  }
+
+  selected.workflow.stage = stage;
+  saveProducts();
+  renderAll();
+}
+
 function renderFxStatus() {
   if (!dom.fxStatus) {
     return;
@@ -2707,8 +4451,21 @@ async function refreshFxRate() {
 }
 
 function applyMouseoverHelp() {
+  const selected = getSelectedProduct();
+  const metrics = selected ? calculateProduct(selected) : null;
+  const diagnostics = selected && metrics ? buildDefaultDiagnostics(selected, metrics) : {};
+
   if (dom.advancedToggle) {
-    dom.advancedToggle.title = "Advanced blendet Defaults, Overwrites, Shipping-Details und Admin-Settings ein.";
+    dom.advancedToggle.title = "Advanced blendet produktspezifische Defaults, Overwrites und Shipping-Details ein.";
+  }
+  if (dom.stageQuickBtn) {
+    dom.stageQuickBtn.title = "Quick-Check: schneller Ballpark-Check mit den wichtigsten Treibern.";
+  }
+  if (dom.stageValidationBtn) {
+    dom.stageValidationBtn.title = "Validation: zentrale Annahmen prüfen und absichern.";
+  }
+  if (dom.stageDeepBtn) {
+    dom.stageDeepBtn.title = "Deep-Dive: finale Prüfung vor Sample/PO-Entscheidung.";
   }
   if (dom.compareSort) {
     dom.compareSort.title = "Sortiert die Vergleichstabelle nach dem gewählten KPI.";
@@ -2730,28 +4487,58 @@ function applyMouseoverHelp() {
   const inputs = document.querySelectorAll("[data-path]");
   inputs.forEach((input) => {
     const path = input.dataset.path;
-    const helpText = FIELD_HELP[path];
-    if (!helpText) {
-      return;
+    const helpText = FIELD_HELP[path] ?? "";
+    const diagKey = diagnosticsKeyFromPath(path);
+    const diag = diagKey ? diagnostics[diagKey] : null;
+    const impact = metrics ? classifyImpact(impactMonthlyFromPath(path, metrics), metrics.totalCostMonthly) : null;
+    const robustness = diagKey && DEFAULT_ROBUSTNESS[diagKey] ? DEFAULT_ROBUSTNESS[diagKey] : null;
+    const robustnessWord = robustness ? robustnessLabel(robustness.score) : "mittel";
+    const defaultSource = path.startsWith("assumptions.")
+      ? "Produktannahme (Default aus Kategorie/Global, optional Override)"
+      : "User Input";
+
+    const parts = [
+      helpText,
+      "Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein.",
+      `Herkunft: ${defaultSource}.`,
+      impact ? `Impact: ${impact.label} (${formatPercent(impact.sharePct)} der Gesamtkosten).` : "Impact: n/a.",
+      `Robustheit: ${robustnessWord}${robustness ? ` (${robustness.why})` : ""}.`,
+    ].filter((item) => Boolean(item));
+
+    if (diag?.title) {
+      parts.push(diag.title);
     }
-    input.title = helpText;
+
+    input.title = parts.join("\n");
     const label = input.closest("label");
     if (label) {
-      label.title = helpText;
+      label.title = input.title;
     }
   });
 
   const settingInputs = document.querySelectorAll("[data-settings-path]");
   settingInputs.forEach((input) => {
     const path = input.dataset.settingsPath;
-    const helpText = SETTINGS_HELP[path];
-    if (!helpText) {
-      return;
-    }
-    input.title = helpText;
+    const helpText = SETTINGS_HELP[path] ?? "";
+    const fullPath = `settings.${path}`;
+    const impact = metrics ? classifyImpact(impactMonthlyFromPath(fullPath, metrics), metrics.totalCostMonthly) : null;
+    const robustnessWord = path.startsWith("shipping12m.")
+      ? "mittel"
+      : path.startsWith("categoryDefaults.")
+        ? "mittel"
+        : "hoch";
+    const title = [
+      helpText,
+      "Rechenweg: Globaler Parameter, der in die entsprechenden Kostenblöcke übernommen wird.",
+      "Herkunft: Global Setting.",
+      impact ? `Impact: ${impact.label} (${formatPercent(impact.sharePct)} der Gesamtkosten).` : "Impact: n/a.",
+      `Robustheit: ${robustnessWord}.`,
+    ].filter((item) => Boolean(item)).join("\n");
+
+    input.title = title;
     const label = input.closest("label");
     if (label) {
-      label.title = helpText;
+      label.title = title;
     }
   });
 
@@ -2806,13 +4593,6 @@ function applyMouseoverHelp() {
   });
 }
 
-function normalizeDriverPath(path) {
-  if (path.startsWith("settings.")) {
-    return path;
-  }
-  return path;
-}
-
 function bindEvents() {
   document.addEventListener("change", (event) => {
     const target = event.target;
@@ -2832,7 +4612,9 @@ function bindEvents() {
 
     if (settingsPath) {
       updateSettingsField(settingsPath, value);
-      renderComputedViews();
+      if (APP_PAGE === "product") {
+        renderComputedViews();
+      }
       renderSettingsInputs();
       applyMouseoverHelp();
     }
@@ -2852,43 +4634,47 @@ function bindEvents() {
     });
   }
 
-  dom.advancedToggle.addEventListener("change", () => {
-    state.ui.advancedVisible = dom.advancedToggle.checked;
-    renderAll();
-  });
+  if (dom.stageQuickBtn) {
+    dom.stageQuickBtn.addEventListener("click", () => setSelectedStage("quick"));
+  }
+  if (dom.stageValidationBtn) {
+    dom.stageValidationBtn.addEventListener("click", () => setSelectedStage("validation"));
+  }
+  if (dom.stageDeepBtn) {
+    dom.stageDeepBtn.addEventListener("click", () => setSelectedStage("deep_dive"));
+  }
 
-  dom.compareSort.addEventListener("change", () => {
-    state.ui.compareSort = dom.compareSort.value;
-    renderComputedViews();
-  });
-
-  dom.compareFilter.addEventListener("change", () => {
-    state.ui.compareFilter = dom.compareFilter.value;
-    renderComputedViews();
-  });
-
-  dom.refreshFxBtn.addEventListener("click", () => {
-    refreshFxRate();
-  });
-
-  document.querySelectorAll(".block-grid details").forEach((detail) => {
-    detail.addEventListener("click", (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return;
-      }
-      if (!target.closest("summary")) {
-        return;
-      }
-      const blockKey = detail.dataset.block;
-      if (!blockKey) {
-        return;
-      }
-      openAdvancedByBlock(blockKey);
+  if (dom.advancedToggle) {
+    dom.advancedToggle.addEventListener("change", () => {
+      state.ui.advancedVisible = dom.advancedToggle.checked;
+      renderAll();
     });
-  });
+  }
+
+  if (dom.compareSort) {
+    dom.compareSort.addEventListener("change", () => {
+      state.ui.compareSort = dom.compareSort.value;
+      renderComputedViews();
+    });
+  }
+
+  if (dom.compareFilter) {
+    dom.compareFilter.addEventListener("change", () => {
+      state.ui.compareFilter = dom.compareFilter.value;
+      renderComputedViews();
+    });
+  }
+
+  if (dom.refreshFxBtn) {
+    dom.refreshFxBtn.addEventListener("click", () => {
+      refreshFxRate();
+    });
+  }
 
   [dom.unitBlockList, dom.launchBlockList, dom.leakageBlockList].forEach((list) => {
+    if (!list) {
+      return;
+    }
     list.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) {
@@ -2899,7 +4685,6 @@ function bindEvents() {
         return;
       }
 
-      const sectionId = row.dataset.targetSection || null;
       const labelText = row.dataset.lineLabel ?? "";
       let driverPaths = [];
       try {
@@ -2908,14 +4693,57 @@ function bindEvents() {
         driverPaths = [];
       }
 
-      focusMetricDrivers(driverPaths.map(normalizeDriverPath), sectionId, labelText);
+      const valueText = row.querySelector("strong")?.textContent?.trim() ?? "";
+      const explain = row.dataset.lineExplain ?? "";
+      const formula = row.dataset.lineFormula ?? "";
+      const source = row.dataset.lineSource ?? "";
+      const robustness = row.dataset.lineRobustness ?? "";
+
+      openDriverModal({
+        title: labelText,
+        value: valueText,
+        explain,
+        formula,
+        source,
+        robustness,
+        driverPaths,
+      });
     });
   });
 
-  dom.addProductBtn.addEventListener("click", addProduct);
-  dom.duplicateProductBtn.addEventListener("click", duplicateProduct);
-  dom.deleteProductBtn.addEventListener("click", deleteProduct);
+  if (dom.addProductBtn) {
+    dom.addProductBtn.addEventListener("click", addProduct);
+  }
+  if (dom.duplicateProductBtn) {
+    dom.duplicateProductBtn.addEventListener("click", duplicateProduct);
+  }
+  if (dom.deleteProductBtn) {
+    dom.deleteProductBtn.addEventListener("click", deleteProduct);
+  }
 
+  if (dom.driverModalCloseBtn) {
+    dom.driverModalCloseBtn.addEventListener("click", () => closeDriverModal());
+  }
+  if (dom.driverModal) {
+    dom.driverModal.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.dataset.modalClose === "true") {
+        closeDriverModal();
+      }
+    });
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.ui.driverModal) {
+      closeDriverModal();
+    }
+  });
+
+  if (!dom.comparisonBody) {
+    return;
+  }
   dom.comparisonBody.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) {
@@ -2937,15 +4765,29 @@ function bindEvents() {
     }
 
     state.selectedId = id;
+    setWorkspaceTab("product");
     renderAll();
   });
 }
 
 function init() {
   loadSettings();
-  loadProducts();
   renderCategoryDefaultsAdmin();
   bindEvents();
+
+  if (APP_PAGE === "settings") {
+    renderSettingsInputs();
+    applyMouseoverHelp();
+    if (window.location.hash) {
+      const target = document.querySelector(window.location.hash);
+      if (target instanceof HTMLElement) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+    return;
+  }
+
+  loadProducts();
   renderFxStatus();
   renderAll();
   refreshFxRate();
