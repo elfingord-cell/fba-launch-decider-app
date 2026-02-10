@@ -162,6 +162,13 @@ const DEFAULT_SETTINGS = {
     maxHeightCm: CARTON_PRESETS.legacy.maxHeightCm,
     maxWeightKg: CARTON_PRESETS.legacy.maxWeightKg,
     packFactor: 0.85,
+    estimationMode: "conservative",
+    supplierSoftMaxLengthCm: 40,
+    supplierSoftMaxWidthCm: 40,
+    supplierSoftMaxHeightCm: 35,
+    supplierSoftMaxGrossWeightKg: 18,
+    outerBufferCm: 1.5,
+    grossWeightUpliftPct: 5,
   },
   categoryDefaults: JSON.parse(JSON.stringify(BASE_CATEGORY_DEFAULTS)),
   lifecycle: {
@@ -346,6 +353,12 @@ const FIELD_HELP = {
   "assumptions.launchSplit.vine": "Kosten für Amazon Vine in EUR.",
   "assumptions.launchSplit.coupons": "Launch-Kosten für Coupons/Discounts in EUR.",
   "assumptions.launchSplit.other": "Sonstige Launch-Kosten in EUR.",
+  "assumptions.cartonization.manualEnabled": "Aktiviert einen manuellen Packing-List-Override für Units/Karton.",
+  "assumptions.cartonization.unitsPerCarton": "Manuelle Units pro Umkarton aus realer Packing List.",
+  "assumptions.cartonization.cartonLengthCm": "Manuelle Umkarton-Länge in cm (optional).",
+  "assumptions.cartonization.cartonWidthCm": "Manuelle Umkarton-Breite in cm (optional).",
+  "assumptions.cartonization.cartonHeightCm": "Manuelle Umkarton-Höhe in cm (optional).",
+  "assumptions.cartonization.cartonGrossWeightKg": "Manuelles Umkarton-Bruttogewicht in kg (optional).",
 
   "assumptions.extraCosts.overridePackagingGroup": "Wenn aktiv, nutzt das Produkt eigene Verpackungs-/Stückkosten statt globaler Settings.",
   "assumptions.extraCosts.packagingPerUnitEur": "Zusätzliche Verpackungskosten pro Stück (EUR).",
@@ -405,7 +418,14 @@ const SETTINGS_HELP = {
   "cartonRules.maxWidthCm": "Maximale Karton-Breite in cm für Auto-Kartonisierung.",
   "cartonRules.maxHeightCm": "Maximale Karton-Höhe in cm für Auto-Kartonisierung.",
   "cartonRules.maxWeightKg": "Maximales Karton-Gewicht in kg für Auto-Kartonisierung.",
-  "cartonRules.packFactor": "Packfaktor für Luft/Polster (z. B. 0,85). Niedriger = konservativeres Packing.",
+  "cartonRules.packFactor": "Legacy-Parameter aus früherer Volumenlogik (Kompatibilität). Für v1-Schätzung sind Soft-/Hard-Caps, Buffer und Gewichtsaufschlag maßgeblich.",
+  "cartonRules.estimationMode": "Schätzmodus für Auto-Kartonisierung: konservativ (Supplier-nah), balanced (Mittelweg), maximal (Kapazität priorisiert).",
+  "cartonRules.supplierSoftMaxLengthCm": "Konservatives Supplier-Soft-Cap für Umkarton-Länge in cm.",
+  "cartonRules.supplierSoftMaxWidthCm": "Konservatives Supplier-Soft-Cap für Umkarton-Breite in cm.",
+  "cartonRules.supplierSoftMaxHeightCm": "Konservatives Supplier-Soft-Cap für Umkarton-Höhe in cm.",
+  "cartonRules.supplierSoftMaxGrossWeightKg": "Konservatives Supplier-Soft-Cap für Umkarton-Bruttogewicht in kg.",
+  "cartonRules.outerBufferCm": "Zusätzlicher Umkarton-Puffer je Achse in cm (Polster/Luft).",
+  "cartonRules.grossWeightUpliftPct": "Aufschlag von Netto- auf Bruttogewicht je Unit in %.",
   "lifecycle.defaultMonths": "Lifecycle-Horizont für die Amortisation von Listing-Kosten (Monate).",
   "lifecycle.listingPackages.ai.listingCreationEur": "Kosten für Listing-Erstellung im Paket KI (EUR).",
   "lifecycle.listingPackages.ai.imagesInfographicsEur": "Kosten für Bilder/Infografiken im Paket KI (EUR).",
@@ -513,7 +533,14 @@ const PATH_LABEL_OVERRIDES = {
   "settings.cartonRules.maxWidthCm": "Karton max Breite (cm)",
   "settings.cartonRules.maxHeightCm": "Karton max Höhe (cm)",
   "settings.cartonRules.maxWeightKg": "Karton max Gewicht (kg)",
-  "settings.cartonRules.packFactor": "Packfaktor (0-1)",
+  "settings.cartonRules.packFactor": "Packfaktor (Legacy)",
+  "settings.cartonRules.estimationMode": "Schätzmodus (konservativ/balanced/maximal)",
+  "settings.cartonRules.supplierSoftMaxLengthCm": "Supplier Soft-Cap Länge (cm)",
+  "settings.cartonRules.supplierSoftMaxWidthCm": "Supplier Soft-Cap Breite (cm)",
+  "settings.cartonRules.supplierSoftMaxHeightCm": "Supplier Soft-Cap Höhe (cm)",
+  "settings.cartonRules.supplierSoftMaxGrossWeightKg": "Supplier Soft-Cap Bruttogewicht (kg)",
+  "settings.cartonRules.outerBufferCm": "Outer Buffer je Achse (cm)",
+  "settings.cartonRules.grossWeightUpliftPct": "Gewichtsaufschlag netto->brutto (%)",
   "settings.threePl.receivingPerCartonSortedEur": "3PL Receiving sortenrein (EUR/Karton)",
   "settings.threePl.receivingPerCartonMixedEur": "3PL Receiving gemischt (EUR/Karton)",
   "settings.threePl.storagePerPalletPerMonthEur": "3PL Lagerung (EUR/Palette/Monat)",
@@ -623,7 +650,7 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.shipping.unitsPerCartonAuto": {
     label: "units_per_carton_auto",
-    help: "Automatisch abgeleitete Units pro Karton aus Amazon-Limits und Packfaktor.",
+    help: "Units pro Umkarton aus Supplier-Soft-Caps/Hard-Fallback oder manuellem Packing-List-Override.",
     format: "number",
     read: (metrics) => metrics.shipping.unitsPerCartonAuto,
   },
@@ -650,6 +677,36 @@ const DERIVED_DRIVER_MAP = {
     help: "Abrechnungsvolumen nach W/M = max(CBM, Gewicht/1000).",
     format: "number",
     read: (metrics) => metrics.shipping.chargeableCbm,
+  },
+  "derived.shipping.estimatedCartonLengthCm": {
+    label: "estimated_carton_length_cm",
+    help: "Geschätzte Umkarton-Länge in cm aus Auto-Kartonisierung oder manuellem Override.",
+    format: "number",
+    read: (metrics) => metrics.shipping.estimatedCartonLengthCm,
+  },
+  "derived.shipping.estimatedCartonWidthCm": {
+    label: "estimated_carton_width_cm",
+    help: "Geschätzte Umkarton-Breite in cm aus Auto-Kartonisierung oder manuellem Override.",
+    format: "number",
+    read: (metrics) => metrics.shipping.estimatedCartonWidthCm,
+  },
+  "derived.shipping.estimatedCartonHeightCm": {
+    label: "estimated_carton_height_cm",
+    help: "Geschätzte Umkarton-Höhe in cm aus Auto-Kartonisierung oder manuellem Override.",
+    format: "number",
+    read: (metrics) => metrics.shipping.estimatedCartonHeightCm,
+  },
+  "derived.shipping.estimatedCartonGrossWeightKg": {
+    label: "estimated_carton_gross_weight_kg",
+    help: "Geschätztes Umkarton-Bruttogewicht in kg aus Auto-Kartonisierung oder manuellem Override.",
+    format: "number",
+    read: (metrics) => metrics.shipping.estimatedCartonGrossWeightKg,
+  },
+  "derived.shipping.cartonizationSource": {
+    label: "cartonization_source",
+    help: "Quelle der Kartonisierung: Auto mit Soft-Caps, Hard-Fallback oder manueller Override.",
+    format: "string",
+    read: (metrics) => metrics.shipping.cartonizationSourceLabel ?? metrics.shipping.cartonizationSource,
   },
   "derived.shipping.goodsValueEur": {
     label: "goods_value_eur",
@@ -703,6 +760,11 @@ const DEFAULT_ROBUSTNESS = {
   "amazon.referralRate": { score: 88, why: "Referral-Fee ist von Amazon-Kategoriegebühren vorgegeben." },
   "lifecycle.targetMarginPct": { score: 70, why: "Zielmarge ist strategisch und bewusst wählbar." },
   "lifecycle.otherMonthlyCost": { score: 40, why: "Weitere Lifecycle-Kosten sind oft schwer vollständig planbar." },
+  "cartonization.unitsPerCarton": { score: 72, why: "Mit realer Packing-List ist der Wert meist stabil und belastbar." },
+  "cartonization.cartonLengthCm": { score: 70, why: "Manuelle Kartonmaße sind bei Lieferantenfreigabe gut belastbar." },
+  "cartonization.cartonWidthCm": { score: 70, why: "Manuelle Kartonmaße sind bei Lieferantenfreigabe gut belastbar." },
+  "cartonization.cartonHeightCm": { score: 70, why: "Manuelle Kartonmaße sind bei Lieferantenfreigabe gut belastbar." },
+  "cartonization.cartonGrossWeightKg": { score: 68, why: "Bruttogewicht ist stabil, aber kann je Packmaterial leicht schwanken." },
 };
 
 const BOOLEAN_PATHS = new Set([
@@ -723,6 +785,7 @@ const BOOLEAN_PATHS = new Set([
   "assumptions.lifecycle.overrideTargetMarginPct",
   "assumptions.lifecycle.overrideOtherMonthlyCost",
   "assumptions.launchSplit.enabled",
+  "assumptions.cartonization.manualEnabled",
   "assumptions.extraCosts.overridePackagingGroup",
   "assumptions.extraCosts.overrideLogisticsGroup",
   "assumptions.extraCosts.overrideLaunchOpsGroup",
@@ -744,7 +807,7 @@ const STRING_PATHS = new Set([
 ]);
 
 const SETTINGS_BOOLEAN_PATHS = new Set(["shipping12m.customsBrokerEnabled", "shipping12m.insurance.enabled"]);
-const SETTINGS_STRING_PATHS = new Set(["shipping12m.insurance.basis"]);
+const SETTINGS_STRING_PATHS = new Set(["shipping12m.insurance.basis", "cartonRules.estimationMode"]);
 
 const OVERRIDE_CONTROL_MAP = [
   ["assumptions.ads.overrideTacos", "assumptions.ads.tacosRate"],
@@ -820,6 +883,10 @@ const dom = {
   shippingMethodText: document.getElementById("shippingMethodText"),
   shippingDetailList: document.getElementById("shippingDetailList"),
   shippingDebugInfo: document.getElementById("shippingDebugInfo"),
+  shippingCartonUnits: document.getElementById("shippingCartonUnits"),
+  shippingCartonDims: document.getElementById("shippingCartonDims"),
+  shippingCartonWeight: document.getElementById("shippingCartonWeight"),
+  shippingCartonSource: document.getElementById("shippingCartonSource"),
   basicShippingUnit: document.getElementById("basicShippingUnit"),
   basicShippingMeta: document.getElementById("basicShippingMeta"),
   chainSupplierChips: document.getElementById("chainSupplierChips"),
@@ -977,6 +1044,33 @@ function shippingModeDriverPaths(mode) {
   return paths;
 }
 
+function cartonizationSettingsPaths() {
+  return [
+    "settings.cartonRules.estimationMode",
+    "settings.cartonRules.maxLengthCm",
+    "settings.cartonRules.maxWidthCm",
+    "settings.cartonRules.maxHeightCm",
+    "settings.cartonRules.maxWeightKg",
+    "settings.cartonRules.supplierSoftMaxLengthCm",
+    "settings.cartonRules.supplierSoftMaxWidthCm",
+    "settings.cartonRules.supplierSoftMaxHeightCm",
+    "settings.cartonRules.supplierSoftMaxGrossWeightKg",
+    "settings.cartonRules.outerBufferCm",
+    "settings.cartonRules.grossWeightUpliftPct",
+  ];
+}
+
+function cartonizationProductPaths() {
+  return [
+    "assumptions.cartonization.manualEnabled",
+    "assumptions.cartonization.unitsPerCarton",
+    "assumptions.cartonization.cartonLengthCm",
+    "assumptions.cartonization.cartonWidthCm",
+    "assumptions.cartonization.cartonHeightCm",
+    "assumptions.cartonization.cartonGrossWeightKg",
+  ];
+}
+
 function robustnessLabel(score) {
   if (score >= 80) {
     return "hoch";
@@ -1129,6 +1223,14 @@ function defaultProduct(index = 1) {
         vine: 0,
         coupons: 0,
         other: 0,
+      },
+      cartonization: {
+        manualEnabled: false,
+        unitsPerCarton: 4,
+        cartonLengthCm: 0,
+        cartonWidthCm: 0,
+        cartonHeightCm: 0,
+        cartonGrossWeightKg: 0,
       },
       localSettingOverrides: {},
       extraCosts: {
@@ -1421,6 +1523,15 @@ function sanitizeSettings(settings) {
   settings.cartonRules.maxHeightCm = clamp(num(settings.cartonRules.maxHeightCm, 63.5), 1, 200);
   settings.cartonRules.maxWeightKg = clamp(num(settings.cartonRules.maxWeightKg, 23), 1, 80);
   settings.cartonRules.packFactor = clamp(num(settings.cartonRules.packFactor, 0.85), 0.5, 0.99);
+  if (!["conservative", "balanced", "maximal"].includes(settings.cartonRules.estimationMode)) {
+    settings.cartonRules.estimationMode = "conservative";
+  }
+  settings.cartonRules.supplierSoftMaxLengthCm = clamp(num(settings.cartonRules.supplierSoftMaxLengthCm, 40), 1, 200);
+  settings.cartonRules.supplierSoftMaxWidthCm = clamp(num(settings.cartonRules.supplierSoftMaxWidthCm, 40), 1, 200);
+  settings.cartonRules.supplierSoftMaxHeightCm = clamp(num(settings.cartonRules.supplierSoftMaxHeightCm, 35), 1, 200);
+  settings.cartonRules.supplierSoftMaxGrossWeightKg = clamp(num(settings.cartonRules.supplierSoftMaxGrossWeightKg, 18), 1, 80);
+  settings.cartonRules.outerBufferCm = clamp(num(settings.cartonRules.outerBufferCm, 1.5), 0, 20);
+  settings.cartonRules.grossWeightUpliftPct = clamp(num(settings.cartonRules.grossWeightUpliftPct, 5), 0, 50);
 
   const preset = settings.cartonRules.preset;
   if (!["legacy", "update_2025", "custom"].includes(preset)) {
@@ -1525,6 +1636,7 @@ function migrateProduct(raw, index) {
       amazon: { ...base.assumptions.amazon, ...(raw.assumptions?.amazon ?? {}) },
       lifecycle: { ...base.assumptions.lifecycle, ...(raw.assumptions?.lifecycle ?? {}) },
       launchSplit: { ...base.assumptions.launchSplit, ...(raw.assumptions?.launchSplit ?? {}) },
+      cartonization: { ...base.assumptions.cartonization, ...(raw.assumptions?.cartonization ?? {}) },
       localSettingOverrides: {
         ...(base.assumptions.localSettingOverrides ?? {}),
         ...(raw.assumptions?.localSettingOverrides ?? {}),
@@ -1568,6 +1680,15 @@ function migrateProduct(raw, index) {
   if (!["low", "medium", "high"].includes(merged.basic.launchCompetition)) {
     merged.basic.launchCompetition = "medium";
   }
+  merged.assumptions.cartonization.manualEnabled = Boolean(merged.assumptions.cartonization.manualEnabled);
+  merged.assumptions.cartonization.unitsPerCarton = Math.max(
+    1,
+    roundInt(merged.assumptions.cartonization.unitsPerCarton, base.assumptions.cartonization.unitsPerCarton),
+  );
+  merged.assumptions.cartonization.cartonLengthCm = Math.max(0, num(merged.assumptions.cartonization.cartonLengthCm, 0));
+  merged.assumptions.cartonization.cartonWidthCm = Math.max(0, num(merged.assumptions.cartonization.cartonWidthCm, 0));
+  merged.assumptions.cartonization.cartonHeightCm = Math.max(0, num(merged.assumptions.cartonization.cartonHeightCm, 0));
+  merged.assumptions.cartonization.cartonGrossWeightKg = Math.max(0, num(merged.assumptions.cartonization.cartonGrossWeightKg, 0));
 
   merged.basic.horizonMonths = clamp(roundInt(merged.basic.horizonMonths, base.basic.horizonMonths), 1, 36);
   merged.basic.unitsPerOrder = Math.max(1, roundInt(merged.basic.unitsPerOrder, base.basic.unitsPerOrder));
@@ -1808,6 +1929,277 @@ function assumedText(isOverride, defaultValue, activeValue, formatter) {
   return `Default: ${formatter(defaultValue)}`;
 }
 
+function cartonizationSourceLabel(source) {
+  if (source === "manual_override") {
+    return "Manuell (Packing-List Override)";
+  }
+  if (source === "auto_soft") {
+    return "Auto (Supplier Soft-Caps)";
+  }
+  return "Auto (Hard-Cap Fallback)";
+}
+
+function buildDimensionOrientations(lengthCm, widthCm, heightCm) {
+  const variants = [
+    [lengthCm, widthCm, heightCm],
+    [lengthCm, heightCm, widthCm],
+    [widthCm, lengthCm, heightCm],
+    [widthCm, heightCm, lengthCm],
+    [heightCm, lengthCm, widthCm],
+    [heightCm, widthCm, lengthCm],
+  ];
+  const seen = new Set();
+  return variants.filter((dims) => {
+    const key = dims.map((value) => value.toFixed(4)).join("|");
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildCartonCandidates(options) {
+  const {
+    unitDims,
+    unitCbm,
+    unitGrossKg,
+    hardCaps,
+    softCaps,
+    outerBufferCm,
+  } = options;
+  const candidates = [];
+  const orientations = buildDimensionOrientations(unitDims[0], unitDims[1], unitDims[2]);
+  const maxAxisSteps = 40;
+
+  orientations.forEach(([unitL, unitW, unitH]) => {
+    const maxNxHard = Math.min(maxAxisSteps, Math.max(0, Math.floor((hardCaps.lengthCm - outerBufferCm) / unitL)));
+    const maxNyHard = Math.min(maxAxisSteps, Math.max(0, Math.floor((hardCaps.widthCm - outerBufferCm) / unitW)));
+    const maxNzHard = Math.min(maxAxisSteps, Math.max(0, Math.floor((hardCaps.heightCm - outerBufferCm) / unitH)));
+
+    if (maxNxHard < 1 || maxNyHard < 1 || maxNzHard < 1) {
+      return;
+    }
+
+    for (let nx = 1; nx <= maxNxHard; nx += 1) {
+      for (let ny = 1; ny <= maxNyHard; ny += 1) {
+        const maxNzByWeight = Math.max(0, Math.floor(hardCaps.weightKg / Math.max(0.000001, unitGrossKg * nx * ny)));
+        const nzLimit = Math.min(maxNzHard, maxNzByWeight);
+        if (nzLimit < 1) {
+          continue;
+        }
+        for (let nz = 1; nz <= nzLimit; nz += 1) {
+          const units = nx * ny * nz;
+          const cartonLengthCm = nx * unitL + outerBufferCm;
+          const cartonWidthCm = ny * unitW + outerBufferCm;
+          const cartonHeightCm = nz * unitH + outerBufferCm;
+          const cartonGrossKg = units * unitGrossKg;
+          const cartonCbm = (cartonLengthCm * cartonWidthCm * cartonHeightCm) / 1_000_000;
+          const utilization = cartonCbm > 0 ? (units * unitCbm) / cartonCbm : 0;
+
+          const hardValid =
+            cartonLengthCm <= hardCaps.lengthCm &&
+            cartonWidthCm <= hardCaps.widthCm &&
+            cartonHeightCm <= hardCaps.heightCm &&
+            cartonGrossKg <= hardCaps.weightKg;
+          if (!hardValid) {
+            continue;
+          }
+
+          const softValid =
+            cartonLengthCm <= softCaps.lengthCm &&
+            cartonWidthCm <= softCaps.widthCm &&
+            cartonHeightCm <= softCaps.heightCm &&
+            cartonGrossKg <= softCaps.weightKg;
+
+          candidates.push({
+            units,
+            nx,
+            ny,
+            nz,
+            cartonLengthCm,
+            cartonWidthCm,
+            cartonHeightCm,
+            cartonGrossKg,
+            cartonCbm,
+            utilization,
+            hardValid,
+            softValid,
+          });
+        }
+      }
+    }
+  });
+
+  return candidates;
+}
+
+function compareConservativeCandidates(a, b) {
+  if (b.units !== a.units) {
+    return b.units - a.units;
+  }
+  if (Math.abs(b.utilization - a.utilization) > 1e-6) {
+    return b.utilization - a.utilization;
+  }
+  const aMaxDim = Math.max(a.cartonLengthCm, a.cartonWidthCm, a.cartonHeightCm);
+  const bMaxDim = Math.max(b.cartonLengthCm, b.cartonWidthCm, b.cartonHeightCm);
+  if (Math.abs(aMaxDim - bMaxDim) > 1e-6) {
+    return aMaxDim - bMaxDim;
+  }
+  const aWeightDelta = Math.abs(a.cartonGrossKg - 16);
+  const bWeightDelta = Math.abs(b.cartonGrossKg - 16);
+  if (Math.abs(aWeightDelta - bWeightDelta) > 1e-6) {
+    return aWeightDelta - bWeightDelta;
+  }
+  return a.cartonCbm - b.cartonCbm;
+}
+
+function candidateMaxDim(candidate) {
+  return Math.max(candidate.cartonLengthCm, candidate.cartonWidthCm, candidate.cartonHeightCm);
+}
+
+function candidateWeightFill(candidate, capWeightKg) {
+  const divisor = Math.max(0.000001, num(capWeightKg, 1));
+  return clamp(candidate.cartonGrossKg / divisor, 0, 1.2);
+}
+
+function candidateCompactness(candidate, hardCaps) {
+  const hardLongest = Math.max(hardCaps.lengthCm, hardCaps.widthCm, hardCaps.heightCm);
+  const ratio = candidateMaxDim(candidate) / Math.max(0.000001, hardLongest);
+  return clamp(1 - ratio, 0, 1);
+}
+
+function candidateDensityRatio(candidate) {
+  const density = candidate.units / Math.max(0.000001, candidate.cartonCbm);
+  return clamp(density / 5000, 0, 1);
+}
+
+function scoreBalancedCandidate(candidate, hardCaps, softCaps) {
+  const weightCap = candidate.softValid ? softCaps.weightKg : hardCaps.weightKg;
+  const utilization = clamp(candidate.utilization, 0, 1.2);
+  return (
+    candidate.units * 100 +
+    utilization * 25 +
+    candidateWeightFill(candidate, weightCap) * 10 +
+    candidateCompactness(candidate, hardCaps) * 5 +
+    (candidate.softValid ? 12 : 0)
+  );
+}
+
+function scoreMaximalCandidate(candidate, hardCaps) {
+  const utilization = clamp(candidate.utilization, 0, 1.2);
+  return (
+    candidate.units * 100 +
+    candidateDensityRatio(candidate) * 35 +
+    utilization * 20 +
+    candidateWeightFill(candidate, hardCaps.weightKg) * 12 +
+    candidateCompactness(candidate, hardCaps) * 5
+  );
+}
+
+function selectTopByScore(candidates, scoreFn) {
+  const sorted = [...candidates].sort((a, b) => {
+    const scoreDiff = scoreFn(b) - scoreFn(a);
+    if (Math.abs(scoreDiff) > 0.0001) {
+      return scoreDiff;
+    }
+    return compareConservativeCandidates(a, b);
+  });
+  return sorted[0] ?? null;
+}
+
+function selectCartonCandidateByMode(candidates, mode, hardCaps, softCaps) {
+  const softCandidates = candidates.filter((candidate) => candidate.softValid);
+  if (mode === "maximal") {
+    return selectTopByScore(candidates, (candidate) => scoreMaximalCandidate(candidate, hardCaps));
+  }
+  if (mode === "balanced") {
+    return selectTopByScore(candidates, (candidate) => scoreBalancedCandidate(candidate, hardCaps, softCaps));
+  }
+  const pool = softCandidates.length > 0 ? softCandidates : candidates;
+  const sorted = [...pool].sort(compareConservativeCandidates);
+  return sorted[0] ?? null;
+}
+
+function estimateCartonForExactUnits(options) {
+  const {
+    unitDims,
+    unitGrossKg,
+    hardCaps,
+    softCaps,
+    outerBufferCm,
+    targetUnits,
+  } = options;
+  if (!Number.isFinite(targetUnits) || targetUnits < 1) {
+    return null;
+  }
+  const normalizedTarget = Math.max(1, roundInt(targetUnits, 1));
+  const orientations = buildDimensionOrientations(unitDims[0], unitDims[1], unitDims[2]);
+  const candidates = [];
+
+  orientations.forEach(([unitL, unitW, unitH]) => {
+    for (let nx = 1; nx <= normalizedTarget; nx += 1) {
+      if (normalizedTarget % nx !== 0) {
+        continue;
+      }
+      const remainAfterX = normalizedTarget / nx;
+      for (let ny = 1; ny <= remainAfterX; ny += 1) {
+        if (remainAfterX % ny !== 0) {
+          continue;
+        }
+        const nz = remainAfterX / ny;
+        const cartonLengthCm = nx * unitL + outerBufferCm;
+        const cartonWidthCm = ny * unitW + outerBufferCm;
+        const cartonHeightCm = nz * unitH + outerBufferCm;
+        const cartonGrossKg = normalizedTarget * unitGrossKg;
+        const hardValid =
+          cartonLengthCm <= hardCaps.lengthCm &&
+          cartonWidthCm <= hardCaps.widthCm &&
+          cartonHeightCm <= hardCaps.heightCm &&
+          cartonGrossKg <= hardCaps.weightKg;
+        if (!hardValid) {
+          continue;
+        }
+        const softValid =
+          cartonLengthCm <= softCaps.lengthCm &&
+          cartonWidthCm <= softCaps.widthCm &&
+          cartonHeightCm <= softCaps.heightCm &&
+          cartonGrossKg <= softCaps.weightKg;
+        const cartonCbm = (cartonLengthCm * cartonWidthCm * cartonHeightCm) / 1_000_000;
+        candidates.push({
+          cartonLengthCm,
+          cartonWidthCm,
+          cartonHeightCm,
+          cartonGrossKg,
+          cartonCbm,
+          softValid,
+        });
+      }
+    }
+  });
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  candidates.sort((a, b) => {
+    if (a.softValid !== b.softValid) {
+      return a.softValid ? -1 : 1;
+    }
+    const aMax = Math.max(a.cartonLengthCm, a.cartonWidthCm, a.cartonHeightCm);
+    const bMax = Math.max(b.cartonLengthCm, b.cartonWidthCm, b.cartonHeightCm);
+    if (Math.abs(aMax - bMax) > 1e-6) {
+      return aMax - bMax;
+    }
+    if (Math.abs(a.cartonCbm - b.cartonCbm) > 1e-9) {
+      return a.cartonCbm - b.cartonCbm;
+    }
+    return Math.abs(a.cartonGrossKg - 16) - Math.abs(b.cartonGrossKg - 16);
+  });
+
+  return candidates[0];
+}
+
 function calculateShippingDoorToDoor(product, settings = state.settings) {
   const basic = product.basic;
   const rules = settings.cartonRules;
@@ -1816,42 +2208,108 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
   const modeLabel = shippingModeLabel(modeKey);
   const modeSettings = shipping?.modes?.[modeKey] ?? shipping?.modes?.sea_lcl ?? DEFAULT_SETTINGS.shipping12m.modes.sea_lcl;
 
-  const l = Math.max(0.1, num(basic.packLengthCm, 0.1));
-  const w = Math.max(0.1, num(basic.packWidthCm, 0.1));
-  const h = Math.max(0.1, num(basic.packHeightCm, 0.1));
-  const unitWeightKg = Math.max(0.001, num(basic.netWeightG, 1) / 1000);
+  const lengthCm = Math.max(0.1, num(basic.packLengthCm, 0.1));
+  const widthCm = Math.max(0.1, num(basic.packWidthCm, 0.1));
+  const heightCm = Math.max(0.1, num(basic.packHeightCm, 0.1));
+  const unitWeightKgNet = Math.max(0.001, num(basic.netWeightG, 1) / 1000);
   const unitsPerOrder = Math.max(1, roundInt(basic.unitsPerOrder, 1));
+  const unitCbm = (lengthCm * widthCm * heightCm) / 1_000_000;
 
-  const unitCbm = (l * w * h) / 1_000_000;
+  const hardCaps = {
+    lengthCm: Math.max(1, num(rules.maxLengthCm, 63.5)),
+    widthCm: Math.max(1, num(rules.maxWidthCm, 63.5)),
+    heightCm: Math.max(1, num(rules.maxHeightCm, 63.5)),
+    weightKg: Math.max(1, num(rules.maxWeightKg, 23)),
+  };
+  const softCaps = {
+    lengthCm: Math.max(1, num(rules.supplierSoftMaxLengthCm, 40)),
+    widthCm: Math.max(1, num(rules.supplierSoftMaxWidthCm, 40)),
+    heightCm: Math.max(1, num(rules.supplierSoftMaxHeightCm, 35)),
+    weightKg: Math.max(1, num(rules.supplierSoftMaxGrossWeightKg, 18)),
+  };
+  const outerBufferCm = clamp(num(rules.outerBufferCm, 1.5), 0, 20);
+  const grossWeightUpliftPct = clamp(num(rules.grossWeightUpliftPct, 5), 0, 50);
+  const estimationMode = ["conservative", "balanced", "maximal"].includes(rules.estimationMode)
+    ? rules.estimationMode
+    : "conservative";
+  const unitWeightKgGross = unitWeightKgNet * (1 + grossWeightUpliftPct / 100);
 
-  const maxLengthCm = Math.max(1, num(rules.maxLengthCm, 63.5));
-  const maxWidthCm = Math.max(1, num(rules.maxWidthCm, 63.5));
-  const maxHeightCm = Math.max(1, num(rules.maxHeightCm, 63.5));
-  const maxWeightKg = Math.max(1, num(rules.maxWeightKg, 23));
-  const packFactor = clamp(num(rules.packFactor, 0.85), 0.5, 0.99);
+  const unitDimsSorted = toSortedDims(lengthCm, widthCm, heightCm);
+  const hardDimsSorted = toSortedDims(hardCaps.lengthCm, hardCaps.widthCm, hardCaps.heightCm);
+  const oversizeFlag = unitDimsSorted[0] > hardDimsSorted[0] || unitDimsSorted[1] > hardDimsSorted[1] || unitDimsSorted[2] > hardDimsSorted[2];
 
-  const unitDimsSorted = toSortedDims(l, w, h);
-  const maxDimsSorted = toSortedDims(maxLengthCm, maxWidthCm, maxHeightCm);
-  const oversizeFlag = unitDimsSorted[0] > maxDimsSorted[0] || unitDimsSorted[1] > maxDimsSorted[1] || unitDimsSorted[2] > maxDimsSorted[2];
+  const candidates = buildCartonCandidates({
+    unitDims: [lengthCm, widthCm, heightCm],
+    unitCbm,
+    unitGrossKg: unitWeightKgGross,
+    hardCaps,
+    softCaps,
+    outerBufferCm,
+  });
 
-  const maxCartonCbm = (maxLengthCm * maxWidthCm * maxHeightCm) / 1_000_000;
-  const effectiveCartonCbm = maxCartonCbm * packFactor;
+  const selectedAuto = selectCartonCandidateByMode(candidates, estimationMode, hardCaps, softCaps);
 
-  const unitsByWeightRaw = Math.floor(maxWeightKg / unitWeightKg);
-  const unitsByWeight = Math.max(1, unitsByWeightRaw);
+  const assumptionsCarton = product.assumptions?.cartonization ?? {};
+  const manualEnabled = Boolean(assumptionsCarton.manualEnabled);
+  const manualUnitsPerCarton = Math.max(1, roundInt(assumptionsCarton.unitsPerCarton, selectedAuto?.units ?? 1));
 
-  const unitsByVolumeRaw = Math.floor(effectiveCartonCbm / Math.max(unitCbm, 0.000001));
-  const unitsByVolume = Math.max(1, unitsByVolumeRaw);
+  let unitsPerCartonAuto = selectedAuto?.units ?? 1;
+  let estimatedCartonLengthCm = selectedAuto?.cartonLengthCm ?? (lengthCm + outerBufferCm);
+  let estimatedCartonWidthCm = selectedAuto?.cartonWidthCm ?? (widthCm + outerBufferCm);
+  let estimatedCartonHeightCm = selectedAuto?.cartonHeightCm ?? (heightCm + outerBufferCm);
+  let estimatedCartonGrossWeightKg = selectedAuto?.cartonGrossKg ?? (unitWeightKgGross * unitsPerCartonAuto);
+  let cartonizationSource = selectedAuto?.softValid ? "auto_soft" : "auto_hard_fallback";
 
-  const unitsPerCartonAuto = oversizeFlag ? 1 : Math.max(1, Math.min(unitsByWeight, unitsByVolume));
-  const cartonsCount = Math.max(1, Math.ceil(unitsPerOrder / unitsPerCartonAuto));
+  if (manualEnabled) {
+    unitsPerCartonAuto = manualUnitsPerCarton;
+    const manualLengthCm = Math.max(0, num(assumptionsCarton.cartonLengthCm, 0));
+    const manualWidthCm = Math.max(0, num(assumptionsCarton.cartonWidthCm, 0));
+    const manualHeightCm = Math.max(0, num(assumptionsCarton.cartonHeightCm, 0));
+    const manualGrossKg = Math.max(0, num(assumptionsCarton.cartonGrossWeightKg, 0));
 
-  const cartonCbm = oversizeFlag
-    ? Math.max(unitCbm / packFactor, unitCbm)
-    : Math.min(maxCartonCbm, (unitsPerCartonAuto * unitCbm) / packFactor);
+    if (manualLengthCm > 0 && manualWidthCm > 0 && manualHeightCm > 0) {
+      estimatedCartonLengthCm = manualLengthCm;
+      estimatedCartonWidthCm = manualWidthCm;
+      estimatedCartonHeightCm = manualHeightCm;
+    } else {
+      const estimatedForManualUnits = estimateCartonForExactUnits({
+        unitDims: [lengthCm, widthCm, heightCm],
+        unitGrossKg: unitWeightKgGross,
+        hardCaps,
+        softCaps,
+        outerBufferCm,
+        targetUnits: manualUnitsPerCarton,
+      });
+      if (estimatedForManualUnits) {
+        estimatedCartonLengthCm = estimatedForManualUnits.cartonLengthCm;
+        estimatedCartonWidthCm = estimatedForManualUnits.cartonWidthCm;
+        estimatedCartonHeightCm = estimatedForManualUnits.cartonHeightCm;
+        estimatedCartonGrossWeightKg = estimatedForManualUnits.cartonGrossKg;
+      }
+    }
 
+    if (manualGrossKg > 0) {
+      estimatedCartonGrossWeightKg = manualGrossKg;
+    } else if (!Number.isFinite(estimatedCartonGrossWeightKg) || estimatedCartonGrossWeightKg <= 0) {
+      estimatedCartonGrossWeightKg = unitsPerCartonAuto * unitWeightKgGross;
+    }
+    cartonizationSource = "manual_override";
+  }
+
+  const cartonsCount = Math.max(1, Math.ceil(unitsPerOrder / Math.max(1, unitsPerCartonAuto)));
+  const cartonCbm = Math.max(
+    0.000001,
+    (estimatedCartonLengthCm * estimatedCartonWidthCm * estimatedCartonHeightCm) / 1_000_000,
+  );
   const shipmentCbm = cartonsCount * cartonCbm;
-  const shipmentWeightKg = unitsPerOrder * unitWeightKg;
+
+  let shipmentWeightKg = unitsPerOrder * unitWeightKgGross;
+  if (manualEnabled && estimatedCartonGrossWeightKg > 0 && unitsPerCartonAuto > 0) {
+    const manualGrossPerUnit = estimatedCartonGrossWeightKg / unitsPerCartonAuto;
+    shipmentWeightKg = unitsPerOrder * manualGrossPerUnit;
+  }
+  shipmentWeightKg = Math.max(0.001, shipmentWeightKg);
+
   const chargeableCbm = Math.max(shipmentCbm, shipmentWeightKg / 1000);
 
   const fxUsdToEur = Math.max(0, num(state.fx?.usdToEur, settings?.tax?.fallbackUsdToEur ?? DEFAULT_USD_TO_EUR));
@@ -1925,7 +2383,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
   }));
 
   const oversizeNote = oversizeFlag
-    ? "Produktkante überschreitet Karton-Maxmaß. Es wird mit 1 Unit/Karton weitergerechnet (Oversize-Flag)."
+    ? "Produktkante überschreitet Hard-Cap Kartonmaß. Es wird konservativ mit 1 Unit/Karton weitergerechnet."
     : "";
 
   return {
@@ -1933,10 +2391,17 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     modeKey,
     modeLabel,
     unitCbm,
-    unitWeightKg,
+    unitWeightKg: unitWeightKgNet,
+    unitGrossWeightKg: unitWeightKgGross,
     unitsPerOrder,
     unitsPerCartonAuto,
     cartonsCount,
+    estimatedCartonLengthCm,
+    estimatedCartonWidthCm,
+    estimatedCartonHeightCm,
+    estimatedCartonGrossWeightKg,
+    cartonizationSource,
+    cartonizationSourceLabel: cartonizationSourceLabel(cartonizationSource),
     shipmentCbm,
     shipmentWeightKg,
     chargeableCbm,
@@ -3194,6 +3659,11 @@ function diagnosticsKeyFromPath(path) {
     "assumptions.amazon.referralRate": "amazon.referralRate",
     "assumptions.lifecycle.targetMarginPct": "lifecycle.targetMarginPct",
     "assumptions.lifecycle.otherMonthlyCost": "lifecycle.otherMonthlyCost",
+    "assumptions.cartonization.unitsPerCarton": "cartonization.unitsPerCarton",
+    "assumptions.cartonization.cartonLengthCm": "cartonization.cartonLengthCm",
+    "assumptions.cartonization.cartonWidthCm": "cartonization.cartonWidthCm",
+    "assumptions.cartonization.cartonHeightCm": "cartonization.cartonHeightCm",
+    "assumptions.cartonization.cartonGrossWeightKg": "cartonization.cartonGrossWeightKg",
   };
   return map[path] ?? null;
 }
@@ -3237,6 +3707,9 @@ function impactMonthlyFromPath(path, metrics) {
         metrics.packagingUnit) *
       metrics.monthlyUnits
     );
+  }
+  if (path.startsWith("assumptions.cartonization.")) {
+    return metrics.shippingMonthly;
   }
   if (path.startsWith("settings.shipping12m.") || path.startsWith("settings.cartonRules.")) {
     return metrics.shippingMonthly;
@@ -3518,6 +3991,9 @@ function formatDerivedValue(value, formatType) {
   if (formatType === "percent") {
     return formatPercent(num(value, 0));
   }
+  if (formatType === "string") {
+    return String(value ?? "-");
+  }
   return formatNumber(num(value, 0));
 }
 
@@ -3553,6 +4029,11 @@ function buildStageImpactItems(metrics, stage) {
       driverPaths: [
         "derived.shipping.unitsPerOrder",
         "derived.shipping.unitsPerCartonAuto",
+        "derived.shipping.estimatedCartonLengthCm",
+        "derived.shipping.estimatedCartonWidthCm",
+        "derived.shipping.estimatedCartonHeightCm",
+        "derived.shipping.estimatedCartonGrossWeightKg",
+        "derived.shipping.cartonizationSource",
         "derived.shipping.cartonsCount",
         "derived.shipping.chargeableCbm",
         "basic.unitsPerOrder",
@@ -3562,6 +4043,8 @@ function buildStageImpactItems(metrics, stage) {
         "basic.netWeightG",
         "assumptions.import.customsDutyRate",
         "assumptions.extraCosts.overridePackagingGroup",
+        ...cartonizationProductPaths(),
+        ...cartonizationSettingsPaths(),
         ...shippingModeDriverPaths(metrics.shipping.modeKey),
       ],
       pinned: true,
@@ -3594,6 +4077,10 @@ function buildStageImpactItems(metrics, stage) {
       driverPaths: [
         "derived.shipping.unitsPerOrder",
         "derived.shipping.unitsPerCartonAuto",
+        "derived.shipping.estimatedCartonLengthCm",
+        "derived.shipping.estimatedCartonWidthCm",
+        "derived.shipping.estimatedCartonHeightCm",
+        "derived.shipping.cartonizationSource",
         "derived.shipping.cartonsCount",
         "derived.threepl.inboundTotal",
         "derived.threepl.storageTotal",
@@ -3690,11 +4177,19 @@ function buildStageImpactItems(metrics, stage) {
       source: `Globale 12M-Settings (${metrics.shipping.modeLabel}) + Produktmaße/-gewicht/-Menge.`,
       robustness: "Mittel (Richtwert, kein Live-Spot-Tarif).",
       driverPaths: [
+        "derived.shipping.unitsPerCartonAuto",
+        "derived.shipping.estimatedCartonLengthCm",
+        "derived.shipping.estimatedCartonWidthCm",
+        "derived.shipping.estimatedCartonHeightCm",
+        "derived.shipping.estimatedCartonGrossWeightKg",
+        "derived.shipping.cartonizationSource",
         "basic.unitsPerOrder",
         "basic.netWeightG",
         "basic.packLengthCm",
         "basic.packWidthCm",
         "basic.packHeightCm",
+        ...cartonizationProductPaths(),
+        ...cartonizationSettingsPaths(),
         ...shippingModeDriverPaths(metrics.shipping.modeKey),
       ],
       pinned: true,
@@ -3756,6 +4251,8 @@ function buildStageImpactItems(metrics, stage) {
         "basic.packLengthCm",
         "basic.packWidthCm",
         "basic.packHeightCm",
+        ...cartonizationProductPaths(),
+        ...cartonizationSettingsPaths(),
       ],
     },
     {
@@ -3975,6 +4472,17 @@ function settingsValueText(path, value) {
   if (SETTINGS_STRING_PATHS.has(path)) {
     if (path === "shipping12m.insurance.basis") {
       return value === "goods_value_eur" ? "Nur Warenwert (EUR)" : String(value ?? "-");
+    }
+    if (path === "cartonRules.estimationMode") {
+      if (value === "conservative") {
+        return "Konservativ";
+      }
+      if (value === "balanced") {
+        return "Balanced";
+      }
+      if (value === "maximal") {
+        return "Maximal";
+      }
     }
     return String(value ?? "-");
   }
@@ -4228,6 +4736,19 @@ function renderDriverModal() {
             option.value = "goods_value_eur";
             option.textContent = "Nur Warenwert (EUR)";
             select.appendChild(option);
+            control = select;
+          } else if (settingsPath === "cartonRules.estimationMode") {
+            const select = document.createElement("select");
+            [
+              ["conservative", "Konservativ"],
+              ["balanced", "Balanced"],
+              ["maximal", "Maximal"],
+            ].forEach(([value, label]) => {
+              const option = document.createElement("option");
+              option.value = value;
+              option.textContent = label;
+              select.appendChild(option);
+            });
             control = select;
           } else {
             const text = document.createElement("input");
@@ -4660,6 +5181,11 @@ function buildCostCategoryData(metrics) {
           driverPaths: [
             "derived.shipping.unitsPerOrder",
             "derived.shipping.unitsPerCartonAuto",
+            "derived.shipping.estimatedCartonLengthCm",
+            "derived.shipping.estimatedCartonWidthCm",
+            "derived.shipping.estimatedCartonHeightCm",
+            "derived.shipping.estimatedCartonGrossWeightKg",
+            "derived.shipping.cartonizationSource",
             "derived.shipping.cartonsCount",
             "derived.shipping.chargeableCbm",
             "basic.unitsPerOrder",
@@ -4667,8 +5193,9 @@ function buildCostCategoryData(metrics) {
             "basic.packLengthCm",
             "basic.packWidthCm",
             "basic.packHeightCm",
+            ...cartonizationProductPaths(),
             ...shippingModeDriverPaths(metrics.shipping.modeKey),
-            "settings.cartonRules.packFactor",
+            ...cartonizationSettingsPaths(),
           ],
         }),
         line({
@@ -4816,7 +5343,13 @@ function buildCostCategoryData(metrics) {
           driverPaths: [
             "derived.shipping.unitsPerOrder",
             "derived.shipping.unitsPerCartonAuto",
+            "derived.shipping.estimatedCartonLengthCm",
+            "derived.shipping.estimatedCartonWidthCm",
+            "derived.shipping.estimatedCartonHeightCm",
+            "derived.shipping.cartonizationSource",
             "derived.shipping.cartonsCount",
+            ...cartonizationProductPaths(),
+            ...cartonizationSettingsPaths(),
             "assumptions.extraCosts.receivingMode",
             "assumptions.extraCosts.receivingPerCartonSortedEur",
             "assumptions.extraCosts.receivingPerCartonMixedEur",
@@ -5154,9 +5687,24 @@ function renderShippingDetails(metrics) {
     dom.basicShippingMeta.textContent = `${modeLabel} · Chargeable: ${formatNumber(metrics.shipping.chargeableCbm)} CBM · PO: ${formatNumber(metrics.shipping.unitsPerOrder)} Units`;
   }
 
+  if (dom.shippingCartonUnits) {
+    const modeText = metrics.shipping.cartonizationSource === "manual_override" ? "manuell" : "auto";
+    dom.shippingCartonUnits.textContent = `${formatNumber(metrics.shipping.unitsPerCartonAuto)} (${modeText})`;
+  }
+  if (dom.shippingCartonDims) {
+    dom.shippingCartonDims.textContent =
+      `${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm`;
+  }
+  if (dom.shippingCartonWeight) {
+    dom.shippingCartonWeight.textContent = `${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)} kg`;
+  }
+  if (dom.shippingCartonSource) {
+    dom.shippingCartonSource.textContent = metrics.shipping.cartonizationSourceLabel;
+  }
+
   if (dom.shippingMethodText) {
     dom.shippingMethodText.textContent =
-      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Für China→DE schätzen wir Kartons automatisch aus Produktmaßen, Gewicht und Amazon-Kartonlimits. Daraus berechnen wir chargeable CBM (W/M) und addieren Vorlauf, Hauptlauf (variabel + fix), Nachlauf, Zollabfertigung und Versicherung. Ergebnis ist ein einzelner Richtwert in EUR/Unit, kein Live-Tarif.`;
+      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Für China→DE schätzen wir Umkartons konservativ über Supplier-Soft-Caps und nutzen Amazon-Hard-Caps nur als Fallback. Optional kannst du reale Packing-List-Werte manuell setzen. Daraus berechnen wir chargeable CBM (W/M) und addieren Vorlauf, Hauptlauf (variabel + fix), Nachlauf, Zollabfertigung und Versicherung. Ergebnis ist ein einzelner Richtwert in EUR/Unit, kein Live-Tarif.`;
   }
 
   if (dom.shippingDetailList) {
@@ -5177,7 +5725,7 @@ function renderShippingDetails(metrics) {
   }
 
   if (dom.shippingDebugInfo) {
-    const base = `mode=${metrics.shipping.modeLabel} · units_per_carton_auto=${formatNumber(metrics.shipping.unitsPerCartonAuto)} · cartons_count=${formatNumber(metrics.shipping.cartonsCount)} · shipment_cbm=${formatNumber(metrics.shipping.shipmentCbm)} · shipment_weight_kg=${formatNumber(metrics.shipping.shipmentWeightKg)} · chargeable_cbm=${formatNumber(metrics.shipping.chargeableCbm)} · goods_value_eur=${formatCurrency(metrics.shipping.goodsValueEur)} · insurance_rate=${formatPercent(metrics.shipping.insuranceRatePct)}`;
+    const base = `mode=${metrics.shipping.modeLabel} · source=${metrics.shipping.cartonizationSourceLabel} · units_per_carton_auto=${formatNumber(metrics.shipping.unitsPerCartonAuto)} · estimated_carton_cm=${formatNumber(metrics.shipping.estimatedCartonLengthCm)}x${formatNumber(metrics.shipping.estimatedCartonWidthCm)}x${formatNumber(metrics.shipping.estimatedCartonHeightCm)} · estimated_carton_gross_kg=${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)} · cartons_count=${formatNumber(metrics.shipping.cartonsCount)} · shipment_cbm=${formatNumber(metrics.shipping.shipmentCbm)} · shipment_weight_kg=${formatNumber(metrics.shipping.shipmentWeightKg)} · chargeable_cbm=${formatNumber(metrics.shipping.chargeableCbm)} · goods_value_eur=${formatCurrency(metrics.shipping.goodsValueEur)} · insurance_rate=${formatPercent(metrics.shipping.insuranceRatePct)}`;
     dom.shippingDebugInfo.textContent = metrics.shipping.oversizeFlag
       ? `${base} · Hinweis: ${metrics.shipping.oversizeNote}`
       : base;
@@ -5254,8 +5802,16 @@ function renderLogisticsChain(metrics) {
       robustness: "Mittel",
       driverPaths: [
         "derived.shipping.unitsPerOrder",
+        "derived.shipping.unitsPerCartonAuto",
+        "derived.shipping.estimatedCartonLengthCm",
+        "derived.shipping.estimatedCartonWidthCm",
+        "derived.shipping.estimatedCartonHeightCm",
+        "derived.shipping.estimatedCartonGrossWeightKg",
+        "derived.shipping.cartonizationSource",
         "derived.shipping.chargeableCbm",
         "derived.shipping.goodsValueEur",
+        ...cartonizationProductPaths(),
+        ...cartonizationSettingsPaths(),
         ...shippingModeDriverPaths(metrics.shipping.modeKey),
       ],
     },
@@ -5351,6 +5907,10 @@ function renderLogisticsChain(metrics) {
       driverPaths: [
         "derived.shipping.unitsPerOrder",
         "derived.shipping.unitsPerCartonAuto",
+        "derived.shipping.estimatedCartonLengthCm",
+        "derived.shipping.estimatedCartonWidthCm",
+        "derived.shipping.estimatedCartonHeightCm",
+        "derived.shipping.cartonizationSource",
         "derived.shipping.cartonsCount",
         "derived.threepl.inboundTotal",
         "derived.threepl.outboundServiceTotal",
@@ -5358,6 +5918,8 @@ function renderLogisticsChain(metrics) {
         "assumptions.extraCosts.receivingMode",
         "assumptions.extraCosts.receivingPerCartonSortedEur",
         "assumptions.extraCosts.receivingPerCartonMixedEur",
+        ...cartonizationProductPaths(),
+        ...cartonizationSettingsPaths(),
         "basic.unitsPerOrder",
         "settings.threePl.receivingPerCartonSortedEur",
         "settings.threePl.receivingPerCartonMixedEur",
@@ -5630,6 +6192,11 @@ function applyStageVisibility(product, stageState) {
     deepDiveSection.classList.toggle("hidden", !isDeep);
   }
 
+  const packingListOverrideSection = document.getElementById("packingListOverrideSection");
+  if (packingListOverrideSection) {
+    packingListOverrideSection.classList.toggle("hidden", isQuick);
+  }
+
   const deepDiveCheckboxes = document.querySelectorAll('[data-path^="workflow.deepDive."]');
   deepDiveCheckboxes.forEach((node) => {
     node.disabled = !isDeep;
@@ -5654,6 +6221,11 @@ function syncControlStates(product) {
   const launchSplitFields = dom.launchSplitBox.querySelectorAll("input[data-path]");
   launchSplitFields.forEach((field) => {
     field.disabled = !launchSplitEnabled;
+  });
+
+  const cartonManualEnabled = Boolean(getByPath(product, "assumptions.cartonization.manualEnabled"));
+  document.querySelectorAll('[data-path="assumptions.cartonization.unitsPerCarton"], [data-path="assumptions.cartonization.cartonLengthCm"], [data-path="assumptions.cartonization.cartonWidthCm"], [data-path="assumptions.cartonization.cartonHeightCm"], [data-path="assumptions.cartonization.cartonGrossWeightKg"]').forEach((field) => {
+    field.disabled = !cartonManualEnabled;
   });
 
   const packagingOverride = Boolean(getByPath(product, "assumptions.extraCosts.overridePackagingGroup"));
@@ -5739,6 +6311,9 @@ function inferAdvancedSectionFromPath(path) {
   }
   if (path.startsWith("assumptions.lifecycle.") || path.startsWith("assumptions.launchSplit.")) {
     return "advancedLifecycleSection";
+  }
+  if (path.startsWith("assumptions.cartonization.")) {
+    return "advancedShippingSection";
   }
   if (path.startsWith("assumptions.extraCosts.")) {
     return "advancedOpsSection";
@@ -6029,6 +6604,17 @@ function updateSelectedField(path, rawValue) {
   if (path === "basic.transportMode" && !["sea_lcl", "rail"].includes(selected.basic.transportMode)) {
     selected.basic.transportMode = "sea_lcl";
   }
+  if (path === "assumptions.cartonization.unitsPerCarton") {
+    selected.assumptions.cartonization.unitsPerCarton = Math.max(1, roundInt(selected.assumptions.cartonization.unitsPerCarton, 1));
+  }
+  if (
+    path === "assumptions.cartonization.cartonLengthCm" ||
+    path === "assumptions.cartonization.cartonWidthCm" ||
+    path === "assumptions.cartonization.cartonHeightCm" ||
+    path === "assumptions.cartonization.cartonGrossWeightKg"
+  ) {
+    setByPath(selected, path, Math.max(0, num(getByPath(selected, path), 0)));
+  }
 
   saveProducts();
 }
@@ -6233,6 +6819,8 @@ function applyMouseoverHelp() {
     const impact = metrics ? classifyImpact(impactMonthlyFromPath(fullPath, metrics), metrics.totalCostMonthly) : null;
     const robustnessWord = path.startsWith("shipping12m.")
       ? "mittel"
+      : path.startsWith("cartonRules.")
+        ? "mittel"
       : path.startsWith("threePl.")
         ? "mittel"
       : path.startsWith("categoryDefaults.")

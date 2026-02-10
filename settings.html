@@ -126,10 +126,11 @@
 
               <details id="settingsCartonSection" class="settings-section">
                 <summary>
-                  <span>C) Kartonisierung (Amazon Kartonlimits)</span>
-                  <small>Grenzwerte und Packfaktor für Auto-Kartonisierung</small>
+                  <span>C) Kartonisierung (Hard-Caps + Supplier-Soft-Caps)</span>
+                  <small>Realistische Umkarton-Schätzung mit konservativer Heuristik</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
+                <h4>Amazon Hard-Caps (Obergrenze)</h4>
                 <div class="admin-grid">
                   <label>
                     Amazon-Kartonprofil
@@ -143,7 +144,24 @@
                   <label>Karton max Breite (cm)<input data-settings-path="cartonRules.maxWidthCm" type="number" min="1" step="0.1" /></label>
                   <label>Karton max Höhe (cm)<input data-settings-path="cartonRules.maxHeightCm" type="number" min="1" step="0.1" /></label>
                   <label>Karton max Gewicht (kg)<input data-settings-path="cartonRules.maxWeightKg" type="number" min="1" step="0.1" /></label>
-                  <label>Packfaktor<input data-settings-path="cartonRules.packFactor" type="number" min="0.5" max="0.99" step="0.01" /></label>
+                  <label>Packfaktor (Legacy)<input data-settings-path="cartonRules.packFactor" type="number" min="0.5" max="0.99" step="0.01" /></label>
+                </div>
+                <h4>Supplier-Umkarton-Schätzung (Auto)</h4>
+                <div class="admin-grid">
+                  <label>
+                    Schätzmodus
+                    <select data-settings-path="cartonRules.estimationMode">
+                      <option value="conservative">Konservativ</option>
+                      <option value="balanced">Balanced</option>
+                      <option value="maximal">Maximal</option>
+                    </select>
+                  </label>
+                  <label>Supplier Soft-Cap Länge (cm)<input data-settings-path="cartonRules.supplierSoftMaxLengthCm" type="number" min="1" step="0.1" /></label>
+                  <label>Supplier Soft-Cap Breite (cm)<input data-settings-path="cartonRules.supplierSoftMaxWidthCm" type="number" min="1" step="0.1" /></label>
+                  <label>Supplier Soft-Cap Höhe (cm)<input data-settings-path="cartonRules.supplierSoftMaxHeightCm" type="number" min="1" step="0.1" /></label>
+                  <label>Supplier Soft-Cap Bruttogewicht (kg)<input data-settings-path="cartonRules.supplierSoftMaxGrossWeightKg" type="number" min="1" step="0.1" /></label>
+                  <label>Outer Buffer je Achse (cm)<input data-settings-path="cartonRules.outerBufferCm" type="number" min="0" step="0.1" /></label>
+                  <label>Gewichtsaufschlag netto -> brutto (%)<input data-settings-path="cartonRules.grossWeightUpliftPct" type="number" min="0" step="0.1" /></label>
                 </div>
               </details>
 

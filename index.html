@@ -511,7 +511,28 @@
 
               <section id="advancedShippingSection">
                 <h3>Shipping-Aufschlüsselung (door-to-door)</h3>
+                <section id="packingListOverrideSection" class="card">
+                  <h4>Reale Packing-List Override</h4>
+                  <p class="hint">Nur für Validation/Deep-Dive: Wenn echte Lieferanten-Packing-List vorliegt, kannst du die Auto-Kartonisierung gezielt übersteuern.</p>
+                  <label class="toggle-row">
+                    <input data-path="assumptions.cartonization.manualEnabled" type="checkbox" />
+                    <span>Manuelle Kartonisierung aktivieren</span>
+                  </label>
+                  <div class="admin-grid">
+                    <label>Units je Umkarton (manuell)<input data-path="assumptions.cartonization.unitsPerCarton" type="number" min="1" step="1" /></label>
+                    <label>Umkarton Länge (cm, optional)<input data-path="assumptions.cartonization.cartonLengthCm" type="number" min="0" step="0.1" /></label>
+                    <label>Umkarton Breite (cm, optional)<input data-path="assumptions.cartonization.cartonWidthCm" type="number" min="0" step="0.1" /></label>
+                    <label>Umkarton Höhe (cm, optional)<input data-path="assumptions.cartonization.cartonHeightCm" type="number" min="0" step="0.1" /></label>
+                    <label>Umkarton Bruttogewicht (kg, optional)<input data-path="assumptions.cartonization.cartonGrossWeightKg" type="number" min="0" step="0.01" /></label>
+                  </div>
+                </section>
                 <p id="shippingMethodText" class="hint"></p>
+                <ul class="calc-list">
+                  <li><span>Units/Karton (auto/manuell)</span><strong id="shippingCartonUnits">-</strong></li>
+                  <li><span>Geschätzte Umkartonmaße (L×B×H)</span><strong id="shippingCartonDims">-</strong></li>
+                  <li><span>Geschätztes Umkarton-Gewicht</span><strong id="shippingCartonWeight">-</strong></li>
+                  <li><span>Quelle Kartonisierung</span><strong id="shippingCartonSource">-</strong></li>
+                </ul>
                 <ul id="shippingDetailList" class="calc-list"></ul>
                 <p id="shippingDebugInfo" class="hint"></p>
               </section>
