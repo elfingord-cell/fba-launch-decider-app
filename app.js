@@ -20,6 +20,65 @@ const STAGE_LABELS = {
   validation: "Validation",
   deep_dive: "Deep-Dive",
 };
+const STAGE_VISIBILITY = {
+  quick: { topN: 10 },
+  validation: { topN: 15 },
+  deep_dive: { topN: Number.POSITIVE_INFINITY },
+};
+
+const CHAIN_STAGE_ORDER = [
+  "supplier",
+  "shipping_to_3pl",
+  "threepl",
+  "amazon_inbound",
+  "amazon",
+  "launch",
+];
+
+const CHAIN_STAGE_META = {
+  supplier: {
+    label: "Lieferant",
+    explain: "Kosten am Ursprung/Lieferanten.",
+    formula: "Summe aller Lieferanten-Kostenzeilen.",
+    source: "Produktinput + Defaults/Overrides.",
+    robustness: "Mittel",
+  },
+  shipping_to_3pl: {
+    label: "Shipping zu 3PL",
+    explain: "Door-to-door Import bis 3PL inkl. Vorlauf/Hauptlauf/Nachlauf/Zoll/Versicherung.",
+    formula: "Summe aller Shipping-&-Import-Zeilen.",
+    source: "Shipping 12M + Produktinput.",
+    robustness: "Mittel",
+  },
+  threepl: {
+    label: "3PL",
+    explain: "Wareneingang und Lagerung im 3PL.",
+    formula: "Summe der 3PL Receiving- und Lagerzeilen.",
+    source: "3PL-Settings + Produktinput.",
+    robustness: "Mittel",
+  },
+  amazon_inbound: {
+    label: "Amazon Inbound",
+    explain: "Outbound aus 3PL und Versand ins Amazon-Lager.",
+    formula: "Summe der 3PL->Amazon Service- und Carrier-Zeilen.",
+    source: "3PL-Settings + Kartonisierung.",
+    robustness: "Mittel",
+  },
+  amazon: {
+    label: "Amazon",
+    explain: "Amazon-Verkaufs-, PPC- und laufende Marktplatzkosten.",
+    formula: "Summe der Amazon- und Werbung/Retouren-Zeilen (inkl. PPC/TACoS).",
+    source: "Kategorie-Defaults + Produktinput + Overrides.",
+    robustness: "Mittel",
+  },
+  launch: {
+    label: "Sonstiges & Lifecycle",
+    explain: "Einmalige Setup-, Lifecycle- und sonstige indirekte Kostenblöcke.",
+    formula: "Summe der Launch-/Lifecycle-Zeilen plus Overhead/Leakage.",
+    source: "Launch/Listing-Settings + Overhead-Defaults + Produktinput.",
+    robustness: "Mittel bis hoch",
+  },
+};
 
 const CARTON_PRESETS = {
   legacy: {
@@ -916,6 +975,7 @@ const state = {
   },
   ui: {
     advancedVisible: false,
+    quickShowAllKpis: false,
     compareSort: "profit_desc",
     compareFilter: "all",
     focusedDriverPaths: [],
@@ -923,6 +983,7 @@ const state = {
     workspaceTab: "product",
     driverModal: null,
     costCategoryExpanded: {},
+    chainExpanded: {},
   },
 };
 
@@ -946,6 +1007,8 @@ const dom = {
   deepDiveReviewPanel: document.getElementById("deepDiveReviewPanel"),
   deepDiveReviewStatus: document.getElementById("deepDiveReviewStatus"),
   deepDiveReviewList: document.getElementById("deepDiveReviewList"),
+  toggleAllKpisBtn: document.getElementById("toggleAllKpisBtn"),
+  decisionSecondaryWrap: document.getElementById("decisionSecondaryWrap"),
   advancedToggleWrap: document.getElementById("advancedToggleWrap"),
   advancedToggle: document.getElementById("advancedToggle"),
   advancedPanel: document.getElementById("advancedPanel"),
@@ -975,6 +1038,11 @@ const dom = {
   chainThreePlChips: document.getElementById("chainThreePlChips"),
   chainInboundChips: document.getElementById("chainInboundChips"),
   chainAmazonChips: document.getElementById("chainAmazonChips"),
+  chainLaunchChips: document.getElementById("chainLaunchChips"),
+  chainTotalSummary: document.getElementById("chainTotalSummary"),
+  categoryTotalSummary: document.getElementById("categoryTotalSummary"),
+  costDeltaSummary: document.getElementById("costDeltaSummary"),
+  costDeltaCard: document.getElementById("costDeltaCard"),
   productWorkspace: document.getElementById("productWorkspace"),
   driverModal: document.getElementById("driverModal"),
   driverModalTitle: document.getElementById("driverModalTitle"),
@@ -3256,6 +3324,40 @@ function getProductStage(product) {
   return "quick";
 }
 
+function getStageTopN(stage) {
+  const configured = STAGE_VISIBILITY[stage]?.topN;
+  return Number.isFinite(configured) ? Math.max(0, roundInt(configured, 0)) : Number.POSITIVE_INFINITY;
+}
+
+function chainStageKeyForLine(categoryKey, lineLabel = "") {
+  const label = String(lineLabel ?? "");
+  if (categoryKey === "product") {
+    return "supplier";
+  }
+  if (categoryKey === "shipping_import") {
+    return "shipping_to_3pl";
+  }
+  if (categoryKey === "threepl") {
+    if (label.includes("-> Amazon")) {
+      return "amazon_inbound";
+    }
+    return "threepl";
+  }
+  if (categoryKey === "launch_lifecycle") {
+    return "launch";
+  }
+  if (categoryKey === "overhead") {
+    return "launch";
+  }
+  if (categoryKey === "ads_returns") {
+    return "amazon";
+  }
+  if (categoryKey === "amazon") {
+    return "amazon";
+  }
+  return "amazon";
+}
+
 function isEditableDriverPath(path) {
   return typeof path === "string" && (path.startsWith("basic.") || path.startsWith("assumptions.") || path.startsWith("settings."));
 }
@@ -3302,9 +3404,11 @@ function buildReviewTargets(metrics, stage) {
         return;
       }
       candidates.push({
+        stage,
         targetId: line.id,
         categoryKey: category.key,
         categoryTitle: category.title,
+        chainStageKey: line.chainStageKey || chainStageKeyForLine(category.key, line.label),
         label: line.label,
         valueRaw: num(line.valueRaw, 0),
         value: line.value,
@@ -3320,7 +3424,7 @@ function buildReviewTargets(metrics, stage) {
 
   candidates.sort((a, b) => b.impactMonthly - a.impactMonthly);
   if (stage === "validation") {
-    return candidates.slice(0, 8);
+    return candidates.slice(0, getStageTopN("validation"));
   }
   return candidates;
 }
@@ -3433,11 +3537,11 @@ function buildStageState(product, metrics) {
 
   const hintByStage = {
     quick:
-      "Quick-Check: nur Pflichtinputs erfassen. Prüfe zuerst Kategorie-Summen und die Lieferkette; klicke auf die Kategorien-Summe (z. B. Shipping zu 3PL), um Details zu öffnen.",
+      "Quick-Check: schnelle Entscheidung mit Top-Kosten. Fülle nur Pflichtfelder aus und prüfe die wichtigsten Treiber in der Lieferkette.",
     validation:
-      "Validation: die Top-8 Kostentreiber einzeln prüfen. Jeder Treiber muss bestätigt oder überschrieben werden.",
+      "Validation: Top-15 Treiber prüfen oder überschreiben. Fokus auf die größten Kostentreiber je Lieferkettenstufe.",
     deep_dive:
-      "Deep-Dive: Vollprüfung aller editierbaren kostentrelevanten Treiber plus finale Deep-Dive-Checklist.",
+      "Deep-Dive: Vollprüfung aller editierbaren kostenrelevanten Treiber.",
   };
 
   const statusClass = readinessByStage[stage] ? "pass" : (stage === "quick" ? "fail" : "warn");
@@ -5075,19 +5179,38 @@ function normalizeDriverPathForModal(path, selected) {
   return path;
 }
 
-function normalizeDriverPathsForModal(paths, selected) {
+function normalizeToCanonicalDriverKey(path, selected) {
+  const normalized = normalizeDriverPathForModal(path, selected);
+  if (!normalized) {
+    return null;
+  }
+  const aliases = {
+    "assumptions.extraCosts.amazonStoragePerCbmMonthEur": "canonical.amazon.storage.rate",
+    "settings.costDefaults.amazonStoragePerCbmMonthEur": "canonical.amazon.storage.rate",
+    "assumptions.extraCosts.avgAmazonStorageMonths": "canonical.amazon.storage.months",
+    "settings.costDefaults.avgAmazonStorageMonths": "canonical.amazon.storage.months",
+  };
+  return aliases[normalized] ?? normalized;
+}
+
+function dedupeDriverFieldsByCanonicalKey(paths, selected) {
   const unique = [...new Set((paths ?? []).filter(Boolean))];
   const normalized = [];
   const seen = new Set();
   unique.forEach((path) => {
     const mapped = normalizeDriverPathForModal(path, selected);
-    if (!mapped || seen.has(mapped)) {
+    const canonical = normalizeToCanonicalDriverKey(mapped, selected);
+    if (!mapped || !canonical || seen.has(canonical)) {
       return;
     }
-    seen.add(mapped);
+    seen.add(canonical);
     normalized.push(mapped);
   });
   return normalized;
+}
+
+function normalizeDriverPathsForModal(paths, selected) {
+  return dedupeDriverFieldsByCanonicalKey(paths, selected);
 }
 
 function modalGroupForPath(path) {
@@ -5906,7 +6029,7 @@ function buildCostCategoryData(metrics) {
           valueRaw: metrics.customsUnit,
           impactMonthly: metrics.customsMonthly,
           explain: "Zollkosten auf Warenwert plus Shipping D2D.",
-          formula: "Zoll/Unit = customsDutyRate × (warenwert_eur + shipping_d2d_per_unit).",
+          formula: "Zoll/Unit = Zollsatz × (Warenwert in EUR + Shipping zu 3PL je Unit).",
           source: "Import-Default/Override.",
           robustness: "Hoch.",
           driverPaths: ["assumptions.import.customsDutyRate", "settings.tax.customsDutyRatePct", "basic.exwUnit", "basic.unitsPerOrder"],
@@ -6248,6 +6371,7 @@ function buildCostCategoryData(metrics) {
       return {
         ...lineItem,
         id: lineItem.id || `${category.key}.${index + 1}`,
+        chainStageKey: lineItem.chainStageKey || chainStageKeyForLine(category.key, lineItem.label),
         driverPaths,
         reviewEligible: !isSummary && hasEditableDriverPath(driverPaths),
       };
@@ -6266,12 +6390,12 @@ function buildCostCategoryData(metrics) {
   });
 }
 
-function renderCostCategoryGrid(metrics, stage = "quick") {
+function renderCostCategoryGrid(metrics, stage = "quick", prebuiltCategories = null) {
   if (!dom.costCategoryGrid) {
     return;
   }
   dom.costCategoryGrid.innerHTML = "";
-  const categories = buildCostCategoryData(metrics);
+  const categories = prebuiltCategories ?? buildCostCategoryData(metrics);
 
   categories.forEach((category) => {
     const computedTotalPerUnit = category.lines.reduce((sum, lineItem) => (
@@ -6388,436 +6512,177 @@ function renderShippingDetails(metrics) {
   }
 }
 
-function renderLogisticsChain(metrics, stage = "quick") {
+function buildChainStageDataFromCategories(categories, stage, topN, monthlyUnits = 0) {
+  const lines = [];
+  categories.forEach((category) => {
+    category.lines.forEach((lineItem) => {
+      if (lineItem.isSummary || lineItem.excludeFromCategoryTotal) {
+        return;
+      }
+      lines.push({
+        ...lineItem,
+        categoryKey: category.key,
+        categoryTitle: category.title,
+        chainStageKey: lineItem.chainStageKey || chainStageKeyForLine(category.key, lineItem.label),
+      });
+    });
+  });
+
+  const sortedByImpact = [...lines].sort((a, b) => b.impactMonthly - a.impactMonthly);
+  const topLimit = Number.isFinite(topN) ? Math.max(0, roundInt(topN, 0)) : sortedByImpact.length;
+  const globallyVisibleIds = new Set(sortedByImpact.slice(0, topLimit).map((lineItem) => lineItem.id));
+
+  return CHAIN_STAGE_ORDER.map((stageKey) => {
+    const stageLines = lines
+      .filter((lineItem) => lineItem.chainStageKey === stageKey)
+      .sort((a, b) => b.impactMonthly - a.impactMonthly);
+    const expandedKey = `${stage}:${stageKey}`;
+    const expanded = Boolean(state.ui.chainExpanded?.[expandedKey]);
+    const visibleLines = (!Number.isFinite(topN) || expanded)
+      ? stageLines
+      : stageLines.filter((lineItem) => globallyVisibleIds.has(lineItem.id));
+    const hiddenCount = Math.max(0, stageLines.length - visibleLines.length);
+    const totalPerUnit = stageLines.reduce((sum, lineItem) => sum + num(lineItem.valueRaw, 0), 0);
+    const totalMonthly = totalPerUnit * Math.max(0, num(monthlyUnits, 0));
+    const driverPaths = [...new Set(stageLines.flatMap((lineItem) => lineItem.driverPaths ?? []))];
+    return {
+      key: stageKey,
+      title: CHAIN_STAGE_META[stageKey]?.label ?? stageKey,
+      lines: stageLines,
+      visibleLines,
+      hiddenCount,
+      expandedKey,
+      expanded,
+      totalPerUnit,
+      totalMonthly,
+      driverPaths,
+      explain: CHAIN_STAGE_META[stageKey]?.explain ?? "Summierte Kostenzeilen dieser Stufe.",
+      formula: CHAIN_STAGE_META[stageKey]?.formula ?? "Kategorie-Summe der zugeordneten Zeilen.",
+      source: CHAIN_STAGE_META[stageKey]?.source ?? "Kostenmodell.",
+      robustness: CHAIN_STAGE_META[stageKey]?.robustness ?? "Mittel",
+    };
+  });
+}
+
+function renderLogisticsChain(metrics, stage = "quick", prebuiltCategories = null) {
   if (!dom.chainSupplierChips) {
     return;
   }
 
-  const renderStation = (container, chips, totalValue = null, totalMeta = null) => {
-    if (!container) {
+  const categories = prebuiltCategories ?? buildCostCategoryData(metrics);
+  const topN = getStageTopN(stage);
+  const stageRows = buildChainStageDataFromCategories(categories, stage, topN, metrics.monthlyUnits);
+  const stageByKey = Object.fromEntries(stageRows.map((row) => [row.key, row]));
+
+  const stageContainerMap = {
+    supplier: dom.chainSupplierChips,
+    shipping_to_3pl: dom.chainImportChips,
+    threepl: dom.chainThreePlChips,
+    amazon_inbound: dom.chainInboundChips,
+    amazon: dom.chainAmazonChips,
+    launch: dom.chainLaunchChips,
+  };
+
+  const renderStation = (container, stageRow) => {
+    if (!container || !stageRow) {
       return;
     }
     container.innerHTML = "";
-    if (totalValue !== null && totalValue !== undefined) {
-      const totalNode = document.createElement("button");
-      totalNode.type = "button";
-      totalNode.className = "chain-station-total";
-      totalNode.innerHTML = `<span>Kategorie-Summe</span><strong>${formatCurrency(totalValue)} / Unit</strong>`;
-      if (totalMeta) {
-        totalNode.classList.add("clickable");
-        totalNode.title = `${totalMeta.explain}\nRechenweg: ${totalMeta.formula}\nKlick: Treiber-Maske mit relevanten Inputs öffnen.`;
-        totalNode.addEventListener("click", () => {
-          openDriverModal({
-            title: totalMeta.label,
-            value: `${formatCurrency(totalValue)} / Unit`,
-            explain: totalMeta.explain,
-            formula: totalMeta.formula,
-            source: totalMeta.source,
-            robustness: totalMeta.robustness,
-            driverPaths: totalMeta.driverPaths,
-          });
-        });
-      }
-      container.appendChild(totalNode);
+    const stationCard = container.closest("article");
+    if (stationCard) {
+      stationCard.classList.toggle("chain-stage-misc", stageRow.key === "launch");
     }
-    const visibleChips = stage === "quick" ? [] : chips;
-    visibleChips.forEach((chipData) => {
+
+    const totalNode = document.createElement("button");
+    totalNode.type = "button";
+    totalNode.className = "chain-station-total clickable";
+    totalNode.innerHTML = `<span>Kategorie-Summe</span><strong>${formatCurrency(stageRow.totalPerUnit)} / Unit</strong><small>${formatCurrency(stageRow.totalMonthly)} / Monat</small>`;
+    totalNode.title = `${stageRow.explain}\nRechenweg: ${stageRow.formula}\nKlick: Treiber-Maske mit relevanten Inputs öffnen.`;
+    totalNode.addEventListener("click", () => {
+      openDriverModal({
+        title: `Kategorie-Summe ${stageRow.title} (EUR/Unit)`,
+        value: `${formatCurrency(stageRow.totalPerUnit)} / Unit · ${formatCurrency(stageRow.totalMonthly)} / Monat`,
+        explain: stageRow.explain,
+        formula: stageRow.formula,
+        source: stageRow.source,
+        robustness: stageRow.robustness,
+        driverPaths: stageRow.driverPaths,
+      });
+    });
+    container.appendChild(totalNode);
+
+    stageRow.visibleLines.forEach((lineItem) => {
+      const rank = stageRow.lines.findIndex((candidate) => candidate.id === lineItem.id) + 1;
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chain-chip";
-      if (chipData.isSummary) {
-        chip.classList.add("is-summary");
+      const impact = classifyImpact(lineItem.impactMonthly, metrics.totalCostMonthly);
+      chip.classList.add(`impact-${impact.level}`);
+      if (rank > 0 && rank <= 3) {
+        chip.classList.add("is-top-impact", `rank-${rank}`);
       }
-      chip.innerHTML = `<span>${chipData.label}</span><strong>${formatCurrency(chipData.value)}</strong>`;
-      let impact = null;
-      if (!chipData.isSummary) {
-        impact = classifyImpact(chipData.value * metrics.monthlyUnits, metrics.totalCostMonthly);
-        chip.classList.add(`impact-${impact.level}`);
-      }
-      chip.title = chipData.isSummary
-        ? `${chipData.explain}\nRechenweg: ${chipData.formula}\nSummenzeile (nicht farbklassifiziert).`
-        : `${chipData.explain}\nRechenweg: ${chipData.formula}\nImpact: ${impact.label}`;
+      const rankBadge = rank > 0 && rank <= 3 ? `<em class="chain-rank-badge">Top ${rank}</em>` : "";
+      chip.innerHTML = `
+        <span>${rankBadge}${lineItem.label}</span>
+        <strong>${formatCurrency(lineItem.valueRaw)}</strong>
+        <small>Impact ${formatNumber(impact.sharePct)}%</small>
+      `;
+      chip.title = `${lineItem.explain}\nRechenweg: ${lineItem.formula}\nImpact: ${impact.label}`;
       chip.addEventListener("click", () => {
         openDriverModal({
-          title: chipData.label,
-          value: `${formatCurrency(chipData.value)}/Unit`,
-          explain: chipData.explain,
-          formula: chipData.formula,
-          source: chipData.source,
-          robustness: chipData.robustness,
-          driverPaths: chipData.driverPaths,
+          title: lineItem.label,
+          value: `${formatCurrency(lineItem.valueRaw)} / Unit · ${formatCurrency(lineItem.impactMonthly)} / Monat`,
+          explain: lineItem.explain,
+          formula: lineItem.formula,
+          source: lineItem.source,
+          robustness: lineItem.robustness,
+          driverPaths: lineItem.driverPaths,
         });
       });
       container.appendChild(chip);
     });
+
+    if (stageRow.hiddenCount > 0) {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "chain-more-btn";
+      toggle.textContent = stageRow.expanded ? "Weniger anzeigen" : `Weitere anzeigen (${stageRow.hiddenCount})`;
+      toggle.addEventListener("click", () => {
+        if (!state.ui.chainExpanded || typeof state.ui.chainExpanded !== "object") {
+          state.ui.chainExpanded = {};
+        }
+        state.ui.chainExpanded[stageRow.expandedKey] = !stageRow.expanded;
+        renderComputedViews();
+      });
+      container.appendChild(toggle);
+    }
   };
 
-  const supplierTotalPerUnit = metrics.exwUnit + metrics.packagingUnit;
-  const shippingTo3PlTotalPerUnit = metrics.shippingCategoryTotalEurPerUnit;
-  const threePlTotalPerUnit = metrics.threePlInboundPerUnit + metrics.threePlStoragePerUnit;
-  const inboundToAmazonTotalPerUnit = metrics.threePlOutboundServicePerUnit + metrics.threePlCarrierPerUnit;
-  const amazonTotalPerUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit + metrics.amazonStoragePerUnit;
-
-  renderStation(dom.chainSupplierChips, [
-    {
-      label: "EXW (EUR/Unit)",
-      value: metrics.exwUnit,
-      explain: "Einkaufspreis in EUR nach USD->EUR Umrechnung.",
-      formula: "EXW(EUR) = EXW(USD) × FX.",
-      source: "User Input + FX.",
-      robustness: "Mittel",
-      driverPaths: ["basic.exwUnit", "settings.tax.fallbackUsdToEur"],
-    },
-    {
-      label: "Packaging & Other (EUR/Unit)",
-      value: metrics.packagingUnit,
-      explain: "Verpackung und weitere Stückkosten am Lieferanten.",
-      formula: "Packaging Unit = Verpackung/Unit + weitere Kosten/Unit.",
-      source: "Settings/Override.",
-      robustness: "Mittel",
-      driverPaths: [
-        "assumptions.extraCosts.overridePackagingGroup",
-        "assumptions.extraCosts.packagingPerUnitEur",
-        "assumptions.extraCosts.otherUnitCostEur",
-        "settings.costDefaults.packagingPerUnitEur",
-        "settings.costDefaults.otherUnitCostEur",
-      ],
-    },
-  ], supplierTotalPerUnit, {
-    label: "Lieferant gesamt (EUR/Unit)",
-    explain: "Summe der Kosten am Lieferanten (EXW + Packaging & Other).",
-    formula: "Lieferant gesamt/Unit = EXW + Packaging & Other.",
-    source: "User Input + Settings/Overrides.",
-    robustness: "Mittel",
-    driverPaths: [
-      "basic.exwUnit",
-      "settings.tax.fallbackUsdToEur",
-      "assumptions.extraCosts.overridePackagingGroup",
-      "assumptions.extraCosts.packagingPerUnitEur",
-      "assumptions.extraCosts.otherUnitCostEur",
-      "settings.costDefaults.packagingPerUnitEur",
-      "settings.costDefaults.otherUnitCostEur",
-    ],
+  CHAIN_STAGE_ORDER.forEach((stageKey) => {
+    renderStation(stageContainerMap[stageKey], stageByKey[stageKey]);
   });
 
-  renderStation(dom.chainImportChips, [
-    {
-      label: "Vorlauf (EUR/Unit)",
-      value: metrics.shipping.originTotal / Math.max(1, metrics.shipping.unitsPerOrder),
-      explain: "Abholung/Trucking am Ursprung (CN) je Unit.",
-      formula: metrics.shipping.modeKey === "rail"
-        ? "Vorlauf/Unit = (Vorlauf-Basis + Vorlauf je Karton × Anzahl Umkartons) / PO-Menge."
-        : "Vorlauf/Unit = origin_fixed / PO Units.",
-      source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
-      robustness: "Mittel",
-      driverPaths: [
-        "basic.unitsPerOrder",
-        "derived.shipping.cartonsCount",
-        ...shippingOriginDriverPaths(metrics.shipping.modeKey),
-      ],
-    },
-    {
-      label: "Hauptlauf variabel (EUR/Unit)",
-      value: metrics.shipping.mainRunVariable / Math.max(1, metrics.shipping.unitsPerOrder),
-      explain: "Rail/Sea Hauptlauf variabel nach W/M.",
-      formula: "Hauptlauf variabel/Unit = (Abrechnungsvolumen (CBM) × Rate (EUR/CBM)) / PO-Menge.",
-      source: `Shipping 12M (${metrics.shipping.modeLabel}) + Kartonisierung.`,
-      robustness: "Mittel",
-      driverPaths: [
-        "derived.shipping.chargeableCbm",
-        "basic.unitsPerOrder",
-        ...shippingModeDriverPaths(metrics.shipping.modeKey).filter((path) => path.endsWith("rateEurPerCbm")),
-      ],
-    },
-    {
-      label: "Hauptlauf Fixkosten (EUR/Unit)",
-      value: metrics.shipping.mainRunFixed / Math.max(1, metrics.shipping.unitsPerOrder),
-      explain: "Fixe Hauptlauf-Nebenkosten (z. B. THC/Handling).",
-      formula: "Hauptlauf fix/Unit = main_run_fixed / PO Units.",
-      source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
-      robustness: "Mittel",
-      driverPaths: [
-        "basic.unitsPerOrder",
-        ...shippingMainRunFixedDriverPaths(metrics.shipping.modeKey),
-      ],
-    },
-    {
-      label: "Nachlauf (EUR/Unit)",
-      value: metrics.shipping.deOncarriageTotal / Math.max(1, metrics.shipping.unitsPerOrder),
-      explain: "Inlandstransport DE nach Ankunft bis Lager.",
-      formula: metrics.shipping.modeKey === "rail"
-        ? "Nachlauf/Unit = (Nachlauf-Basis + Nachlauf je Karton × Anzahl Umkartons) / PO-Menge."
-        : "Nachlauf/Unit = de_oncarriage_fixed / PO Units.",
-      source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
-      robustness: "Mittel",
-      driverPaths: [
-        "basic.unitsPerOrder",
-        "derived.shipping.cartonsCount",
-        ...shippingOncarriageDriverPaths(metrics.shipping.modeKey),
-      ],
-    },
-    {
-      label: "Zollabfertigung (EUR/Unit)",
-      value: metrics.shipping.customsBroker / Math.max(1, metrics.shipping.unitsPerOrder),
-      explain: "Fixkosten für Customs Clearance am Ziel.",
-      formula: "Zollabfertigung/Unit = customs_broker_fixed / PO Units.",
-      source: "Shipping 12M -> Gemeinsam.",
-      robustness: "Hoch",
-      driverPaths: [
-        "basic.unitsPerOrder",
-        "settings.shipping12m.customsBrokerEnabled",
-        "settings.shipping12m.customsBrokerFixedEurPerShipment",
-      ],
-    },
-    {
-      label: "Versicherung (EUR/Unit)",
-      value: metrics.shipping.insuranceTotal / Math.max(1, metrics.shipping.unitsPerOrder),
-      explain: "Transportversicherung auf Basis Warenwert (EUR).",
-      formula: "Versicherung/Unit = (Warenwert EUR × Versicherungsrate %) / PO Units.",
-      source: "Shipping 12M -> Versicherung + EXW + FX.",
-      robustness: "Mittel",
-      driverPaths: [
-        "derived.shipping.goodsValueEur",
-        "basic.exwUnit",
-        "basic.unitsPerOrder",
-        "settings.tax.fallbackUsdToEur",
-        "settings.shipping12m.insurance.enabled",
-        "settings.shipping12m.insurance.basis",
-        "settings.shipping12m.insurance.ratePct",
-      ],
-    },
-    {
-      label: "Nachbelastung (EUR/Unit)",
-      value: metrics.shipping.manualSurchargeTotal / Math.max(1, metrics.shipping.unitsPerOrder),
-      explain: "Optionaler manueller Fixbetrag je Shipment (z. B. Advance Commission).",
-      formula: "Nachbelastung/Unit = manual_surcharge_eur_per_shipment / PO Units.",
-      source: "Shipping 12M -> Rail.",
-      robustness: "Mittel",
-      driverPaths: [
-        "basic.unitsPerOrder",
-        ...shippingManualSurchargeDriverPaths(metrics.shipping.modeKey),
-      ],
-    },
-  ], shippingTo3PlTotalPerUnit, {
-    label: `Shipping zu 3PL gesamt (${metrics.shipping.modeLabel}, EUR/Unit)`,
-    explain: "Summe aus Vorlauf, Hauptlauf (variabel + fix), Nachlauf, Zollabfertigung, Versicherung und optionaler Nachbelastung.",
-    formula: "Kategorie-Summe = Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung + Nachbelastung.",
-    source: `Global Settings Shipping 12M (${metrics.shipping.modeLabel}) + Produktdaten.`,
-    robustness: "Mittel",
-    driverPaths: [
-      "basic.unitsPerOrder",
-      "basic.packLengthCm",
-      "basic.packWidthCm",
-      "basic.packHeightCm",
-      "basic.netWeightG",
-      "basic.exwUnit",
-      "derived.shipping.chargeableCbm",
-      "derived.shipping.unitsPerCartonAuto",
-      "derived.shipping.cartonsCount",
-      ...shippingModeDriverPaths(metrics.shipping.modeKey),
-      "settings.shipping12m.customsBrokerEnabled",
-      "settings.shipping12m.customsBrokerFixedEurPerShipment",
-      "settings.shipping12m.insurance.enabled",
-      "settings.shipping12m.insurance.ratePct",
-      ...shippingManualSurchargeDriverPaths(metrics.shipping.modeKey),
-    ],
-  });
+  const chainTotalPerUnit = stageRows.reduce((sum, row) => sum + row.totalPerUnit, 0);
+  const chainTotalMonthly = stageRows.reduce((sum, row) => sum + row.totalMonthly, 0);
+  const categoryTotalPerUnit = categories.reduce((sum, category) => sum + num(category.totalPerUnit, 0), 0);
+  const categoryTotalMonthly = categories.reduce((sum, category) => sum + num(category.totalMonthly, 0), 0);
+  const deltaPerUnit = chainTotalPerUnit - categoryTotalPerUnit;
+  const deltaMonthly = chainTotalMonthly - categoryTotalMonthly;
 
-  renderStation(dom.chainThreePlChips, [
-    {
-      label: "3PL Inbound (EUR/Unit)",
-      value: metrics.threePlInboundPerUnit,
-      explain: "Receiving je Karton (sorted/mixed) auf Unit umgerechnet.",
-      formula: "Inbound/Unit = Anzahl Umkartons × Receiving je Karton / PO-Menge.",
-      source: "3PL Settings/Override.",
-      robustness: "Mittel",
-      driverPaths: [
-        "derived.shipping.unitsPerOrder",
-        "derived.shipping.unitsPerCartonAuto",
-        "derived.shipping.estimatedCartonLengthCm",
-        "derived.shipping.estimatedCartonWidthCm",
-        "derived.shipping.estimatedCartonHeightCm",
-        "derived.shipping.cartonizationSource",
-        "derived.shipping.cartonsCount",
-        "derived.threepl.inboundTotal",
-        "derived.threepl.outboundServiceTotal",
-        "derived.threepl.carrierTotal",
-        "assumptions.extraCosts.receivingMode",
-        "assumptions.extraCosts.receivingPerCartonSortedEur",
-        "assumptions.extraCosts.receivingPerCartonMixedEur",
-        ...cartonizationProductPaths(),
-        ...cartonizationSettingsPaths(),
-        "basic.unitsPerOrder",
-        "settings.threePl.receivingPerCartonSortedEur",
-        "settings.threePl.receivingPerCartonMixedEur",
-      ],
-    },
-    {
-      label: "3PL Lagerung (EUR/Unit)",
-      value: metrics.threePlStoragePerUnit,
-      explain: "Lagerkosten je Palette/Monat mit Lagerdauer auf Unit umgelegt.",
-      formula: "Storage/Unit = ceil(PO Units / units_per_pallet) × storage_per_pallet_month × months / PO Units.",
-      source: "3PL Settings/Override.",
-      robustness: "Mittel bis hoch",
-      driverPaths: [
-        "derived.shipping.unitsPerOrder",
-        "derived.threepl.palletsCount",
-        "derived.threepl.storageTotal",
-        "assumptions.extraCosts.storagePerPalletPerMonthEur",
-        "assumptions.extraCosts.unitsPerPallet",
-        "assumptions.extraCosts.avg3PlStorageMonths",
-        "basic.unitsPerOrder",
-        "settings.threePl.storagePerPalletPerMonthEur",
-        "settings.threePl.unitsPerPallet",
-        "settings.threePl.avgStorageMonths",
-      ],
-    },
-  ], threePlTotalPerUnit, {
-    label: "3PL gesamt (EUR/Unit)",
-    explain: "Summe aus 3PL Inbound und 3PL Lagerung.",
-    formula: "3PL gesamt/Unit = 3PL Inbound + 3PL Lagerung.",
-    source: "3PL Settings/Override.",
-    robustness: "Mittel",
-    driverPaths: [
-      "derived.shipping.cartonsCount",
-      "derived.shipping.unitsPerOrder",
-      "assumptions.extraCosts.receivingMode",
-      "assumptions.extraCosts.receivingPerCartonSortedEur",
-      "assumptions.extraCosts.receivingPerCartonMixedEur",
-      "assumptions.extraCosts.storagePerPalletPerMonthEur",
-      "assumptions.extraCosts.unitsPerPallet",
-      "assumptions.extraCosts.avg3PlStorageMonths",
-      "settings.threePl.receivingPerCartonSortedEur",
-      "settings.threePl.storagePerPalletPerMonthEur",
-      "settings.threePl.unitsPerPallet",
-      "settings.threePl.avgStorageMonths",
-    ],
-  });
-
-  renderStation(dom.chainInboundChips, [
-    {
-      label: "3PL -> Amazon Service (EUR/Unit)",
-      value: metrics.threePlOutboundServicePerUnit,
-      explain: "Warenausgangsleistungen am 3PL je Karton auf Unit umgelegt.",
-      formula: "Service/Unit = Anzahl Umkartons × (Base + Pick&Pack + FBA-Processing + Inserts + Labels) / PO-Menge.",
-      source: "3PL Outbound Settings/Override.",
-      robustness: "Mittel",
-      driverPaths: [
-        "derived.shipping.unitsPerOrder",
-        "derived.shipping.cartonsCount",
-        "derived.threepl.outboundServiceTotal",
-        "assumptions.extraCosts.outboundBasePerCartonEur",
-        "assumptions.extraCosts.pickPackPerCartonEur",
-        "assumptions.extraCosts.fbaProcessingPerCartonEur",
-        "assumptions.extraCosts.insertsPerCarton",
-        "assumptions.extraCosts.insertPerInsertEur",
-        "assumptions.extraCosts.labelsPerCarton",
-        "assumptions.extraCosts.thirdCountryLabelPerLabelEur",
-        "settings.threePl.outboundBasePerCartonEur",
-        "settings.threePl.pickPackPerCartonEur",
-        "settings.threePl.fbaProcessingPerCartonEur",
-      ],
-    },
-    {
-      label: "3PL -> Amazon Carrier (EUR/Unit)",
-      value: metrics.threePlCarrierPerUnit,
-      explain: "Transportkosten je Karton vom 3PL zu Amazon.",
-      formula: "Carrier/Unit = Anzahl Umkartons × Carrier je Karton / PO-Menge.",
-      source: "3PL Carrier Setting/Override.",
-      robustness: "Mittel",
-      driverPaths: [
-        "derived.shipping.unitsPerOrder",
-        "derived.shipping.cartonsCount",
-        "derived.threepl.carrierTotal",
-        "assumptions.extraCosts.carrierCostPerCartonEur",
-        "basic.unitsPerOrder",
-        "settings.threePl.carrierCostPerCartonEur",
-      ],
-    },
-  ], inboundToAmazonTotalPerUnit, {
-    label: "Versand zu Amazon gesamt (EUR/Unit)",
-    explain: "Summe aus 3PL Outbound-Service und Carrier zum Amazon-Lager.",
-    formula: "Versand zu Amazon/Unit = 3PL Service + 3PL Carrier.",
-    source: "3PL Settings/Override.",
-    robustness: "Mittel",
-    driverPaths: [
-      "derived.shipping.cartonsCount",
-      "derived.shipping.unitsPerOrder",
-      "assumptions.extraCosts.outboundBasePerCartonEur",
-      "assumptions.extraCosts.pickPackPerCartonEur",
-      "assumptions.extraCosts.fbaProcessingPerCartonEur",
-      "assumptions.extraCosts.insertsPerCarton",
-      "assumptions.extraCosts.insertPerInsertEur",
-      "assumptions.extraCosts.labelsPerCarton",
-      "assumptions.extraCosts.thirdCountryLabelPerLabelEur",
-      "assumptions.extraCosts.carrierCostPerCartonEur",
-      "settings.threePl.outboundBasePerCartonEur",
-      "settings.threePl.pickPackPerCartonEur",
-      "settings.threePl.fbaProcessingPerCartonEur",
-      "settings.threePl.carrierCostPerCartonEur",
-    ],
-  });
-
-  renderStation(dom.chainAmazonChips, [
-    {
-      label: "Referral Fee (EUR/Unit)",
-      value: metrics.referralFeeUnit,
-      explain: "Amazon-Referral auf Brutto-Umsatz mit Mindestfee.",
-      formula: "Referral/Unit = max(Min Fee, Brutto × Referral%).",
-      source: "Kategorie-Default/Override.",
-      robustness: "Hoch",
-      driverPaths: ["assumptions.amazon.referralRate", "basic.priceGross"],
-    },
-    {
-      label: "FBA Fee (EUR/Unit)",
-      value: metrics.fbaFeeUnit,
-      explain: "FBA-Gebühr nach Tier oder manuellem Override.",
-      formula: "FBA/Unit = Auto-Tier(Maße/Gewicht) oder Manual Fee.",
-      source: "Amazon Fee Logic/Override.",
-      robustness: "Mittel bis hoch",
-      driverPaths: [
-        "assumptions.amazon.useManualFbaFee",
-        "assumptions.amazon.manualFbaFee",
-        "basic.netWeightG",
-        "basic.packLengthCm",
-        "basic.packWidthCm",
-        "basic.packHeightCm",
-      ],
-    },
-    {
-      label: "Amazon Lager (EUR/Unit)",
-      value: metrics.amazonStoragePerUnit,
-      explain: "Amazon-Lagerkosten aus EUR/CBM, Lagerdauer und Unit-Volumen.",
-      formula: "Amazon storage/Unit = EUR/CBM/Monat × Amazon-Monate × unit_cbm.",
-      source: "Settings/Override.",
-      robustness: "Mittel",
-      driverPaths: [
-        "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
-        "assumptions.extraCosts.avgAmazonStorageMonths",
-        "settings.costDefaults.amazonStoragePerCbmMonthEur",
-      ],
-    },
-  ], amazonTotalPerUnit, {
-    label: "Amazon gesamt (EUR/Unit)",
-    explain: "Summe aus Referral Fee, FBA Fee und Amazon Lagerkosten.",
-    formula: "Amazon gesamt/Unit = Referral + FBA + Amazon Lager.",
-    source: "Kategorie-Defaults + Amazon Fee/Storage Logik.",
-    robustness: "Mittel bis hoch",
-    driverPaths: [
-      "basic.priceGross",
-      "assumptions.amazon.referralRate",
-      "assumptions.amazon.useManualFbaFee",
-      "assumptions.amazon.manualFbaFee",
-      "basic.netWeightG",
-      "basic.packLengthCm",
-      "basic.packWidthCm",
-      "basic.packHeightCm",
-      "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
-      "assumptions.extraCosts.avgAmazonStorageMonths",
-      "settings.costDefaults.amazonStoragePerCbmMonthEur",
-      "settings.costDefaults.avgAmazonStorageMonths",
-    ],
-  });
+  if (dom.chainTotalSummary) {
+    dom.chainTotalSummary.textContent = `${formatCurrency(chainTotalPerUnit)} / Unit · ${formatCurrency(chainTotalMonthly)} / Monat`;
+  }
+  if (dom.categoryTotalSummary) {
+    dom.categoryTotalSummary.textContent = `${formatCurrency(categoryTotalPerUnit)} / Unit · ${formatCurrency(categoryTotalMonthly)} / Monat`;
+  }
+  if (dom.costDeltaSummary) {
+    dom.costDeltaSummary.textContent = `${formatCurrency(deltaPerUnit)} / Unit · ${formatCurrency(deltaMonthly)} / Monat`;
+  }
+  if (dom.costDeltaCard) {
+    const deltaAbs = Math.abs(deltaPerUnit) + Math.abs(deltaMonthly);
+    dom.costDeltaCard.classList.remove("delta-ok", "delta-warn");
+    dom.costDeltaCard.classList.add(deltaAbs <= 0.01 ? "delta-ok" : "delta-warn");
+  }
 }
 
 function renderSelectedOutputs(metrics, stage = "quick") {
@@ -6869,8 +6734,9 @@ function renderSelectedOutputs(metrics, stage = "quick") {
   }
 
   renderShippingDetails(metrics);
-  renderLogisticsChain(metrics, stage);
-  renderCostCategoryGrid(metrics, stage);
+  const categories = buildCostCategoryData(metrics);
+  renderLogisticsChain(metrics, stage, categories);
+  renderCostCategoryGrid(metrics, stage, categories);
 
   setKpi(dom.sensPriceDown, metrics.sensitivity.priceDown.profitMonthly, "currency");
   setKpi(dom.sensTacosUp, metrics.sensitivity.tacosUp.profitMonthly, "currency");
@@ -6963,45 +6829,29 @@ function renderStagePanel(product, metrics) {
   return stageState;
 }
 
+function renderDecisionBar(stage) {
+  const isQuick = stage === "quick";
+  const showSecondary = !isQuick || state.ui.quickShowAllKpis;
+  if (dom.decisionSecondaryWrap) {
+    dom.decisionSecondaryWrap.classList.toggle("hidden", !showSecondary);
+  }
+  if (dom.toggleAllKpisBtn) {
+    dom.toggleAllKpisBtn.classList.toggle("hidden", !isQuick);
+    dom.toggleAllKpisBtn.textContent = showSecondary ? "Weniger KPIs anzeigen" : "Alle KPIs anzeigen";
+    dom.toggleAllKpisBtn.setAttribute("aria-expanded", showSecondary ? "true" : "false");
+  }
+}
+
 function reviewGroupLabel(target) {
-  const id = target?.targetId ?? "";
-  const label = target?.label ?? "";
-  if (id.startsWith("product.")) {
-    return "Lieferant";
-  }
-  if (id.startsWith("shipping_import.")) {
-    return "Shipping zu 3PL";
-  }
-  if (id.startsWith("threepl.")) {
-    if (label.includes("3PL -> Amazon")) {
-      return "Versand zu Amazon";
-    }
-    return "3PL";
-  }
-  if (id.startsWith("amazon.")) {
-    return "Amazon";
-  }
-  if (id.startsWith("ads_returns.")) {
-    return "Werbung & Retouren";
-  }
-  if (id.startsWith("lifecycle.")) {
-    return "Launch & Lifecycle";
-  }
-  if (id.startsWith("overhead.")) {
-    return "Overhead / Leakage";
+  const chainStageKey = target?.chainStageKey;
+  if (chainStageKey && CHAIN_STAGE_META[chainStageKey]) {
+    return CHAIN_STAGE_META[chainStageKey].label;
   }
   return "Weitere Treiber";
 }
 
 const REVIEW_GROUP_ORDER = [
-  "Lieferant",
-  "Shipping zu 3PL",
-  "3PL",
-  "Versand zu Amazon",
-  "Amazon",
-  "Werbung & Retouren",
-  "Launch & Lifecycle",
-  "Overhead / Leakage",
+  ...CHAIN_STAGE_ORDER.map((stageKey) => CHAIN_STAGE_META[stageKey].label),
   "Weitere Treiber",
 ];
 
@@ -7093,7 +6943,7 @@ function renderValidationReviewPanel(product, stageState) {
     return;
   }
   const review = stageState.validationReview;
-  const totalLabel = review.total > 0 ? review.total : 8;
+  const totalLabel = review.total > 0 ? review.total : getStageTopN("validation");
   dom.validationReviewStatus.textContent = `${review.completed}/${totalLabel} geprüft`;
   dom.validationReviewStatus.classList.remove("pass", "warn", "fail");
   dom.validationReviewStatus.classList.add(review.isReady ? "pass" : "warn");
@@ -7118,17 +6968,17 @@ function applyStageVisibility(product, stageState) {
   const isQuick = stage === "quick";
 
   if (dom.advancedToggleWrap) {
-    dom.advancedToggleWrap.classList.toggle("hidden", !isQuick);
+    dom.advancedToggleWrap.classList.add("hidden");
   }
 
-  if (!isQuick) {
-    state.ui.advancedVisible = false;
-  }
+  state.ui.advancedVisible = false;
 
-  dom.advancedPanel.classList.toggle("hidden", !(isQuick && state.ui.advancedVisible));
+  if (dom.advancedPanel) {
+    dom.advancedPanel.classList.add("hidden");
+  }
   if (dom.advancedToggle) {
-    dom.advancedToggle.checked = state.ui.advancedVisible;
-    dom.advancedToggle.disabled = !isQuick;
+    dom.advancedToggle.checked = false;
+    dom.advancedToggle.disabled = true;
   }
 
   if (dom.quickStagePanel) {
@@ -7143,17 +6993,17 @@ function applyStageVisibility(product, stageState) {
 
   const deepDiveSection = document.getElementById("advancedDeepDiveSection");
   if (deepDiveSection) {
-    deepDiveSection.classList.toggle("hidden", !isDeep);
+    deepDiveSection.classList.add("hidden");
   }
 
   const packingListOverrideSection = document.getElementById("packingListOverrideSection");
   if (packingListOverrideSection) {
-    packingListOverrideSection.classList.toggle("hidden", isQuick);
+    packingListOverrideSection.classList.add("hidden");
   }
 
   const deepDiveCheckboxes = document.querySelectorAll('[data-path^="workflow.deepDive."]');
   deepDiveCheckboxes.forEach((node) => {
-    node.disabled = !isDeep;
+    node.disabled = true;
   });
 }
 
@@ -7224,6 +7074,10 @@ function openAdvancedSection(sectionId) {
     return;
   }
 
+  if (!sectionId.startsWith("settings")) {
+    return;
+  }
+
   const section = document.getElementById(sectionId);
   if (!section) {
     return;
@@ -7234,14 +7088,7 @@ function openAdvancedSection(sectionId) {
     details.open = true;
   }
 
-  if (sectionId.startsWith("settings")) {
-    setWorkspaceTab("settings");
-  } else {
-    setWorkspaceTab("product");
-    state.ui.advancedVisible = true;
-    dom.advancedPanel.classList.remove("hidden");
-    dom.advancedToggle.checked = true;
-  }
+  setWorkspaceTab("settings");
 
   section.scrollIntoView({ behavior: "smooth", block: "center" });
   section.classList.add("advanced-focus");
@@ -7484,6 +7331,7 @@ function renderSelectedProductPanels(metricsById = new Map()) {
   const diagnostics = buildDefaultDiagnostics(product, metrics);
   const stageState = renderStagePanel(product, metrics);
   applyStageVisibility(product, stageState);
+  renderDecisionBar(stageState.stage);
   renderValidationReviewPanel(product, stageState);
   renderDeepDiveReviewPanel(product, stageState);
 
@@ -7714,16 +7562,19 @@ function applyMouseoverHelp() {
   const diagnostics = selected && metrics ? buildDefaultDiagnostics(selected, metrics) : {};
 
   if (dom.advancedToggle) {
-    dom.advancedToggle.title = "Advanced blendet produktspezifische Defaults, Overwrites und Shipping-Details ein.";
+    dom.advancedToggle.title = "Advanced ist in diesem Flow deaktiviert. Änderungen laufen über Treiber-Masken.";
   }
   if (dom.stageQuickBtn) {
-    dom.stageQuickBtn.title = "Quick-Check: nur Kerninputs, Kategorie-Summen und Kette. Details optional aufklappen.";
+    dom.stageQuickBtn.title = "Quick-Check: schnelle Entscheidung mit Top-10 Kostentreibern.";
   }
   if (dom.stageValidationBtn) {
-    dom.stageValidationBtn.title = "Validation: Top-8 Kostentreiber prüfen oder überschreiben.";
+    dom.stageValidationBtn.title = "Validation: Top-15 Kostentreiber prüfen oder überschreiben.";
   }
   if (dom.stageDeepBtn) {
     dom.stageDeepBtn.title = "Deep-Dive: Vollprüfung aller editierbaren kostentrelevanten Treiber.";
+  }
+  if (dom.toggleAllKpisBtn) {
+    dom.toggleAllKpisBtn.title = "Zeigt in Quick-Check zusätzliche KPIs in der Decision-Bar.";
   }
   if (dom.compareSort) {
     dom.compareSort.title = "Sortiert die Vergleichstabelle nach dem gewählten KPI.";
@@ -7904,6 +7755,13 @@ function bindEvents() {
   }
   if (dom.stageDeepBtn) {
     dom.stageDeepBtn.addEventListener("click", () => setSelectedStage("deep_dive"));
+  }
+
+  if (dom.toggleAllKpisBtn) {
+    dom.toggleAllKpisBtn.addEventListener("click", () => {
+      state.ui.quickShowAllKpis = !state.ui.quickShowAllKpis;
+      renderComputedViews();
+    });
   }
 
   if (dom.advancedToggle) {

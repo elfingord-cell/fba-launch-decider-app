@@ -268,6 +268,12 @@ body {
   margin-bottom: 8px;
 }
 
+.decision-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .decision-head h2 {
   margin: 0;
   font-size: 0.95rem;
@@ -282,14 +288,17 @@ body {
 
 .decision-primary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
   gap: 8px;
 }
 
-.decision-secondary-grid {
+.decision-secondary-wrap {
   margin-top: 8px;
+}
+
+.decision-secondary-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
   gap: 7px;
 }
 
@@ -1037,7 +1046,7 @@ select:disabled {
 
 .chain-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1048,6 +1057,11 @@ select:disabled {
   padding: 8px;
   display: grid;
   gap: 6px;
+}
+
+.chain-grid article.chain-stage-misc {
+  background: #fff8f2;
+  border-color: color-mix(in srgb, #f1b887 55%, white);
 }
 
 .chain-grid h4 {
@@ -1086,6 +1100,11 @@ select:disabled {
   font-family: "Space Grotesk", "Manrope", sans-serif;
 }
 
+.chain-station-total small {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
 .chain-station-total.clickable {
   cursor: pointer;
 }
@@ -1106,6 +1125,9 @@ select:disabled {
 }
 
 .chain-chip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 700;
@@ -1117,8 +1139,42 @@ select:disabled {
   font-family: "Space Grotesk", "Manrope", sans-serif;
 }
 
+.chain-chip small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
 .chain-chip:hover {
   border-color: color-mix(in srgb, var(--accent) 46%, white);
+}
+
+.chain-rank-badge {
+  font-style: normal;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--line) 58%, white);
+  padding: 1px 5px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  background: #f4f4f0;
+  color: #415368;
+}
+
+.chain-more-btn {
+  border: 1px solid color-mix(in srgb, var(--line) 62%, white);
+  border-radius: 9px;
+  background: #fff;
+  color: #2f544d;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 6px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chain-more-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 44%, white);
 }
 
 .chain-chip.impact-high {
@@ -1133,9 +1189,96 @@ select:disabled {
   background: color-mix(in srgb, #f1faf6 86%, white);
 }
 
+.chain-chip.is-top-impact {
+  border-width: 2px;
+}
+
+.chain-chip.rank-1 {
+  border-color: color-mix(in srgb, #d7733f 56%, white);
+  box-shadow: 0 4px 12px rgba(211, 110, 54, 0.14);
+}
+
+.chain-chip.rank-2 {
+  border-color: color-mix(in srgb, #e0a75d 58%, white);
+}
+
+.chain-chip.rank-3 {
+  border-color: color-mix(in srgb, #7db5a6 58%, white);
+}
+
+.chain-chip.rank-1 .chain-rank-badge {
+  background: #fff4ec;
+  border-color: color-mix(in srgb, #d7733f 48%, white);
+  color: #8c4321;
+}
+
+.chain-chip.rank-2 .chain-rank-badge {
+  background: #fff8e8;
+  border-color: color-mix(in srgb, #c7902f 48%, white);
+  color: #795009;
+}
+
+.chain-chip.rank-3 .chain-rank-badge {
+  background: #eff9f5;
+  border-color: color-mix(in srgb, #5f9d8e 48%, white);
+  color: #2e685c;
+}
+
 .chain-chip.is-summary {
   border-color: color-mix(in srgb, var(--accent) 42%, white);
   background: color-mix(in srgb, #eef8f4 86%, white);
+}
+
+.cost-consistency-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.consistency-card {
+  border: 1px dashed color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fcfcfa;
+  padding: 8px;
+  display: grid;
+  gap: 3px;
+}
+
+.consistency-card span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.consistency-card strong {
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  font-size: 0.8rem;
+}
+
+.consistency-card.delta-ok {
+  border-color: color-mix(in srgb, #8ccfb8 70%, white);
+  background: #f3fbf7;
+}
+
+.consistency-card.delta-warn {
+  border-color: color-mix(in srgb, #e5b5af 70%, white);
+  background: #fff5f3;
+}
+
+.category-map {
+  margin-top: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 68%, white);
+  border-radius: 11px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.category-map h3 {
+  margin: 0;
+  font-size: 0.84rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
 }
 
 .block-grid {
@@ -1617,6 +1760,10 @@ tbody tr:hover {
   .chain-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .cost-consistency-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1220px) {
@@ -1680,6 +1827,10 @@ tbody tr:hover {
   }
 
   .chain-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cost-consistency-grid {
     grid-template-columns: 1fr;
   }
 

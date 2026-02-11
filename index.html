@@ -59,17 +59,48 @@
 
         <section class="main-column">
           <div id="productWorkspace">
+          <section class="card decision-bar" id="decisionBar">
+            <div class="decision-head">
+              <div>
+                <h2>Decision-Bar</h2>
+                <p>Launch-Entscheidung mit Fokus auf die wichtigsten Kennzahlen.</p>
+              </div>
+              <div class="decision-head-actions">
+                <button id="toggleAllKpisBtn" type="button" class="btn btn-ghost">Alle KPIs anzeigen</button>
+                <div id="trafficLight" class="traffic-badge traffic-neutral">NO-GO</div>
+              </div>
+            </div>
+            <div class="decision-primary-grid">
+              <article class="kpi" data-kpi="kpiSellerboardMargin"><span>Sellerboard-Marge % (brutto)</span><strong id="kpiSellerboardMargin">-</strong></article>
+              <article class="kpi" data-kpi="kpiTotalCostPerUnit"><span>Kosten pro Stück (EUR)</span><strong id="kpiTotalCostPerUnit">-</strong></article>
+              <article class="kpi" data-kpi="kpiDb1Unit"><span>Deckungsbeitrag pro Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
+              <article class="kpi" data-kpi="kpiRevenueGross"><span>Umsatz / Monat (EUR brutto)</span><strong id="kpiRevenueGross">-</strong></article>
+              <article class="kpi" data-kpi="kpiProfitMonthly"><span>Gewinn netto / Monat (EUR)</span><strong id="kpiProfitMonthly">-</strong></article>
+            </div>
+            <div id="decisionSecondaryWrap" class="decision-secondary-wrap hidden">
+              <div class="decision-secondary-grid">
+                <article class="kpi compact" data-kpi="kpiNetMargin"><span>Netto-Marge %</span><strong id="kpiNetMargin">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiDb1Margin"><span>DB1-Marge %</span><strong id="kpiDb1Margin">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiNetMarginBeforePpc"><span>Nettomarge vor PPC %</span><strong id="kpiNetMarginBeforePpc">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiTotalCostMonthly"><span>Gesamtkosten / Monat (EUR)</span><strong id="kpiTotalCostMonthly">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiRevenueNet"><span>Umsatz / Monat (EUR netto)</span><strong id="kpiRevenueNet">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiShippingUnit"><span>Shipping D2D / Unit (EUR)</span><strong id="kpiShippingUnit">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiLandedUnit"><span>Landed / Unit (EUR)</span><strong id="kpiLandedUnit">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiGrossProfitMonthly"><span>Gewinn brutto / Monat (EUR)</span><strong id="kpiGrossProfitMonthly">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiPayback"><span>Payback (Monate)</span><strong id="kpiPayback">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiProductRoi"><span>Produkt-ROI %</span><strong id="kpiProductRoi">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiCashRoi"><span>Cash-ROI %</span><strong id="kpiCashRoi">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiBreakEvenPrice"><span>Break-even Preis brutto (EUR)</span><strong id="kpiBreakEvenPrice">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiMaxTacos"><span>Max TACoS %</span><strong id="kpiMaxTacos">-</strong></article>
+              </div>
+            </div>
+          </section>
+
           <section class="card basic-card">
             <div class="section-head">
               <div>
                 <h2>Basic View</h2>
                 <p>3-Stufen Workflow ohne Unlock: Quick-Check, Validation oder Deep-Dive frei wählbar.</p>
-              </div>
-              <div class="head-controls">
-                <label id="advancedToggleWrap" class="switch">
-                  <input id="advancedToggle" type="checkbox" />
-                  <span>Advanced</span>
-                </label>
               </div>
             </div>
             <section class="stage-panel">
@@ -87,15 +118,15 @@
             <section id="quickStagePanel" class="card stage-impact">
               <h3>Quick-Check Fokus</h3>
               <p class="hint">
-                Nur Pflichtfelder eingeben. Die App zeigt Kategorie-Summen und Kosten entlang der Kette; Einzelposten kannst du bei Bedarf pro Kategorie aufklappen.
+                Nur Pflichtfelder eingeben. In der Lieferkette werden automatisch die Top-10 Kostentreiber angezeigt; pro Stufe kannst du weitere Kosten aufklappen.
               </p>
             </section>
             <section id="validationReviewPanel" class="card review-panel hidden">
-              <h3>Validation: Top-8 Treiber prüfen</h3>
+              <h3>Validation: Top-15 Treiber prüfen</h3>
               <p class="hint">
-                Nach Lieferkette gruppiert: jeden Treiber prüfen, überschreiben oder wieder auf ungeprüft setzen.
+                Nach Lieferkette gruppiert: Top-15 Treiber prüfen, überschreiben oder wieder auf ungeprüft setzen.
               </p>
-              <p id="validationReviewStatus" class="stage-status">0/8 geprüft</p>
+              <p id="validationReviewStatus" class="stage-status">0/15 geprüft</p>
               <div id="validationReviewList" class="review-list"></div>
             </section>
             <section id="deepDiveReviewPanel" class="card review-panel hidden">
@@ -247,29 +278,6 @@
             <p class="hint">
               Alle weiteren Kosten werden aus Settings/Defaults abgeleitet. Du kannst die wichtigsten Schätzblöcke oben prüfen und überschreiben.
             </p>
-          </section>
-
-          <section class="card decision-bar" id="decisionBar">
-            <div class="decision-head">
-              <div>
-                <h2>Decision-Bar</h2>
-                <p>KPIs und Launch-Entscheidung getrennt von Kostenblöcken.</p>
-              </div>
-              <div id="trafficLight" class="traffic-badge traffic-neutral">NO-GO</div>
-            </div>
-            <div class="decision-primary-grid">
-              <article class="kpi" data-kpi="kpiSellerboardMargin"><span>Sellerboard-Marge % (brutto)</span><strong id="kpiSellerboardMargin">-</strong></article>
-              <article class="kpi" data-kpi="kpiNetMargin"><span>Netto-Marge %</span><strong id="kpiNetMargin">-</strong></article>
-              <article class="kpi" data-kpi="kpiDb1Unit"><span>DB1 / Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
-              <article class="kpi" data-kpi="kpiProfitMonthly"><span>Gewinn netto / Monat (EUR)</span><strong id="kpiProfitMonthly">-</strong></article>
-            </div>
-            <div class="decision-secondary-grid">
-              <article class="kpi compact" data-kpi="kpiPayback"><span>Payback (Monate)</span><strong id="kpiPayback">-</strong></article>
-              <article class="kpi compact" data-kpi="kpiProductRoi"><span>Produkt-ROI %</span><strong id="kpiProductRoi">-</strong></article>
-              <article class="kpi compact" data-kpi="kpiCashRoi"><span>Cash-ROI %</span><strong id="kpiCashRoi">-</strong></article>
-              <article class="kpi compact" data-kpi="kpiBreakEvenPrice"><span>Break-even Preis brutto (EUR)</span><strong id="kpiBreakEvenPrice">-</strong></article>
-              <article class="kpi compact" data-kpi="kpiMaxTacos"><span>Max TACoS %</span><strong id="kpiMaxTacos">-</strong></article>
-            </div>
           </section>
 
           <section id="advancedPanel" class="card advanced-card hidden">
@@ -562,20 +570,9 @@
               </div>
             </div>
 
-            <div class="kpi-grid">
-              <article class="kpi" data-kpi="kpiDb1Margin"><span>DB1-Marge % (netto)</span><strong id="kpiDb1Margin">-</strong></article>
-              <article class="kpi" data-kpi="kpiNetMarginBeforePpc"><span>Nettomarge vor PPC %</span><strong id="kpiNetMarginBeforePpc">-</strong></article>
-              <article class="kpi" data-kpi="kpiGrossProfitMonthly"><span>Gewinn brutto / Monat (EUR)</span><strong id="kpiGrossProfitMonthly">-</strong></article>
-              <article class="kpi" data-kpi="kpiShippingUnit"><span>Shipping door-to-door gesamt / Unit (EUR)</span><strong id="kpiShippingUnit">-</strong></article>
-              <article class="kpi" data-kpi="kpiLandedUnit"><span>Landed / Unit (EUR)</span><strong id="kpiLandedUnit">-</strong></article>
-              <article class="kpi" data-kpi="kpiTotalCostMonthly"><span>Gesamtkosten / Monat (EUR)</span><strong id="kpiTotalCostMonthly">-</strong></article>
-              <article class="kpi" data-kpi="kpiTotalCostPerUnit"><span>Gesamtkosten / Unit (EUR)</span><strong id="kpiTotalCostPerUnit">-</strong></article>
-              <article class="kpi" data-kpi="kpiRevenueGross"><span>Umsatz brutto / Monat (EUR)</span><strong id="kpiRevenueGross">-</strong></article>
-              <article class="kpi" data-kpi="kpiRevenueNet"><span>Umsatz netto / Monat (EUR)</span><strong id="kpiRevenueNet">-</strong></article>
-            </div>
-
             <section class="chain-map">
               <h3>Kosten entlang der Logistikkette</h3>
+              <p class="hint">Top-Treiber je Stufe nach Impact (Quick: Top 10, Validation: Top 15, Deep-Dive: alle). Weitere Positionen lassen sich je Stufe einblenden.</p>
               <div class="chain-grid">
                 <article>
                   <h4>Lieferant</h4>
@@ -590,19 +587,41 @@
                   <div id="chainThreePlChips" class="chain-chip-list"></div>
                 </article>
                 <article>
-                  <h4>Versand zu Amazon</h4>
+                  <h4>Amazon Inbound</h4>
                   <div id="chainInboundChips" class="chain-chip-list"></div>
                 </article>
                 <article>
                   <h4>Amazon</h4>
                   <div id="chainAmazonChips" class="chain-chip-list"></div>
                 </article>
+                <article>
+                  <h4>Sonstiges & Lifecycle</h4>
+                  <div id="chainLaunchChips" class="chain-chip-list"></div>
+                </article>
+              </div>
+              <div class="cost-consistency-grid">
+                <article class="consistency-card">
+                  <span>Nebenkosten entlang der Kette</span>
+                  <strong id="chainTotalSummary">-</strong>
+                </article>
+                <article class="consistency-card">
+                  <span>Kosten nach Kategorie</span>
+                  <strong id="categoryTotalSummary">-</strong>
+                </article>
+                <article id="costDeltaCard" class="consistency-card">
+                  <span>Delta (Kette vs. Kategorie)</span>
+                  <strong id="costDeltaSummary">-</strong>
+                </article>
               </div>
             </section>
 
-            <div class="block-grid">
-              <div id="costCategoryGrid" class="cost-category-grid"></div>
-            </div>
+            <section class="category-map">
+              <h3>Kosten nach Kategorie</h3>
+              <p class="hint">Alternative Sicht auf dieselben Kostenblöcke wie in der Lieferkette.</p>
+              <div class="block-grid">
+                <div id="costCategoryGrid" class="cost-category-grid"></div>
+              </div>
+            </section>
             <p id="driverFocusHint" class="hint">
               Tipp: Klicke auf eine Kostenzeile. Die wichtigsten Treiber werden markiert (Impact: niedrig/mittel/hoch).
             </p>
