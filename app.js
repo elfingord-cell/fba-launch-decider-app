@@ -8307,6 +8307,7 @@ function renderComputedViews() {
 }
 
 function renderAll() {
+  selectFirstProductIfNeeded();
   const selected = getSelectedProduct();
   if (!selected) {
     return;
