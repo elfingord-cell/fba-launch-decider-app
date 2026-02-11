@@ -682,79 +682,79 @@ const TERM_HELP_BY_TEXT = [
 
 const DERIVED_DRIVER_MAP = {
   "derived.shipping.unitsPerOrder": {
-    label: "PO Units",
+    label: "PO-Menge (Units pro Order)",
     help: "Units pro Import-Order (PO), Basis für carton-basierte Umrechnung.",
     format: "number",
     read: (metrics) => metrics.shipping.unitsPerOrder,
   },
   "derived.shipping.unitsPerCartonAuto": {
-    label: "units_per_carton_auto",
+    label: "Units je Umkarton (auto/manuell)",
     help: "Units pro Umkarton aus Supplier-Soft-Caps/Hard-Fallback oder manuellem Packing-List-Override.",
     format: "number",
     read: (metrics) => metrics.shipping.unitsPerCartonAuto,
   },
   "derived.shipping.cartonsCount": {
-    label: "cartons_count",
+    label: "Anzahl Umkartons",
     help: "Kartonanzahl = ceil(PO Units / units_per_carton_auto).",
     format: "number",
     read: (metrics) => metrics.shipping.cartonsCount,
   },
   "derived.shipping.shipmentCbm": {
-    label: "shipment_cbm",
+    label: "Sendungsvolumen (CBM)",
     help: "Volumen der gesamten Shipment in CBM.",
     format: "number",
     read: (metrics) => metrics.shipping.shipmentCbm,
   },
   "derived.shipping.shipmentWeightKg": {
-    label: "shipment_weight_kg",
+    label: "Sendungsgewicht (kg)",
     help: "Gesamtgewicht der Shipment in kg.",
     format: "number",
     read: (metrics) => metrics.shipping.shipmentWeightKg,
   },
   "derived.shipping.chargeableCbm": {
-    label: "chargeable_cbm",
+    label: "Abrechnungsvolumen (Chargeable CBM)",
     help: "Abrechnungsvolumen nach W/M = max(CBM, Gewicht/1000).",
     format: "number",
     read: (metrics) => metrics.shipping.chargeableCbm,
   },
   "derived.shipping.estimatedCartonLengthCm": {
-    label: "estimated_carton_length_cm",
+    label: "Geschätzte Umkarton-Länge (cm)",
     help: "Geschätzte Umkarton-Länge in cm aus Auto-Kartonisierung oder manuellem Override.",
     format: "number",
     read: (metrics) => metrics.shipping.estimatedCartonLengthCm,
   },
   "derived.shipping.estimatedCartonWidthCm": {
-    label: "estimated_carton_width_cm",
+    label: "Geschätzte Umkarton-Breite (cm)",
     help: "Geschätzte Umkarton-Breite in cm aus Auto-Kartonisierung oder manuellem Override.",
     format: "number",
     read: (metrics) => metrics.shipping.estimatedCartonWidthCm,
   },
   "derived.shipping.estimatedCartonHeightCm": {
-    label: "estimated_carton_height_cm",
+    label: "Geschätzte Umkarton-Höhe (cm)",
     help: "Geschätzte Umkarton-Höhe in cm aus Auto-Kartonisierung oder manuellem Override.",
     format: "number",
     read: (metrics) => metrics.shipping.estimatedCartonHeightCm,
   },
   "derived.shipping.estimatedCartonGrossWeightKg": {
-    label: "estimated_carton_gross_weight_kg",
+    label: "Geschätztes Umkarton-Bruttogewicht (kg)",
     help: "Geschätztes Umkarton-Bruttogewicht in kg aus Auto-Kartonisierung oder manuellem Override.",
     format: "number",
     read: (metrics) => metrics.shipping.estimatedCartonGrossWeightKg,
   },
   "derived.shipping.cartonizationSource": {
-    label: "cartonization_source",
+    label: "Quelle der Kartonisierung",
     help: "Quelle der Kartonisierung: Auto mit Soft-Caps, Hard-Fallback oder manueller Override.",
     format: "string",
     read: (metrics) => metrics.shipping.cartonizationSourceLabel ?? metrics.shipping.cartonizationSource,
   },
   "derived.shipping.goodsValueEur": {
-    label: "goods_value_eur",
+    label: "Warenwert (EUR)",
     help: "Warenwert in EUR = EXW USD × PO Units × USD->EUR.",
     format: "currency",
     read: (metrics) => metrics.shipping.goodsValueEur,
   },
   "derived.threepl.palletsCount": {
-    label: "pallets",
+    label: "Anzahl Paletten",
     help: "Paletten = ceil(PO Units / units_per_pallet).",
     format: "number",
     read: (metrics) => metrics.palletsCount,
@@ -870,6 +870,37 @@ const OVERRIDE_CONTROL_MAP = [
 
 const VALUE_TO_OVERRIDE_MAP = new Map(
   OVERRIDE_CONTROL_MAP.map(([overridePath, valuePath]) => [valuePath, overridePath]),
+);
+
+const EXTRA_COST_TO_SETTING_PATH = {
+  "assumptions.extraCosts.packagingPerUnitEur": "settings.costDefaults.packagingPerUnitEur",
+  "assumptions.extraCosts.otherUnitCostEur": "settings.costDefaults.otherUnitCostEur",
+  "assumptions.extraCosts.docsPerOrderEur": "settings.costDefaults.docsPerOrderEur",
+  "assumptions.extraCosts.freightPapersPerOrderEur": "settings.costDefaults.freightPapersPerOrderEur",
+  "assumptions.extraCosts.amazonStoragePerCbmMonthEur": "settings.costDefaults.amazonStoragePerCbmMonthEur",
+  "assumptions.extraCosts.avgAmazonStorageMonths": "settings.costDefaults.avgAmazonStorageMonths",
+  "assumptions.extraCosts.greetingCardPerLaunchUnitEur": "settings.costDefaults.greetingCardPerLaunchUnitEur",
+  "assumptions.extraCosts.samplesPerProductEur": "settings.costDefaults.samplesPerProductEur",
+  "assumptions.extraCosts.toolingPerProductEur": "settings.costDefaults.toolingPerProductEur",
+  "assumptions.extraCosts.certificatesPerProductEur": "settings.costDefaults.certificatesPerProductEur",
+  "assumptions.extraCosts.inspectionPerProductEur": "settings.costDefaults.inspectionPerProductEur",
+  "assumptions.extraCosts.receivingPerCartonSortedEur": "settings.threePl.receivingPerCartonSortedEur",
+  "assumptions.extraCosts.receivingPerCartonMixedEur": "settings.threePl.receivingPerCartonMixedEur",
+  "assumptions.extraCosts.storagePerPalletPerMonthEur": "settings.threePl.storagePerPalletPerMonthEur",
+  "assumptions.extraCosts.unitsPerPallet": "settings.threePl.unitsPerPallet",
+  "assumptions.extraCosts.avg3PlStorageMonths": "settings.threePl.avgStorageMonths",
+  "assumptions.extraCosts.outboundBasePerCartonEur": "settings.threePl.outboundBasePerCartonEur",
+  "assumptions.extraCosts.pickPackPerCartonEur": "settings.threePl.pickPackPerCartonEur",
+  "assumptions.extraCosts.fbaProcessingPerCartonEur": "settings.threePl.fbaProcessingPerCartonEur",
+  "assumptions.extraCosts.insertPerInsertEur": "settings.threePl.insertPerInsertEur",
+  "assumptions.extraCosts.thirdCountryLabelPerLabelEur": "settings.threePl.thirdCountryLabelPerLabelEur",
+  "assumptions.extraCosts.insertsPerCarton": "settings.threePl.insertsPerCartonDefault",
+  "assumptions.extraCosts.labelsPerCarton": "settings.threePl.labelsPerCartonDefault",
+  "assumptions.extraCosts.carrierCostPerCartonEur": "settings.threePl.carrierCostPerCartonEur",
+};
+
+const SETTING_TO_EXTRA_COST_PATH = new Map(
+  Object.entries(EXTRA_COST_TO_SETTING_PATH).map(([assumptionPath, settingPath]) => [settingPath, assumptionPath]),
 );
 
 const state = {
@@ -2622,7 +2653,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
       label: "Vorlauf",
       total: originTotal,
       formula: modeKey === "rail"
-        ? "Vorlauf = origin_base + origin_per_carton × cartons_count"
+        ? "Vorlauf = Vorlauf-Basis + (Vorlauf je Karton × Anzahl Umkartons)"
         : "Vorlauf = origin_fixed",
       source: `Global Setting -> Shipping 12M -> ${modeLabel}`,
     },
@@ -2630,7 +2661,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
       key: "main_run_variable",
       label: "Hauptlauf variabel (W/M)",
       total: mainRunVariable,
-      formula: "Hauptlauf variabel = chargeable_cbm × rate_eur_per_cbm",
+      formula: "Hauptlauf variabel = Abrechnungsvolumen (CBM) × Rate (EUR/CBM)",
       source: `Global Setting -> Shipping 12M -> ${modeLabel}`,
     },
     {
@@ -2645,7 +2676,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
       label: "Nachlauf",
       total: deOncarriageTotal,
       formula: modeKey === "rail"
-        ? "Nachlauf = de_oncarriage_base + de_oncarriage_per_carton × cartons_count"
+        ? "Nachlauf = Nachlauf-Basis + (Nachlauf je Karton × Anzahl Umkartons)"
         : "Nachlauf = de_oncarriage_fixed",
       source: `Global Setting -> Shipping 12M -> ${modeLabel}`,
     },
@@ -3352,6 +3383,14 @@ function markReviewOverridden(product, stage, targetId, lastValue) {
   setReviewStatus(product, stage, targetId, "overridden", lastValue);
 }
 
+function markReviewPending(product, stage, targetId) {
+  const store = getStageReviewStore(product, stage);
+  if (store && typeof store === "object" && targetId in store) {
+    delete store[targetId];
+    saveProducts();
+  }
+}
+
 function findReviewTarget(product, stage, targetId) {
   const metrics = calculateProduct(product);
   const targets = buildReviewTargets(metrics, stage);
@@ -3394,7 +3433,7 @@ function buildStageState(product, metrics) {
 
   const hintByStage = {
     quick:
-      "Quick-Check: nur Pflichtinputs erfassen. Ergebnis zuerst auf Kategorie-Summen und Kette lesen; Einzelposten nur bei Bedarf aufklappen.",
+      "Quick-Check: nur Pflichtinputs erfassen. Prüfe zuerst Kategorie-Summen und die Lieferkette; klicke auf die Kategorien-Summe (z. B. Shipping zu 3PL), um Details zu öffnen.",
     validation:
       "Validation: die Top-8 Kostentreiber einzeln prüfen. Jeder Treiber muss bestätigt oder überschrieben werden.",
     deep_dive:
@@ -4859,7 +4898,8 @@ function buildStageImpactItems(metrics, stage) {
 }
 
 function openDriverModal(payload) {
-  const paths = [...new Set((payload?.driverPaths ?? []).filter(Boolean))];
+  const selected = getSelectedProduct();
+  const paths = normalizeDriverPathsForModal(payload?.driverPaths ?? [], selected);
   if (!payload || paths.length === 0) {
     return;
   }
@@ -4874,7 +4914,6 @@ function openDriverModal(payload) {
     reviewStage: payload.reviewStage ?? null,
     reviewTargetId: payload.reviewTargetId ?? null,
   };
-  applyDriverFocus(paths, state.ui.driverModal.title);
   renderDriverModal();
 }
 
@@ -5007,6 +5046,60 @@ function getGroupOverridePath(path) {
   return null;
 }
 
+function normalizeDriverPathForModal(path, selected) {
+  if (!path) {
+    return null;
+  }
+  if (!(selected && typeof selected === "object")) {
+    return path;
+  }
+
+  if (path.startsWith("assumptions.extraCosts.")) {
+    const mappedSettingPath = EXTRA_COST_TO_SETTING_PATH[path];
+    if (mappedSettingPath) {
+      const overridePath = getGroupOverridePath(path);
+      const overrideActive = overridePath ? Boolean(getByPath(selected, overridePath)) : false;
+      return overrideActive ? path : mappedSettingPath;
+    }
+  }
+
+  if (path.startsWith("settings.")) {
+    const mappedAssumptionPath = SETTING_TO_EXTRA_COST_PATH.get(path);
+    if (mappedAssumptionPath) {
+      const overridePath = getGroupOverridePath(mappedAssumptionPath);
+      const overrideActive = overridePath ? Boolean(getByPath(selected, overridePath)) : false;
+      return overrideActive ? mappedAssumptionPath : path;
+    }
+  }
+
+  return path;
+}
+
+function normalizeDriverPathsForModal(paths, selected) {
+  const unique = [...new Set((paths ?? []).filter(Boolean))];
+  const normalized = [];
+  const seen = new Set();
+  unique.forEach((path) => {
+    const mapped = normalizeDriverPathForModal(path, selected);
+    if (!mapped || seen.has(mapped)) {
+      return;
+    }
+    seen.add(mapped);
+    normalized.push(mapped);
+  });
+  return normalized;
+}
+
+function modalGroupForPath(path) {
+  if (path.startsWith("derived.")) {
+    return "calculated";
+  }
+  if (path.startsWith("settings.")) {
+    return "defaults";
+  }
+  return "user";
+}
+
 function buildDriverFieldBadges(path, selected, diagnostics, metrics) {
   const badges = [];
   if (path.startsWith("derived.")) {
@@ -5091,6 +5184,7 @@ function renderDriverModal() {
 
   const modalMetrics = calculateProduct(selected);
   const modalDiagnostics = buildDefaultDiagnostics(selected, modalMetrics);
+  const driverPaths = normalizeDriverPathsForModal(state.ui.driverModal.driverPaths, selected);
 
   const summaryGrid = document.createElement("section");
   summaryGrid.className = "modal-summary-grid";
@@ -5120,18 +5214,44 @@ function renderDriverModal() {
   );
   dom.driverModalFields.appendChild(summaryGrid);
 
-  const sectionHead = document.createElement("article");
-  sectionHead.className = "modal-field";
-  const sectionTitle = document.createElement("strong");
-  sectionTitle.textContent = "Relevante Inputs & Annahmen";
-  sectionHead.appendChild(sectionTitle);
-  const sectionText = document.createElement("small");
-  sectionText.textContent = "Nach Impact priorisiert: höchste Kosteneffekte zuerst.";
-  sectionHead.appendChild(sectionText);
-  dom.driverModalFields.appendChild(sectionHead);
+  const groupMeta = {
+    user: {
+      title: "Von dir eingegeben / direkt überschreibbar",
+      hint: "Produktfelder und Annahmen, die den Treiber direkt beeinflussen.",
+    },
+    defaults: {
+      title: "Defaults & globale Settings",
+      hint: "Systemweite Parameter. Optional als Produkt-Override oder globaler Default speicherbar.",
+    },
+    calculated: {
+      title: "Berechnete Zwischenwerte (read-only)",
+      hint: "Transparenzwerte aus der Rechnung. Nicht direkt editierbar.",
+    },
+  };
+  const groupNodes = new Map();
+  const ensureGroupFields = (groupKey) => {
+    if (groupNodes.has(groupKey)) {
+      return groupNodes.get(groupKey);
+    }
+    const section = document.createElement("section");
+    section.className = "modal-group";
+    const heading = document.createElement("h4");
+    heading.textContent = groupMeta[groupKey].title;
+    const hint = document.createElement("p");
+    hint.className = "hint";
+    hint.textContent = groupMeta[groupKey].hint;
+    const fields = document.createElement("div");
+    fields.className = "modal-group-fields";
+    section.append(heading, hint, fields);
+    dom.driverModalFields.appendChild(section);
+    groupNodes.set(groupKey, fields);
+    return fields;
+  };
 
-  const orderedPaths = sortDriverPathsForModal(state.ui.driverModal.driverPaths, modalMetrics);
+  const orderedPaths = sortDriverPathsForModal(driverPaths, modalMetrics);
   orderedPaths.forEach((path) => {
+    const groupFields = ensureGroupFields(modalGroupForPath(path));
+
     if (path.startsWith("derived.")) {
       const definition = DERIVED_DRIVER_MAP[path];
       if (!definition) {
@@ -5159,7 +5279,7 @@ function renderDriverModal() {
         field.appendChild(help);
       }
 
-      dom.driverModalFields.appendChild(field);
+      groupFields.appendChild(field);
       return;
     }
 
@@ -5332,7 +5452,7 @@ function renderDriverModal() {
       saveHint.textContent = `Speicherweg: ${oldEffectiveText} -> neuer Wert. Wahl zwischen Produkt-Override und globalem Default.`;
       field.appendChild(saveHint);
 
-      dom.driverModalFields.appendChild(field);
+      groupFields.appendChild(field);
       return;
     }
 
@@ -5406,7 +5526,25 @@ function renderDriverModal() {
       field.appendChild(diagText);
     }
 
-    dom.driverModalFields.appendChild(field);
+    if (path.startsWith("assumptions.extraCosts.")) {
+      const mappedSettingsPath = EXTRA_COST_TO_SETTING_PATH[path];
+      if (mappedSettingsPath) {
+        const openSettingsBtn = document.createElement("button");
+        openSettingsBtn.className = "btn btn-ghost";
+        openSettingsBtn.type = "button";
+        openSettingsBtn.textContent = "Globalen Default in Settings öffnen";
+        openSettingsBtn.addEventListener("click", () => {
+          const sectionId = settingsSectionIdFromPath(mappedSettingsPath);
+          window.location.href = `settings.html#${sectionId}`;
+        });
+        const actions = document.createElement("div");
+        actions.className = "modal-actions";
+        actions.appendChild(openSettingsBtn);
+        field.appendChild(actions);
+      }
+    }
+
+    groupFields.appendChild(field);
   });
 }
 
@@ -5665,7 +5803,7 @@ function buildCostCategoryData(metrics) {
           impactMonthly: shippingPreRunUnit * metrics.monthlyUnits,
           explain: "Abholung/Trucking am Ursprung.",
           formula: metrics.shipping.modeKey === "rail"
-            ? "Vorlauf/Unit = (origin_base + origin_per_carton × cartons_count) / PO Units."
+            ? "Vorlauf/Unit = (Vorlauf-Basis + Vorlauf je Karton × Anzahl Umkartons) / PO-Menge."
             : "Vorlauf/Unit = origin_fixed / PO Units.",
           source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
           robustness: "Mittel.",
@@ -5680,7 +5818,7 @@ function buildCostCategoryData(metrics) {
           valueRaw: shippingMainRunVariableUnit,
           impactMonthly: shippingMainRunVariableUnit * metrics.monthlyUnits,
           explain: "Variabler Hauptlaufanteil auf Basis W/M (CBM oder Gewicht).",
-          formula: "Hauptlauf variabel/Unit = (chargeable_cbm × rate_eur_per_cbm) / PO Units.",
+          formula: "Hauptlauf variabel/Unit = (Abrechnungsvolumen (CBM) × Rate (EUR/CBM)) / PO-Menge.",
           source: `Shipping 12M (${metrics.shipping.modeLabel}) + Kartonisierung.`,
           robustness: "Mittel.",
           driverPaths: [
@@ -5708,7 +5846,7 @@ function buildCostCategoryData(metrics) {
           impactMonthly: shippingPostRunUnit * metrics.monthlyUnits,
           explain: "Inlandstransport in DE nach Ankunft.",
           formula: metrics.shipping.modeKey === "rail"
-            ? "Nachlauf/Unit = (de_oncarriage_base + de_oncarriage_per_carton × cartons_count) / PO Units."
+            ? "Nachlauf/Unit = (Nachlauf-Basis + Nachlauf je Karton × Anzahl Umkartons) / PO-Menge."
             : "Nachlauf/Unit = de_oncarriage_fixed / PO Units.",
           source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
           robustness: "Mittel.",
@@ -5803,7 +5941,7 @@ function buildCostCategoryData(metrics) {
           valueRaw: metrics.threePlInboundPerUnit,
           impactMonthly: metrics.threePlInboundPerUnit * metrics.monthlyUnits,
           explain: "Wareneingangskosten im 3PL je Karton.",
-          formula: "Inbound/Unit = cartons_count × receiving_rate / PO Units.",
+          formula: "Inbound/Unit = Anzahl Umkartons × Receiving-Rate je Karton / PO-Menge.",
           source: "3PL Settings/Override.",
           robustness: "Mittel.",
           driverPaths: [
@@ -5847,7 +5985,7 @@ function buildCostCategoryData(metrics) {
           valueRaw: metrics.threePlOutboundServicePerUnit,
           impactMonthly: metrics.threePlOutboundServicePerUnit * metrics.monthlyUnits,
           explain: "Outbound-Service je Karton (Base, Pick & Pack, FBA Processing, optionale Extras).",
-          formula: "Service/Unit = cartons_count × service_per_carton / PO Units.",
+          formula: "Service/Unit = Anzahl Umkartons × Servicekosten je Karton / PO-Menge.",
           source: "3PL Settings/Override.",
           robustness: "Mittel.",
           driverPaths: [
@@ -5870,7 +6008,7 @@ function buildCostCategoryData(metrics) {
           valueRaw: metrics.threePlCarrierPerUnit,
           impactMonthly: metrics.threePlCarrierPerUnit * metrics.monthlyUnits,
           explain: "Transportkosten vom 3PL zu Amazon je Karton.",
-          formula: "Carrier/Unit = cartons_count × carrier_per_carton / PO Units.",
+          formula: "Carrier/Unit = Anzahl Umkartons × Carrier-Kosten je Karton / PO-Menge.",
           source: "3PL Settings/Override.",
           robustness: "Mittel.",
           driverPaths: [
@@ -6140,6 +6278,7 @@ function renderCostCategoryGrid(metrics, stage = "quick") {
       lineItem.excludeFromCategoryTotal ? sum : sum + num(lineItem.valueRaw, 0)
     ), 0);
     const computedTotalMonthly = computedTotalPerUnit * Math.max(0, num(metrics.monthlyUnits, 0));
+    const displayLines = category.lines.filter((lineItem) => !lineItem.isSummary);
 
     const card = document.createElement("article");
     card.className = "cost-category-card";
@@ -6162,15 +6301,15 @@ function renderCostCategoryGrid(metrics, stage = "quick") {
 
     const expanded = Boolean(state.ui.costCategoryExpanded?.[category.key]);
     const collapsedRows = stage === "quick" ? 0 : Math.max(1, num(category.collapsedRows, 4));
-    const visibleLines = expanded ? category.lines : category.lines.slice(0, collapsedRows);
+    const visibleLines = expanded ? displayLines : displayLines.slice(0, collapsedRows);
     renderBlockList(list, visibleLines, { totalCostMonthly: metrics.totalCostMonthly });
 
-    if (category.lines.length > collapsedRows) {
+    if (displayLines.length > collapsedRows) {
       const toggle = document.createElement("button");
       toggle.type = "button";
       toggle.className = "cost-category-toggle";
       toggle.dataset.categoryToggle = category.key;
-      toggle.textContent = expanded ? "Weniger anzeigen" : `Weitere anzeigen (${category.lines.length - collapsedRows})`;
+      toggle.textContent = expanded ? "Weniger anzeigen" : `Weitere anzeigen (${displayLines.length - collapsedRows})`;
       card.appendChild(toggle);
     }
 
@@ -6229,7 +6368,20 @@ function renderShippingDetails(metrics) {
   }
 
   if (dom.shippingDebugInfo) {
-    const base = `mode=${metrics.shipping.modeLabel} · source=${metrics.shipping.cartonizationSourceLabel} · units_per_carton_auto=${formatNumber(metrics.shipping.unitsPerCartonAuto)} · estimated_carton_cm=${formatNumber(metrics.shipping.estimatedCartonLengthCm)}x${formatNumber(metrics.shipping.estimatedCartonWidthCm)}x${formatNumber(metrics.shipping.estimatedCartonHeightCm)} · estimated_carton_gross_kg=${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)} · cartons_count=${formatNumber(metrics.shipping.cartonsCount)} · shipment_cbm=${formatNumber(metrics.shipping.shipmentCbm)} · shipment_weight_kg=${formatNumber(metrics.shipping.shipmentWeightKg)} · chargeable_cbm=${formatNumber(metrics.shipping.chargeableCbm)} · goods_value_eur=${formatCurrency(metrics.shipping.goodsValueEur)} · insurance_rate=${formatPercent(metrics.shipping.insuranceRatePct)} · surcharge=${formatCurrency(metrics.shipping.manualSurchargeTotal)}`;
+    const base = [
+      `Modus: ${metrics.shipping.modeLabel}`,
+      `Kartonisierung: ${metrics.shipping.cartonizationSourceLabel}`,
+      `Units je Umkarton: ${formatNumber(metrics.shipping.unitsPerCartonAuto)}`,
+      `Umkarton (cm): ${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)}`,
+      `Umkarton Brutto (kg): ${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)}`,
+      `Anzahl Umkartons: ${formatNumber(metrics.shipping.cartonsCount)}`,
+      `Sendungsvolumen (CBM): ${formatNumber(metrics.shipping.shipmentCbm)}`,
+      `Sendungsgewicht (kg): ${formatNumber(metrics.shipping.shipmentWeightKg)}`,
+      `Abrechnungsvolumen (CBM): ${formatNumber(metrics.shipping.chargeableCbm)}`,
+      `Warenwert (EUR): ${formatCurrency(metrics.shipping.goodsValueEur)}`,
+      `Versicherungssatz: ${formatPercent(metrics.shipping.insuranceRatePct)}`,
+      `Nachbelastung: ${formatCurrency(metrics.shipping.manualSurchargeTotal)}`,
+    ].join(" · ");
     dom.shippingDebugInfo.textContent = metrics.shipping.oversizeFlag
       ? `${base} · Hinweis: ${metrics.shipping.oversizeNote}`
       : base;
@@ -6241,15 +6393,31 @@ function renderLogisticsChain(metrics, stage = "quick") {
     return;
   }
 
-  const renderStation = (container, chips, totalValue = null) => {
+  const renderStation = (container, chips, totalValue = null, totalMeta = null) => {
     if (!container) {
       return;
     }
     container.innerHTML = "";
     if (totalValue !== null && totalValue !== undefined) {
-      const totalNode = document.createElement("div");
+      const totalNode = document.createElement("button");
+      totalNode.type = "button";
       totalNode.className = "chain-station-total";
-      totalNode.innerHTML = `<span>Summe</span><strong>${formatCurrency(totalValue)} / Unit</strong>`;
+      totalNode.innerHTML = `<span>Kategorie-Summe</span><strong>${formatCurrency(totalValue)} / Unit</strong>`;
+      if (totalMeta) {
+        totalNode.classList.add("clickable");
+        totalNode.title = `${totalMeta.explain}\nRechenweg: ${totalMeta.formula}\nKlick: Treiber-Maske mit relevanten Inputs öffnen.`;
+        totalNode.addEventListener("click", () => {
+          openDriverModal({
+            title: totalMeta.label,
+            value: `${formatCurrency(totalValue)} / Unit`,
+            explain: totalMeta.explain,
+            formula: totalMeta.formula,
+            source: totalMeta.source,
+            robustness: totalMeta.robustness,
+            driverPaths: totalMeta.driverPaths,
+          });
+        });
+      }
       container.appendChild(totalNode);
     }
     const visibleChips = stage === "quick" ? [] : chips;
@@ -6286,7 +6454,7 @@ function renderLogisticsChain(metrics, stage = "quick") {
 
   const supplierTotalPerUnit = metrics.exwUnit + metrics.packagingUnit;
   const shippingTo3PlTotalPerUnit = metrics.shippingCategoryTotalEurPerUnit;
-  const threePlTotalPerUnit = metrics.threePlTotalPerUnit;
+  const threePlTotalPerUnit = metrics.threePlInboundPerUnit + metrics.threePlStoragePerUnit;
   const inboundToAmazonTotalPerUnit = metrics.threePlOutboundServicePerUnit + metrics.threePlCarrierPerUnit;
   const amazonTotalPerUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit + metrics.amazonStoragePerUnit;
 
@@ -6315,7 +6483,22 @@ function renderLogisticsChain(metrics, stage = "quick") {
         "settings.costDefaults.otherUnitCostEur",
       ],
     },
-  ], supplierTotalPerUnit);
+  ], supplierTotalPerUnit, {
+    label: "Lieferant gesamt (EUR/Unit)",
+    explain: "Summe der Kosten am Lieferanten (EXW + Packaging & Other).",
+    formula: "Lieferant gesamt/Unit = EXW + Packaging & Other.",
+    source: "User Input + Settings/Overrides.",
+    robustness: "Mittel",
+    driverPaths: [
+      "basic.exwUnit",
+      "settings.tax.fallbackUsdToEur",
+      "assumptions.extraCosts.overridePackagingGroup",
+      "assumptions.extraCosts.packagingPerUnitEur",
+      "assumptions.extraCosts.otherUnitCostEur",
+      "settings.costDefaults.packagingPerUnitEur",
+      "settings.costDefaults.otherUnitCostEur",
+    ],
+  });
 
   renderStation(dom.chainImportChips, [
     {
@@ -6323,7 +6506,7 @@ function renderLogisticsChain(metrics, stage = "quick") {
       value: metrics.shipping.originTotal / Math.max(1, metrics.shipping.unitsPerOrder),
       explain: "Abholung/Trucking am Ursprung (CN) je Unit.",
       formula: metrics.shipping.modeKey === "rail"
-        ? "Vorlauf/Unit = (origin_base + origin_per_carton × cartons_count) / PO Units."
+        ? "Vorlauf/Unit = (Vorlauf-Basis + Vorlauf je Karton × Anzahl Umkartons) / PO-Menge."
         : "Vorlauf/Unit = origin_fixed / PO Units.",
       source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
       robustness: "Mittel",
@@ -6337,7 +6520,7 @@ function renderLogisticsChain(metrics, stage = "quick") {
       label: "Hauptlauf variabel (EUR/Unit)",
       value: metrics.shipping.mainRunVariable / Math.max(1, metrics.shipping.unitsPerOrder),
       explain: "Rail/Sea Hauptlauf variabel nach W/M.",
-      formula: "Hauptlauf variabel/Unit = (chargeable_cbm × rate_eur_per_cbm) / PO Units.",
+      formula: "Hauptlauf variabel/Unit = (Abrechnungsvolumen (CBM) × Rate (EUR/CBM)) / PO-Menge.",
       source: `Shipping 12M (${metrics.shipping.modeLabel}) + Kartonisierung.`,
       robustness: "Mittel",
       driverPaths: [
@@ -6363,7 +6546,7 @@ function renderLogisticsChain(metrics, stage = "quick") {
       value: metrics.shipping.deOncarriageTotal / Math.max(1, metrics.shipping.unitsPerOrder),
       explain: "Inlandstransport DE nach Ankunft bis Lager.",
       formula: metrics.shipping.modeKey === "rail"
-        ? "Nachlauf/Unit = (de_oncarriage_base + de_oncarriage_per_carton × cartons_count) / PO Units."
+        ? "Nachlauf/Unit = (Nachlauf-Basis + Nachlauf je Karton × Anzahl Umkartons) / PO-Menge."
         : "Nachlauf/Unit = de_oncarriage_fixed / PO Units.",
       source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
       robustness: "Mittel",
@@ -6415,14 +6598,37 @@ function renderLogisticsChain(metrics, stage = "quick") {
         ...shippingManualSurchargeDriverPaths(metrics.shipping.modeKey),
       ],
     },
-  ], shippingTo3PlTotalPerUnit);
+  ], shippingTo3PlTotalPerUnit, {
+    label: `Shipping zu 3PL gesamt (${metrics.shipping.modeLabel}, EUR/Unit)`,
+    explain: "Summe aus Vorlauf, Hauptlauf (variabel + fix), Nachlauf, Zollabfertigung, Versicherung und optionaler Nachbelastung.",
+    formula: "Kategorie-Summe = Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung + Nachbelastung.",
+    source: `Global Settings Shipping 12M (${metrics.shipping.modeLabel}) + Produktdaten.`,
+    robustness: "Mittel",
+    driverPaths: [
+      "basic.unitsPerOrder",
+      "basic.packLengthCm",
+      "basic.packWidthCm",
+      "basic.packHeightCm",
+      "basic.netWeightG",
+      "basic.exwUnit",
+      "derived.shipping.chargeableCbm",
+      "derived.shipping.unitsPerCartonAuto",
+      "derived.shipping.cartonsCount",
+      ...shippingModeDriverPaths(metrics.shipping.modeKey),
+      "settings.shipping12m.customsBrokerEnabled",
+      "settings.shipping12m.customsBrokerFixedEurPerShipment",
+      "settings.shipping12m.insurance.enabled",
+      "settings.shipping12m.insurance.ratePct",
+      ...shippingManualSurchargeDriverPaths(metrics.shipping.modeKey),
+    ],
+  });
 
   renderStation(dom.chainThreePlChips, [
     {
       label: "3PL Inbound (EUR/Unit)",
       value: metrics.threePlInboundPerUnit,
       explain: "Receiving je Karton (sorted/mixed) auf Unit umgerechnet.",
-      formula: "Inbound/Unit = cartons_count × receiving_per_carton / PO Units.",
+      formula: "Inbound/Unit = Anzahl Umkartons × Receiving je Karton / PO-Menge.",
       source: "3PL Settings/Override.",
       robustness: "Mittel",
       driverPaths: [
@@ -6466,29 +6672,34 @@ function renderLogisticsChain(metrics, stage = "quick") {
         "settings.threePl.avgStorageMonths",
       ],
     },
-    {
-      label: "3PL gesamt (EUR/Unit)",
-      value: metrics.threePlTotalPerUnit,
-      isSummary: true,
-      explain: "Summe aus Inbound, Lagerung, Outbound-Service und Carrier.",
-      formula: "3PL gesamt/Unit = Inbound + Lager + Service + Carrier.",
-      source: "3PL Settings/Override.",
-      robustness: "Mittel",
-      driverPaths: [
-        "assumptions.extraCosts.receivingMode",
-        "assumptions.extraCosts.storagePerPalletPerMonthEur",
-        "assumptions.extraCosts.outboundBasePerCartonEur",
-        "assumptions.extraCosts.carrierCostPerCartonEur",
-      ],
-    },
-  ], threePlTotalPerUnit);
+  ], threePlTotalPerUnit, {
+    label: "3PL gesamt (EUR/Unit)",
+    explain: "Summe aus 3PL Inbound und 3PL Lagerung.",
+    formula: "3PL gesamt/Unit = 3PL Inbound + 3PL Lagerung.",
+    source: "3PL Settings/Override.",
+    robustness: "Mittel",
+    driverPaths: [
+      "derived.shipping.cartonsCount",
+      "derived.shipping.unitsPerOrder",
+      "assumptions.extraCosts.receivingMode",
+      "assumptions.extraCosts.receivingPerCartonSortedEur",
+      "assumptions.extraCosts.receivingPerCartonMixedEur",
+      "assumptions.extraCosts.storagePerPalletPerMonthEur",
+      "assumptions.extraCosts.unitsPerPallet",
+      "assumptions.extraCosts.avg3PlStorageMonths",
+      "settings.threePl.receivingPerCartonSortedEur",
+      "settings.threePl.storagePerPalletPerMonthEur",
+      "settings.threePl.unitsPerPallet",
+      "settings.threePl.avgStorageMonths",
+    ],
+  });
 
   renderStation(dom.chainInboundChips, [
     {
       label: "3PL -> Amazon Service (EUR/Unit)",
       value: metrics.threePlOutboundServicePerUnit,
       explain: "Warenausgangsleistungen am 3PL je Karton auf Unit umgelegt.",
-      formula: "Service/Unit = cartons_count × (base + pick_pack + fba_processing + inserts + labels) / PO Units.",
+      formula: "Service/Unit = Anzahl Umkartons × (Base + Pick&Pack + FBA-Processing + Inserts + Labels) / PO-Menge.",
       source: "3PL Outbound Settings/Override.",
       robustness: "Mittel",
       driverPaths: [
@@ -6511,7 +6722,7 @@ function renderLogisticsChain(metrics, stage = "quick") {
       label: "3PL -> Amazon Carrier (EUR/Unit)",
       value: metrics.threePlCarrierPerUnit,
       explain: "Transportkosten je Karton vom 3PL zu Amazon.",
-      formula: "Carrier/Unit = cartons_count × carrier_cost_per_carton / PO Units.",
+      formula: "Carrier/Unit = Anzahl Umkartons × Carrier je Karton / PO-Menge.",
       source: "3PL Carrier Setting/Override.",
       robustness: "Mittel",
       driverPaths: [
@@ -6523,7 +6734,29 @@ function renderLogisticsChain(metrics, stage = "quick") {
         "settings.threePl.carrierCostPerCartonEur",
       ],
     },
-  ], inboundToAmazonTotalPerUnit);
+  ], inboundToAmazonTotalPerUnit, {
+    label: "Versand zu Amazon gesamt (EUR/Unit)",
+    explain: "Summe aus 3PL Outbound-Service und Carrier zum Amazon-Lager.",
+    formula: "Versand zu Amazon/Unit = 3PL Service + 3PL Carrier.",
+    source: "3PL Settings/Override.",
+    robustness: "Mittel",
+    driverPaths: [
+      "derived.shipping.cartonsCount",
+      "derived.shipping.unitsPerOrder",
+      "assumptions.extraCosts.outboundBasePerCartonEur",
+      "assumptions.extraCosts.pickPackPerCartonEur",
+      "assumptions.extraCosts.fbaProcessingPerCartonEur",
+      "assumptions.extraCosts.insertsPerCarton",
+      "assumptions.extraCosts.insertPerInsertEur",
+      "assumptions.extraCosts.labelsPerCarton",
+      "assumptions.extraCosts.thirdCountryLabelPerLabelEur",
+      "assumptions.extraCosts.carrierCostPerCartonEur",
+      "settings.threePl.outboundBasePerCartonEur",
+      "settings.threePl.pickPackPerCartonEur",
+      "settings.threePl.fbaProcessingPerCartonEur",
+      "settings.threePl.carrierCostPerCartonEur",
+    ],
+  });
 
   renderStation(dom.chainAmazonChips, [
     {
@@ -6564,7 +6797,27 @@ function renderLogisticsChain(metrics, stage = "quick") {
         "settings.costDefaults.amazonStoragePerCbmMonthEur",
       ],
     },
-  ], amazonTotalPerUnit);
+  ], amazonTotalPerUnit, {
+    label: "Amazon gesamt (EUR/Unit)",
+    explain: "Summe aus Referral Fee, FBA Fee und Amazon Lagerkosten.",
+    formula: "Amazon gesamt/Unit = Referral + FBA + Amazon Lager.",
+    source: "Kategorie-Defaults + Amazon Fee/Storage Logik.",
+    robustness: "Mittel bis hoch",
+    driverPaths: [
+      "basic.priceGross",
+      "assumptions.amazon.referralRate",
+      "assumptions.amazon.useManualFbaFee",
+      "assumptions.amazon.manualFbaFee",
+      "basic.netWeightG",
+      "basic.packLengthCm",
+      "basic.packWidthCm",
+      "basic.packHeightCm",
+      "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
+      "assumptions.extraCosts.avgAmazonStorageMonths",
+      "settings.costDefaults.amazonStoragePerCbmMonthEur",
+      "settings.costDefaults.avgAmazonStorageMonths",
+    ],
+  });
 }
 
 function renderSelectedOutputs(metrics, stage = "quick") {
@@ -6710,6 +6963,131 @@ function renderStagePanel(product, metrics) {
   return stageState;
 }
 
+function reviewGroupLabel(target) {
+  const id = target?.targetId ?? "";
+  const label = target?.label ?? "";
+  if (id.startsWith("product.")) {
+    return "Lieferant";
+  }
+  if (id.startsWith("shipping_import.")) {
+    return "Shipping zu 3PL";
+  }
+  if (id.startsWith("threepl.")) {
+    if (label.includes("3PL -> Amazon")) {
+      return "Versand zu Amazon";
+    }
+    return "3PL";
+  }
+  if (id.startsWith("amazon.")) {
+    return "Amazon";
+  }
+  if (id.startsWith("ads_returns.")) {
+    return "Werbung & Retouren";
+  }
+  if (id.startsWith("lifecycle.")) {
+    return "Launch & Lifecycle";
+  }
+  if (id.startsWith("overhead.")) {
+    return "Overhead / Leakage";
+  }
+  return "Weitere Treiber";
+}
+
+const REVIEW_GROUP_ORDER = [
+  "Lieferant",
+  "Shipping zu 3PL",
+  "3PL",
+  "Versand zu Amazon",
+  "Amazon",
+  "Werbung & Retouren",
+  "Launch & Lifecycle",
+  "Overhead / Leakage",
+  "Weitere Treiber",
+];
+
+function renderReviewItemsGrouped(container, items, stage) {
+  container.innerHTML = "";
+  const grouped = new Map();
+  items.forEach((item) => {
+    const group = reviewGroupLabel(item);
+    if (!grouped.has(group)) {
+      grouped.set(group, []);
+    }
+    grouped.get(group).push(item);
+  });
+
+  REVIEW_GROUP_ORDER.forEach((group) => {
+    const groupItems = grouped.get(group);
+    if (!groupItems || groupItems.length === 0) {
+      return;
+    }
+
+    const section = document.createElement("section");
+    section.className = "review-group";
+    const title = document.createElement("h4");
+    title.className = "review-group-title";
+    title.textContent = group;
+    section.appendChild(title);
+
+    const list = document.createElement("ul");
+    list.className = "calc-list review-group-list";
+    groupItems.forEach((target) => {
+      const li = document.createElement("li");
+      const left = document.createElement("div");
+      left.className = "review-item-main";
+      const rowTitle = document.createElement("strong");
+      rowTitle.textContent = target.label;
+      const rowMeta = document.createElement("small");
+      rowMeta.textContent = `${target.categoryTitle} · ${target.value}`;
+      left.append(rowTitle, rowMeta);
+
+      const actions = document.createElement("div");
+      actions.className = "review-actions";
+
+      const chip = document.createElement("span");
+      const status = target.status;
+      chip.className = `review-status-chip review-status-${status}`;
+      chip.textContent = status === "checked" ? "geprüft" : status === "overridden" ? "überschrieben" : "offen";
+      actions.appendChild(chip);
+
+      const checkBtn = document.createElement("button");
+      checkBtn.type = "button";
+      checkBtn.className = "btn btn-ghost";
+      checkBtn.dataset.reviewAction = status === "checked" ? "uncheck" : "check";
+      checkBtn.dataset.reviewStage = stage;
+      checkBtn.dataset.reviewTargetId = target.targetId;
+      checkBtn.textContent = status === "checked" ? "Auf ungeprüft" : "Prüfen";
+      actions.appendChild(checkBtn);
+
+      const overrideBtn = document.createElement("button");
+      overrideBtn.type = "button";
+      overrideBtn.className = "btn btn-primary";
+      overrideBtn.dataset.reviewAction = "override";
+      overrideBtn.dataset.reviewStage = stage;
+      overrideBtn.dataset.reviewTargetId = target.targetId;
+      overrideBtn.textContent = "Öffnen & überschreiben";
+      actions.appendChild(overrideBtn);
+
+      if (status !== "pending") {
+        const resetBtn = document.createElement("button");
+        resetBtn.type = "button";
+        resetBtn.className = "btn btn-ghost";
+        resetBtn.dataset.reviewAction = "reset";
+        resetBtn.dataset.reviewStage = stage;
+        resetBtn.dataset.reviewTargetId = target.targetId;
+        resetBtn.textContent = "Zurücksetzen";
+        actions.appendChild(resetBtn);
+      }
+
+      li.append(left, actions);
+      list.appendChild(li);
+    });
+
+    section.appendChild(list);
+    container.appendChild(section);
+  });
+}
+
 function renderValidationReviewPanel(product, stageState) {
   if (!dom.validationReviewList || !dom.validationReviewStatus) {
     return;
@@ -6719,48 +7097,7 @@ function renderValidationReviewPanel(product, stageState) {
   dom.validationReviewStatus.textContent = `${review.completed}/${totalLabel} geprüft`;
   dom.validationReviewStatus.classList.remove("pass", "warn", "fail");
   dom.validationReviewStatus.classList.add(review.isReady ? "pass" : "warn");
-  dom.validationReviewList.innerHTML = "";
-
-  review.items.forEach((target) => {
-    const li = document.createElement("li");
-    const left = document.createElement("div");
-    left.className = "review-item-main";
-    const rowTitle = document.createElement("strong");
-    rowTitle.textContent = target.label;
-    const rowMeta = document.createElement("small");
-    rowMeta.textContent = `${target.categoryTitle} · ${target.value}`;
-    left.append(rowTitle, rowMeta);
-
-    const actions = document.createElement("div");
-    actions.className = "review-actions";
-
-    const chip = document.createElement("span");
-    const status = target.status;
-    chip.className = `review-status-chip review-status-${status}`;
-    chip.textContent = status === "checked" ? "geprüft" : status === "overridden" ? "überschrieben" : "offen";
-    actions.appendChild(chip);
-
-    const checkBtn = document.createElement("button");
-    checkBtn.type = "button";
-    checkBtn.className = "btn btn-ghost";
-    checkBtn.dataset.reviewAction = "check";
-    checkBtn.dataset.reviewStage = "validation";
-    checkBtn.dataset.reviewTargetId = target.targetId;
-    checkBtn.textContent = status === "checked" ? "Geprüft" : "Prüfen";
-    actions.appendChild(checkBtn);
-
-    const overrideBtn = document.createElement("button");
-    overrideBtn.type = "button";
-    overrideBtn.className = "btn btn-primary";
-    overrideBtn.dataset.reviewAction = "override";
-    overrideBtn.dataset.reviewStage = "validation";
-    overrideBtn.dataset.reviewTargetId = target.targetId;
-    overrideBtn.textContent = "Öffnen & überschreiben";
-    actions.appendChild(overrideBtn);
-
-    li.append(left, actions);
-    dom.validationReviewList.appendChild(li);
-  });
+  renderReviewItemsGrouped(dom.validationReviewList, review.items, "validation");
 }
 
 function renderDeepDiveReviewPanel(product, stageState) {
@@ -6771,48 +7108,7 @@ function renderDeepDiveReviewPanel(product, stageState) {
   dom.deepDiveReviewStatus.textContent = `${review.completed}/${review.total} geprüft`;
   dom.deepDiveReviewStatus.classList.remove("pass", "warn", "fail");
   dom.deepDiveReviewStatus.classList.add(review.isReady ? "pass" : "warn");
-  dom.deepDiveReviewList.innerHTML = "";
-
-  review.items.forEach((target) => {
-    const li = document.createElement("li");
-    const left = document.createElement("div");
-    left.className = "review-item-main";
-    const rowTitle = document.createElement("strong");
-    rowTitle.textContent = target.label;
-    const rowMeta = document.createElement("small");
-    rowMeta.textContent = `${target.categoryTitle} · ${target.value}`;
-    left.append(rowTitle, rowMeta);
-
-    const actions = document.createElement("div");
-    actions.className = "review-actions";
-
-    const chip = document.createElement("span");
-    const status = target.status;
-    chip.className = `review-status-chip review-status-${status}`;
-    chip.textContent = status === "checked" ? "geprüft" : status === "overridden" ? "überschrieben" : "offen";
-    actions.appendChild(chip);
-
-    const checkBtn = document.createElement("button");
-    checkBtn.type = "button";
-    checkBtn.className = "btn btn-ghost";
-    checkBtn.dataset.reviewAction = "check";
-    checkBtn.dataset.reviewStage = "deep_dive";
-    checkBtn.dataset.reviewTargetId = target.targetId;
-    checkBtn.textContent = status === "checked" ? "Geprüft" : "Prüfen";
-    actions.appendChild(checkBtn);
-
-    const overrideBtn = document.createElement("button");
-    overrideBtn.type = "button";
-    overrideBtn.className = "btn btn-primary";
-    overrideBtn.dataset.reviewAction = "override";
-    overrideBtn.dataset.reviewStage = "deep_dive";
-    overrideBtn.dataset.reviewTargetId = target.targetId;
-    overrideBtn.textContent = "Öffnen & überschreiben";
-    actions.appendChild(overrideBtn);
-
-    li.append(left, actions);
-    dom.deepDiveReviewList.appendChild(li);
-  });
+  renderReviewItemsGrouped(dom.deepDiveReviewList, review.items, "deep_dive");
 }
 
 function applyStageVisibility(product, stageState) {
@@ -6822,17 +7118,17 @@ function applyStageVisibility(product, stageState) {
   const isQuick = stage === "quick";
 
   if (dom.advancedToggleWrap) {
-    dom.advancedToggleWrap.classList.toggle("hidden", isQuick);
+    dom.advancedToggleWrap.classList.toggle("hidden", !isQuick);
   }
 
-  if (isQuick) {
+  if (!isQuick) {
     state.ui.advancedVisible = false;
   }
 
-  dom.advancedPanel.classList.toggle("hidden", !state.ui.advancedVisible);
+  dom.advancedPanel.classList.toggle("hidden", !(isQuick && state.ui.advancedVisible));
   if (dom.advancedToggle) {
     dom.advancedToggle.checked = state.ui.advancedVisible;
-    dom.advancedToggle.disabled = isQuick;
+    dom.advancedToggle.disabled = !isQuick;
   }
 
   if (dom.quickStagePanel) {
@@ -7712,6 +8008,12 @@ function bindEvents() {
 
     if (action === "check") {
       markReviewChecked(selected, stage, targetId, reviewTarget.valueRaw);
+      renderAll();
+      return;
+    }
+
+    if (action === "uncheck" || action === "reset") {
+      markReviewPending(selected, stage, targetId);
       renderAll();
       return;
     }

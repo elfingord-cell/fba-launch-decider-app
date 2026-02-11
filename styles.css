@@ -736,6 +736,31 @@ select:disabled {
   font-family: "Space Grotesk", "Manrope", sans-serif;
 }
 
+.review-list {
+  display: grid;
+  gap: 9px;
+}
+
+.review-group {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fcfcfa;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.review-group-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #355750;
+}
+
+.review-group-list {
+  gap: 6px;
+}
+
 .review-list li {
   align-items: center;
   gap: 12px;
@@ -1036,12 +1061,17 @@ select:disabled {
 }
 
 .chain-station-total {
+  appearance: none;
+  width: 100%;
+  text-align: left;
   border: 1px dashed color-mix(in srgb, var(--line) 62%, white);
   border-radius: 9px;
   background: #f7faf8;
   padding: 6px 7px;
   display: grid;
   gap: 2px;
+  font: inherit;
+  color: inherit;
 }
 
 .chain-station-total span {
@@ -1054,6 +1084,14 @@ select:disabled {
   font-size: 0.78rem;
   color: #264e45;
   font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.chain-station-total.clickable {
+  cursor: pointer;
+}
+
+.chain-station-total.clickable:hover {
+  border-color: color-mix(in srgb, var(--accent) 46%, white);
 }
 
 .chain-chip {
@@ -1377,7 +1415,7 @@ tbody tr:hover {
 
 .modal-card {
   position: relative;
-  width: min(760px, calc(100vw - 26px));
+  width: min(1080px, calc(100vw - 26px));
   max-height: calc(100vh - 34px);
   overflow: auto;
   margin: 16px auto;
@@ -1405,12 +1443,32 @@ tbody tr:hover {
 
 .modal-fields {
   display: grid;
-  gap: 9px;
+  gap: 11px;
 }
 
 .modal-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.modal-group {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fff;
+  padding: 9px;
+  display: grid;
+  gap: 7px;
+}
+
+.modal-group h4 {
+  margin: 0;
+  font-size: 0.79rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.modal-group-fields {
+  display: grid;
   gap: 8px;
 }
 
@@ -1627,6 +1685,11 @@ tbody tr:hover {
 
   .modal-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .modal-card {
+    width: min(100vw - 16px, 1080px);
+    margin: 8px auto;
   }
 
   .settings-chain-nav {

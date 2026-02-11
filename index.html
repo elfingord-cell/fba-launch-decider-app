@@ -59,29 +59,6 @@
 
         <section class="main-column">
           <div id="productWorkspace">
-          <section class="card decision-bar" id="decisionBar">
-            <div class="decision-head">
-              <div>
-                <h2>Decision-Bar</h2>
-                <p>KPIs und Launch-Entscheidung getrennt von Kostenblöcken.</p>
-              </div>
-              <div id="trafficLight" class="traffic-badge traffic-neutral">NO-GO</div>
-            </div>
-            <div class="decision-primary-grid">
-              <article class="kpi" data-kpi="kpiSellerboardMargin"><span>Sellerboard-Marge % (brutto)</span><strong id="kpiSellerboardMargin">-</strong></article>
-              <article class="kpi" data-kpi="kpiNetMargin"><span>Netto-Marge %</span><strong id="kpiNetMargin">-</strong></article>
-              <article class="kpi" data-kpi="kpiDb1Unit"><span>DB1 / Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
-              <article class="kpi" data-kpi="kpiProfitMonthly"><span>Gewinn netto / Monat (EUR)</span><strong id="kpiProfitMonthly">-</strong></article>
-            </div>
-            <div class="decision-secondary-grid">
-              <article class="kpi compact" data-kpi="kpiPayback"><span>Payback (Monate)</span><strong id="kpiPayback">-</strong></article>
-              <article class="kpi compact" data-kpi="kpiProductRoi"><span>Produkt-ROI %</span><strong id="kpiProductRoi">-</strong></article>
-              <article class="kpi compact" data-kpi="kpiCashRoi"><span>Cash-ROI %</span><strong id="kpiCashRoi">-</strong></article>
-              <article class="kpi compact" data-kpi="kpiBreakEvenPrice"><span>Break-even Preis brutto (EUR)</span><strong id="kpiBreakEvenPrice">-</strong></article>
-              <article class="kpi compact" data-kpi="kpiMaxTacos"><span>Max TACoS %</span><strong id="kpiMaxTacos">-</strong></article>
-            </div>
-          </section>
-
           <section class="card basic-card">
             <div class="section-head">
               <div>
@@ -116,18 +93,18 @@
             <section id="validationReviewPanel" class="card review-panel hidden">
               <h3>Validation: Top-8 Treiber prüfen</h3>
               <p class="hint">
-                Markiere jeden Treiber als geprüft oder öffne ihn zum Überschreiben.
+                Nach Lieferkette gruppiert: jeden Treiber prüfen, überschreiben oder wieder auf ungeprüft setzen.
               </p>
               <p id="validationReviewStatus" class="stage-status">0/8 geprüft</p>
-              <ul id="validationReviewList" class="calc-list review-list"></ul>
+              <div id="validationReviewList" class="review-list"></div>
             </section>
             <section id="deepDiveReviewPanel" class="card review-panel hidden">
               <h3>Deep-Dive: Vollprüfung aller Treiber</h3>
               <p class="hint">
-                Prüfe oder überschreibe alle editierbaren kostenrelevanten Treiber.
+                Vollprüfung nach Lieferkette: alle editierbaren Treiber prüfen, überschreiben oder zurücksetzen.
               </p>
               <p id="deepDiveReviewStatus" class="stage-status">0/0 geprüft</p>
-              <ul id="deepDiveReviewList" class="calc-list review-list"></ul>
+              <div id="deepDiveReviewList" class="review-list"></div>
             </section>
 
             <form id="basicForm" class="form-grid">
@@ -270,6 +247,29 @@
             <p class="hint">
               Alle weiteren Kosten werden aus Settings/Defaults abgeleitet. Du kannst die wichtigsten Schätzblöcke oben prüfen und überschreiben.
             </p>
+          </section>
+
+          <section class="card decision-bar" id="decisionBar">
+            <div class="decision-head">
+              <div>
+                <h2>Decision-Bar</h2>
+                <p>KPIs und Launch-Entscheidung getrennt von Kostenblöcken.</p>
+              </div>
+              <div id="trafficLight" class="traffic-badge traffic-neutral">NO-GO</div>
+            </div>
+            <div class="decision-primary-grid">
+              <article class="kpi" data-kpi="kpiSellerboardMargin"><span>Sellerboard-Marge % (brutto)</span><strong id="kpiSellerboardMargin">-</strong></article>
+              <article class="kpi" data-kpi="kpiNetMargin"><span>Netto-Marge %</span><strong id="kpiNetMargin">-</strong></article>
+              <article class="kpi" data-kpi="kpiDb1Unit"><span>DB1 / Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
+              <article class="kpi" data-kpi="kpiProfitMonthly"><span>Gewinn netto / Monat (EUR)</span><strong id="kpiProfitMonthly">-</strong></article>
+            </div>
+            <div class="decision-secondary-grid">
+              <article class="kpi compact" data-kpi="kpiPayback"><span>Payback (Monate)</span><strong id="kpiPayback">-</strong></article>
+              <article class="kpi compact" data-kpi="kpiProductRoi"><span>Produkt-ROI %</span><strong id="kpiProductRoi">-</strong></article>
+              <article class="kpi compact" data-kpi="kpiCashRoi"><span>Cash-ROI %</span><strong id="kpiCashRoi">-</strong></article>
+              <article class="kpi compact" data-kpi="kpiBreakEvenPrice"><span>Break-even Preis brutto (EUR)</span><strong id="kpiBreakEvenPrice">-</strong></article>
+              <article class="kpi compact" data-kpi="kpiMaxTacos"><span>Max TACoS %</span><strong id="kpiMaxTacos">-</strong></article>
+            </div>
           </section>
 
           <section id="advancedPanel" class="card advanced-card hidden">
