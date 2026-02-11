@@ -22,6 +22,10 @@
           <p class="eyebrow">Amazon FBA 80/20 Modell</p>
           <h1>Globale Settings</h1>
           <p>Alle Defaults getrennt von der Produktbearbeitung. Änderungen wirken auf alle Produkte.</p>
+          <div class="hero-tools">
+            <button id="authLogoutBtn" type="button" class="btn btn-ghost hidden">Abmelden</button>
+            <span id="sessionInfo" class="hint hidden"></span>
+          </div>
         </div>
         <div class="meta-grid">
           <article>
@@ -34,12 +38,37 @@
           </article>
           <article>
             <span>Speicher</span>
-            <strong>lokal</strong>
+            <strong id="storageModeLabel">lokal</strong>
           </article>
         </div>
       </header>
 
-      <section class="layout">
+      <section id="authPanel" class="card auth-card hidden">
+        <h2>Login erforderlich</h2>
+        <p class="hint">Melde dich an, um globale Settings im gemeinsamen Workspace zu bearbeiten.</p>
+        <div class="grid cols-2">
+          <label>
+            E-Mail
+            <input id="authEmail" type="email" placeholder="du@firma.de" autocomplete="username" />
+          </label>
+          <label>
+            Passwort
+            <input id="authPassword" type="password" placeholder="••••••••" autocomplete="current-password" />
+          </label>
+        </div>
+        <div class="auth-actions">
+          <button id="authLoginBtn" type="button" class="btn btn-primary">Anmelden</button>
+          <button id="authRegisterBtn" type="button" class="btn btn-ghost">Registrieren</button>
+        </div>
+        <p id="authStatus" class="stage-status">-</p>
+      </section>
+
+      <section id="noAccessPanel" class="card auth-card hidden">
+        <h2>Kein Zugriff auf Workspace</h2>
+        <p class="hint">Dein Account ist noch keinem Workspace zugeordnet. Bitte füge dich in `workspace_members` hinzu.</p>
+      </section>
+
+      <section id="appContent" class="layout">
         <aside class="card sidebar">
           <div class="sidebar-head">
             <h2>Navigation</h2>
@@ -342,6 +371,7 @@
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
 </html>

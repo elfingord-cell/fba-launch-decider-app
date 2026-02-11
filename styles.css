@@ -151,6 +151,24 @@ body {
   gap: 14px;
 }
 
+.auth-card {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.auth-card h2 {
+  margin: 0;
+  font-size: 1.02rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .sidebar {
   position: sticky;
   top: 12px;

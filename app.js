@@ -6,6 +6,8 @@ const APP_PAGE = document.body?.dataset?.page === "settings" ? "settings" : "pro
 const MIN_REFERRAL_FEE = 0.3;
 const DEFAULT_USD_TO_EUR = 0.92;
 const FX_ENDPOINT = "https://api.frankfurter.app/latest?from=USD&to=EUR";
+const SUPABASE_CONFIG_ENDPOINT = "/api/config";
+const REMOTE_SAVE_DEBOUNCE_MS = 350;
 
 const MARKETPLACE_VAT = {
   DE: 19,
@@ -22,7 +24,7 @@ const STAGE_LABELS = {
 };
 const STAGE_VISIBILITY = {
   quick: { topN: 10 },
-  validation: { topN: 15 },
+  validation: { topN: 20 },
   deep_dive: { topN: Number.POSITIVE_INFINITY },
 };
 
@@ -966,6 +968,31 @@ const state = {
   products: [],
   settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
   selectedId: null,
+  session: {
+    requiresAuth: false,
+    isAuthenticated: false,
+    hasWorkspaceAccess: false,
+    userId: null,
+    userEmail: "",
+    workspaceId: null,
+    workspaceName: "",
+  },
+  storage: {
+    mode: "local",
+    adapter: null,
+  },
+  supabase: {
+    client: null,
+    authSubscribed: false,
+  },
+  sync: {
+    settingsTimer: null,
+    productsTimer: null,
+    settingsSaving: false,
+    productsSaving: false,
+    settingsPending: false,
+    productsPending: false,
+  },
   fx: {
     usdToEur: DEFAULT_USD_TO_EUR,
     date: null,
@@ -1043,6 +1070,17 @@ const dom = {
   categoryTotalSummary: document.getElementById("categoryTotalSummary"),
   costDeltaSummary: document.getElementById("costDeltaSummary"),
   costDeltaCard: document.getElementById("costDeltaCard"),
+  appContent: document.getElementById("appContent"),
+  authPanel: document.getElementById("authPanel"),
+  noAccessPanel: document.getElementById("noAccessPanel"),
+  authEmail: document.getElementById("authEmail"),
+  authPassword: document.getElementById("authPassword"),
+  authLoginBtn: document.getElementById("authLoginBtn"),
+  authRegisterBtn: document.getElementById("authRegisterBtn"),
+  authLogoutBtn: document.getElementById("authLogoutBtn"),
+  authStatus: document.getElementById("authStatus"),
+  storageModeLabel: document.getElementById("storageModeLabel"),
+  sessionInfo: document.getElementById("sessionInfo"),
   productWorkspace: document.getElementById("productWorkspace"),
   driverModal: document.getElementById("driverModal"),
   driverModalTitle: document.getElementById("driverModalTitle"),
@@ -2047,13 +2085,13 @@ function migrateProduct(raw, index) {
   return merged;
 }
 
-function loadSettings() {
+function loadSettingsLocal() {
   const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
   if (!raw) {
     state.settings = defaultSettings();
     state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
     state.fx.source = "Fallback (Settings)";
-    saveSettings();
+    saveSettingsLocal();
     return;
   }
 
@@ -2078,7 +2116,7 @@ function loadSettings() {
     const migratedV3 = migrateRailShippingModelV3(state.settings, parsed);
     if (migratedV2 || migratedV3) {
       state.settings = sanitizeSettings(state.settings);
-      saveSettings();
+      saveSettingsLocal();
     }
     state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
     state.fx.source = "Fallback (Settings)";
@@ -2086,15 +2124,15 @@ function loadSettings() {
     state.settings = defaultSettings();
     state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
     state.fx.source = "Fallback (Settings)";
-    saveSettings();
+    saveSettingsLocal();
   }
 }
 
-function saveSettings() {
+function saveSettingsLocal() {
   localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(state.settings));
 }
 
-function loadProducts() {
+function loadProductsLocal() {
   const rawCurrent = localStorage.getItem(STORAGE_KEY_PRODUCTS);
   const rawLegacy = localStorage.getItem(LEGACY_STORAGE_KEY);
 
@@ -2102,7 +2140,7 @@ function loadProducts() {
   if (!raw) {
     state.products = [defaultProduct(1), defaultProduct(2)];
     state.selectedId = state.products[0].id;
-    saveProducts();
+    saveProductsLocal();
     return;
   }
 
@@ -2114,16 +2152,627 @@ function loadProducts() {
 
     state.products = parsed.map((item, index) => migrateProduct(item, index));
     state.selectedId = state.products[0].id;
-    saveProducts();
+    saveProductsLocal();
   } catch (_error) {
     state.products = [defaultProduct(1)];
     state.selectedId = state.products[0].id;
-    saveProducts();
+    saveProductsLocal();
   }
 }
 
-function saveProducts() {
+function saveProductsLocal() {
   localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(state.products));
+}
+
+function loadSettings() {
+  loadSettingsLocal();
+}
+
+function loadProducts() {
+  loadProductsLocal();
+}
+
+function scheduleRemoteSettingsSave() {
+  if (state.storage.mode !== "shared" || !state.storage.adapter?.saveSettings) {
+    return;
+  }
+  if (state.sync.settingsTimer) {
+    clearTimeout(state.sync.settingsTimer);
+  }
+  state.sync.settingsTimer = setTimeout(async () => {
+    state.sync.settingsTimer = null;
+    if (state.sync.settingsSaving) {
+      state.sync.settingsPending = true;
+      return;
+    }
+    state.sync.settingsSaving = true;
+    try {
+      do {
+        state.sync.settingsPending = false;
+        await state.storage.adapter.saveSettings(state.settings);
+      } while (state.sync.settingsPending);
+    } catch (error) {
+      console.error("Remote settings save failed", error);
+      setAuthStatus("Speichern der Settings in Supabase fehlgeschlagen.", true);
+    } finally {
+      state.sync.settingsSaving = false;
+    }
+  }, REMOTE_SAVE_DEBOUNCE_MS);
+}
+
+function scheduleRemoteProductsSave() {
+  if (state.storage.mode !== "shared" || !state.storage.adapter?.saveProducts) {
+    return;
+  }
+  if (state.sync.productsTimer) {
+    clearTimeout(state.sync.productsTimer);
+  }
+  state.sync.productsTimer = setTimeout(async () => {
+    state.sync.productsTimer = null;
+    if (state.sync.productsSaving) {
+      state.sync.productsPending = true;
+      return;
+    }
+    state.sync.productsSaving = true;
+    try {
+      do {
+        state.sync.productsPending = false;
+        await state.storage.adapter.saveProducts(state.products);
+      } while (state.sync.productsPending);
+    } catch (error) {
+      console.error("Remote products save failed", error);
+      setAuthStatus("Speichern der Produkte in Supabase fehlgeschlagen.", true);
+    } finally {
+      state.sync.productsSaving = false;
+    }
+  }, REMOTE_SAVE_DEBOUNCE_MS);
+}
+
+function saveSettings() {
+  saveSettingsLocal();
+  scheduleRemoteSettingsSave();
+}
+
+function saveProducts() {
+  saveProductsLocal();
+  scheduleRemoteProductsSave();
+}
+
+function setStorageModeLabel() {
+  if (!dom.storageModeLabel) {
+    return;
+  }
+  dom.storageModeLabel.textContent = state.storage.mode === "shared" ? "gemeinsam" : "lokal";
+}
+
+function setSessionInfoText() {
+  if (!dom.sessionInfo) {
+    return;
+  }
+  const hasSession = state.session.isAuthenticated && state.session.workspaceId;
+  dom.sessionInfo.classList.toggle("hidden", !hasSession);
+  if (!hasSession) {
+    dom.sessionInfo.textContent = "";
+    return;
+  }
+  const workspaceLabel = state.session.workspaceName || state.session.workspaceId;
+  dom.sessionInfo.textContent = `${state.session.userEmail} · Workspace: ${workspaceLabel}`;
+}
+
+function setAuthStatus(message, isError = false) {
+  if (!dom.authStatus) {
+    return;
+  }
+  dom.authStatus.textContent = message ?? "";
+  dom.authStatus.classList.toggle("fail", Boolean(isError));
+  dom.authStatus.classList.toggle("pass", !isError && Boolean(message));
+}
+
+function setAppLockedState({ showAuth = false, showNoAccess = false } = {}) {
+  if (dom.appContent) {
+    dom.appContent.classList.toggle("hidden", showAuth || showNoAccess);
+  }
+  if (dom.authPanel) {
+    dom.authPanel.classList.toggle("hidden", !showAuth);
+  }
+  if (dom.noAccessPanel) {
+    dom.noAccessPanel.classList.toggle("hidden", !showNoAccess);
+  }
+  if (dom.authLogoutBtn) {
+    dom.authLogoutBtn.classList.toggle("hidden", !(state.storage.mode === "shared" && state.session.isAuthenticated));
+  }
+}
+
+function configureSessionState({
+  requiresAuth = false,
+  isAuthenticated = false,
+  hasWorkspaceAccess = false,
+  userId = null,
+  userEmail = "",
+  workspaceId = null,
+  workspaceName = "",
+} = {}) {
+  state.session.requiresAuth = requiresAuth;
+  state.session.isAuthenticated = isAuthenticated;
+  state.session.hasWorkspaceAccess = hasWorkspaceAccess;
+  state.session.userId = userId;
+  state.session.userEmail = userEmail;
+  state.session.workspaceId = workspaceId;
+  state.session.workspaceName = workspaceName;
+  setSessionInfoText();
+}
+
+function createLocalStoreAdapter() {
+  return {
+    type: "local",
+    async loadSettings() {
+      const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
+      return raw ? JSON.parse(raw) : null;
+    },
+    async loadProducts() {
+      const rawCurrent = localStorage.getItem(STORAGE_KEY_PRODUCTS);
+      const rawLegacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      const raw = rawCurrent || rawLegacy;
+      return raw ? JSON.parse(raw) : null;
+    },
+    async saveSettings(settings) {
+      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+    },
+    async saveProducts(products) {
+      localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
+    },
+  };
+}
+
+async function loadRemoteConfig() {
+  try {
+    if (window.APP_CONFIG?.supabaseUrl && window.APP_CONFIG?.supabaseAnonKey) {
+      return {
+        supabaseUrl: window.APP_CONFIG.supabaseUrl,
+        supabaseAnonKey: window.APP_CONFIG.supabaseAnonKey,
+      };
+    }
+    const response = await fetch(SUPABASE_CONFIG_ENDPOINT, { cache: "no-store" });
+    if (!response.ok) {
+      return null;
+    }
+    const payload = await response.json();
+    if (!payload?.supabaseUrl || !payload?.supabaseAnonKey) {
+      return null;
+    }
+    return payload;
+  } catch (_error) {
+    return null;
+  }
+}
+
+async function createSupabaseClientFromConfig() {
+  const config = await loadRemoteConfig();
+  if (!config || !window.supabase?.createClient) {
+    return null;
+  }
+  return window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
+    auth: { persistSession: true, autoRefreshToken: true },
+  });
+}
+
+async function fetchWorkspaceMembership(client, userId) {
+  const { data: membership, error } = await client
+    .from("workspace_members")
+    .select("workspace_id, role")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  if (!membership?.workspace_id) {
+    return null;
+  }
+
+  let workspaceName = "";
+  const { data: workspaceRow } = await client
+    .from("workspaces")
+    .select("name")
+    .eq("id", membership.workspace_id)
+    .limit(1)
+    .maybeSingle();
+  workspaceName = workspaceRow?.name ?? "";
+
+  return {
+    workspaceId: membership.workspace_id,
+    role: membership.role ?? "editor",
+    workspaceName,
+  };
+}
+
+function createSupabaseStoreAdapter(client, workspaceId, userId) {
+  return {
+    type: "shared",
+    workspaceId,
+    userId,
+    async loadSettings() {
+      const { data, error } = await client
+        .from("workspace_settings")
+        .select("payload")
+        .eq("workspace_id", workspaceId)
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        throw error;
+      }
+      return data?.payload ?? null;
+    },
+    async loadProducts() {
+      const { data, error } = await client
+        .from("products")
+        .select("id, name, payload, updated_at")
+        .eq("workspace_id", workspaceId)
+        .order("updated_at", { ascending: false });
+      if (error) {
+        throw error;
+      }
+      return data ?? [];
+    },
+    async saveSettings(settings) {
+      const { error } = await client.from("workspace_settings").upsert(
+        {
+          workspace_id: workspaceId,
+          payload: settings,
+          updated_by: userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "workspace_id" },
+      );
+      if (error) {
+        throw error;
+      }
+    },
+    async saveProducts(products) {
+      const nowIso = new Date().toISOString();
+      const rows = products.map((product) => ({
+        id: product.id,
+        workspace_id: workspaceId,
+        name: String(product.name ?? "").trim() || "Produkt",
+        payload: product,
+        created_by: userId,
+        updated_by: userId,
+        updated_at: nowIso,
+      }));
+
+      if (rows.length > 0) {
+        const { error: upsertError } = await client.from("products").upsert(rows, { onConflict: "id" });
+        if (upsertError) {
+          throw upsertError;
+        }
+      }
+
+      const { data: existingRows, error: existingError } = await client
+        .from("products")
+        .select("id")
+        .eq("workspace_id", workspaceId);
+      if (existingError) {
+        throw existingError;
+      }
+
+      const keepIds = new Set(products.map((product) => product.id));
+      const deleteIds = (existingRows ?? []).map((row) => row.id).filter((id) => !keepIds.has(id));
+      if (deleteIds.length > 0) {
+        const { error: deleteError } = await client
+          .from("products")
+          .delete()
+          .eq("workspace_id", workspaceId)
+          .in("id", deleteIds);
+        if (deleteError) {
+          throw deleteError;
+        }
+      }
+    },
+  };
+}
+
+function normalizeRemoteProducts(rawRows) {
+  if (!Array.isArray(rawRows)) {
+    return [];
+  }
+  return rawRows.map((row, index) => {
+    const migrated = migrateProduct(row?.payload ?? {}, index);
+    migrated.id = row?.id ?? migrated.id;
+    if (row?.name && !migrated.name) {
+      migrated.name = row.name;
+    }
+    return migrated;
+  });
+}
+
+function normalizeRemoteSettings(rawSettings) {
+  if (!rawSettings || typeof rawSettings !== "object") {
+    return null;
+  }
+  const merged = {
+    ...defaultSettings(),
+    ...rawSettings,
+    tax: ensureTaxSettings(rawSettings?.tax),
+    shipping12m: ensureShipping12mSettings(rawSettings?.shipping12m),
+    cartonRules: {
+      ...defaultSettings().cartonRules,
+      ...(rawSettings?.cartonRules ?? {}),
+    },
+    categoryDefaults: ensureCategoryDefaults(rawSettings?.categoryDefaults),
+    lifecycle: ensureLifecycleSettings(rawSettings?.lifecycle),
+    threePl: ensureThreePlSettings(rawSettings?.threePl, rawSettings?.costDefaults),
+    costDefaults: ensureCostDefaults(rawSettings?.costDefaults),
+  };
+  return sanitizeSettings(merged);
+}
+
+async function importLocalDataToRemoteIfNeeded(adapter) {
+  const remoteProductsRaw = await adapter.loadProducts();
+  const remoteProducts = normalizeRemoteProducts(remoteProductsRaw);
+
+  if (remoteProducts.length > 0) {
+    return { imported: false, remoteProducts };
+  }
+
+  const localProductsRaw = localStorage.getItem(STORAGE_KEY_PRODUCTS) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+  const localSettingsRaw = localStorage.getItem(STORAGE_KEY_SETTINGS);
+  const hasLocalProducts = Boolean(localProductsRaw);
+  const hasLocalSettings = Boolean(localSettingsRaw);
+  if (!hasLocalProducts && !hasLocalSettings) {
+    return { imported: false, remoteProducts: [] };
+  }
+
+  const shouldImport = window.confirm(
+    "Lokale Daten gefunden. Sollen Produkte und Settings einmalig in den gemeinsamen Workspace importiert werden?",
+  );
+  if (!shouldImport) {
+    return { imported: false, remoteProducts: [] };
+  }
+
+  let importProducts = [];
+  if (hasLocalProducts) {
+    try {
+      const parsed = JSON.parse(localProductsRaw);
+      importProducts = Array.isArray(parsed) ? parsed.map((item, index) => migrateProduct(item, index)) : [];
+    } catch (_error) {
+      importProducts = [];
+    }
+  }
+  if (importProducts.length === 0) {
+    importProducts = [defaultProduct(1)];
+  }
+
+  let importSettings = defaultSettings();
+  if (hasLocalSettings) {
+    try {
+      const parsedSettings = JSON.parse(localSettingsRaw);
+      importSettings = normalizeRemoteSettings(parsedSettings) ?? defaultSettings();
+    } catch (_error) {
+      importSettings = defaultSettings();
+    }
+  }
+
+  await adapter.saveSettings(importSettings);
+  await adapter.saveProducts(importProducts);
+  return { imported: true, remoteProducts: importProducts, remoteSettings: importSettings };
+}
+
+function selectFirstProductIfNeeded() {
+  if (!state.products.length) {
+    state.products = [defaultProduct(1)];
+  }
+  if (!state.selectedId || !state.products.some((item) => item.id === state.selectedId)) {
+    state.selectedId = state.products[0].id;
+  }
+}
+
+async function activateSharedWorkspace(user) {
+  if (!state.supabase.client) {
+    return false;
+  }
+  const membership = await fetchWorkspaceMembership(state.supabase.client, user.id);
+  if (!membership) {
+    configureSessionState({
+      requiresAuth: true,
+      isAuthenticated: true,
+      hasWorkspaceAccess: false,
+      userId: user.id,
+      userEmail: user.email ?? "",
+    });
+    state.storage.mode = "shared";
+    setStorageModeLabel();
+    setAppLockedState({ showAuth: false, showNoAccess: true });
+    return false;
+  }
+
+  const adapter = createSupabaseStoreAdapter(state.supabase.client, membership.workspaceId, user.id);
+  state.storage.mode = "shared";
+  state.storage.adapter = adapter;
+  setStorageModeLabel();
+
+  const importResult = await importLocalDataToRemoteIfNeeded(adapter);
+  let remoteSettings = await adapter.loadSettings();
+  let remoteProducts = await adapter.loadProducts();
+
+  if (!remoteSettings) {
+    remoteSettings = importResult.remoteSettings ?? defaultSettings();
+    await adapter.saveSettings(remoteSettings);
+  }
+
+  let normalizedProducts = normalizeRemoteProducts(remoteProducts);
+  if (normalizedProducts.length === 0) {
+    normalizedProducts = importResult.remoteProducts?.length ? importResult.remoteProducts : [defaultProduct(1)];
+    await adapter.saveProducts(normalizedProducts);
+    remoteProducts = await adapter.loadProducts();
+    normalizedProducts = normalizeRemoteProducts(remoteProducts);
+  }
+
+  const normalizedSettings = normalizeRemoteSettings(remoteSettings) ?? defaultSettings();
+  state.settings = normalizedSettings;
+  state.products = normalizedProducts;
+  selectFirstProductIfNeeded();
+
+  configureSessionState({
+    requiresAuth: true,
+    isAuthenticated: true,
+    hasWorkspaceAccess: true,
+    userId: user.id,
+    userEmail: user.email ?? "",
+    workspaceId: membership.workspaceId,
+    workspaceName: membership.workspaceName,
+  });
+
+  saveSettingsLocal();
+  saveProductsLocal();
+  state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
+  state.fx.source = "Fallback (Settings)";
+
+  setAppLockedState({ showAuth: false, showNoAccess: false });
+  setAuthStatus("");
+  return true;
+}
+
+async function setLocalMode() {
+  state.storage.mode = "local";
+  state.storage.adapter = createLocalStoreAdapter();
+  setStorageModeLabel();
+  configureSessionState({
+    requiresAuth: false,
+    isAuthenticated: false,
+    hasWorkspaceAccess: true,
+  });
+  setAppLockedState({ showAuth: false, showNoAccess: false });
+}
+
+async function bootstrapCollaborationSession() {
+  await setLocalMode();
+  loadSettingsLocal();
+  loadProductsLocal();
+  selectFirstProductIfNeeded();
+
+  const client = await createSupabaseClientFromConfig();
+  if (!client) {
+    return;
+  }
+
+  state.supabase.client = client;
+  state.storage.mode = "shared";
+  setStorageModeLabel();
+  configureSessionState({ requiresAuth: true });
+
+  if (!state.supabase.authSubscribed) {
+    state.supabase.authSubscribed = true;
+    client.auth.onAuthStateChange(async (_event, session) => {
+      const user = session?.user ?? null;
+      if (!user) {
+        configureSessionState({
+          requiresAuth: true,
+          isAuthenticated: false,
+          hasWorkspaceAccess: false,
+        });
+        setAuthStatus("Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+        setAppLockedState({ showAuth: true, showNoAccess: false });
+        return;
+      }
+      try {
+        const activated = await activateSharedWorkspace(user);
+        if (activated) {
+          renderCategoryDefaultsAdmin();
+          if (APP_PAGE === "settings") {
+            renderSettingsInputs();
+            applyMouseoverHelp();
+          } else {
+            renderFxStatus();
+            renderAll();
+          }
+        }
+      } catch (error) {
+        console.error("Supabase auth state change failed", error);
+      }
+    });
+  }
+
+  const { data, error } = await client.auth.getSession();
+  if (error) {
+    console.error("Supabase session load failed", error);
+  }
+  const user = data?.session?.user ?? null;
+  if (!user) {
+    setAuthStatus("Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+    setAppLockedState({ showAuth: true, showNoAccess: false });
+    return;
+  }
+
+  try {
+    const activated = await activateSharedWorkspace(user);
+    if (!activated) {
+      return;
+    }
+  } catch (error) {
+    console.error("Supabase workspace activation failed", error);
+    setAuthStatus("Supabase-Verbindung fehlgeschlagen. Bitte später erneut versuchen.", true);
+    setAppLockedState({ showAuth: true, showNoAccess: false });
+  }
+}
+
+async function handleAuthLogin() {
+  if (!state.supabase.client) {
+    setAuthStatus("Supabase ist nicht konfiguriert.", true);
+    return;
+  }
+  const email = String(dom.authEmail?.value ?? "").trim();
+  const password = String(dom.authPassword?.value ?? "");
+  if (!email || !password) {
+    setAuthStatus("Bitte E-Mail und Passwort eingeben.", true);
+    return;
+  }
+  setAuthStatus("Anmeldung läuft ...");
+  const { error } = await state.supabase.client.auth.signInWithPassword({ email, password });
+  if (error) {
+    setAuthStatus(`Anmeldung fehlgeschlagen: ${error.message}`, true);
+    return;
+  }
+  setAuthStatus("Anmeldung erfolgreich.");
+}
+
+async function handleAuthRegister() {
+  if (!state.supabase.client) {
+    setAuthStatus("Supabase ist nicht konfiguriert.", true);
+    return;
+  }
+  const email = String(dom.authEmail?.value ?? "").trim();
+  const password = String(dom.authPassword?.value ?? "");
+  if (!email || !password) {
+    setAuthStatus("Bitte E-Mail und Passwort eingeben.", true);
+    return;
+  }
+  setAuthStatus("Registrierung läuft ...");
+  const { error, data } = await state.supabase.client.auth.signUp({ email, password });
+  if (error) {
+    setAuthStatus(`Registrierung fehlgeschlagen: ${error.message}`, true);
+    return;
+  }
+  const hasSession = Boolean(data?.session?.user);
+  setAuthStatus(
+    hasSession
+      ? "Registrierung erfolgreich."
+      : "Registrierung angelegt. Bitte E-Mail bestätigen und danach anmelden.",
+  );
+}
+
+async function handleAuthLogout() {
+  if (!state.supabase.client) {
+    return;
+  }
+  await state.supabase.client.auth.signOut();
+  configureSessionState({
+    requiresAuth: true,
+    isAuthenticated: false,
+    hasWorkspaceAccess: false,
+  });
+  setAuthStatus("Abgemeldet.");
+  setAppLockedState({ showAuth: true, showNoAccess: false });
 }
 
 function getSelectedProduct() {
@@ -3539,7 +4188,7 @@ function buildStageState(product, metrics) {
     quick:
       "Quick-Check: schnelle Entscheidung mit Top-Kosten. Fülle nur Pflichtfelder aus und prüfe die wichtigsten Treiber in der Lieferkette.",
     validation:
-      "Validation: Top-15 Treiber prüfen oder überschreiben. Fokus auf die größten Kostentreiber je Lieferkettenstufe.",
+      "Validation: Top-20 Treiber prüfen oder überschreiben. Fokus auf die größten Kostentreiber je Lieferkettenstufe.",
     deep_dive:
       "Deep-Dive: Vollprüfung aller editierbaren kostenrelevanten Treiber.",
   };
@@ -6513,7 +7162,10 @@ function renderShippingDetails(metrics) {
 }
 
 function buildChainStageDataFromCategories(categories, stage, topN, monthlyUnits = 0) {
-  const lines = [];
+  let lines = [];
+  const isQuickStage = stage === "quick";
+  const quickShippingAggregateId = "chain.shipping_to_3pl.total.quick";
+
   categories.forEach((category) => {
     category.lines.forEach((lineItem) => {
       if (lineItem.isSummary || lineItem.excludeFromCategoryTotal) {
@@ -6528,16 +7180,65 @@ function buildChainStageDataFromCategories(categories, stage, topN, monthlyUnits
     });
   });
 
+  if (isQuickStage) {
+    const shippingLines = lines.filter((lineItem) => lineItem.chainStageKey === "shipping_to_3pl");
+    if (shippingLines.length > 0) {
+      const shippingValueRaw = shippingLines.reduce((sum, lineItem) => sum + num(lineItem.valueRaw, 0), 0);
+      const shippingImpactMonthly = shippingLines.reduce((sum, lineItem) => sum + Math.max(0, num(lineItem.impactMonthly, 0)), 0);
+      const shippingDriverPaths = [...new Set(shippingLines.flatMap((lineItem) => lineItem.driverPaths ?? []))];
+
+      const shippingAggregateLine = {
+        id: quickShippingAggregateId,
+        label: "Shipping CN -> 3PL gesamt (EUR/Unit)",
+        valueRaw: shippingValueRaw,
+        value: formatCurrency(shippingValueRaw),
+        impactMonthly: shippingImpactMonthly,
+        explain:
+          "Aggregierter Shipping-Block von China bis 3PL. Im Quick-Check ohne Detailaufsplittung nach Vorlauf/Hauptlauf/Nachlauf.",
+        formula:
+          "Shipping gesamt/Unit = Summe aller Shipping-&-Import-Komponenten je Unit (Vorlauf, Hauptlauf variabel/fix, Nachlauf, Zollabfertigung, Versicherung, Nachbelastung, Zoll, Order-Fixkosten).",
+        source: "Shipping-12M-Defaults + Produktinput + Import-/Order-Defaults.",
+        robustness: "Mittel.",
+        reviewEligible: true,
+        categoryKey: "shipping_import",
+        categoryTitle: "Shipping & Import",
+        chainStageKey: "shipping_to_3pl",
+        driverPaths: shippingDriverPaths,
+      };
+
+      lines = lines
+        .filter((lineItem) => lineItem.chainStageKey !== "shipping_to_3pl")
+        .concat([shippingAggregateLine]);
+    }
+  }
+
   const sortedByImpact = [...lines].sort((a, b) => b.impactMonthly - a.impactMonthly);
   const topLimit = Number.isFinite(topN) ? Math.max(0, roundInt(topN, 0)) : sortedByImpact.length;
-  const globallyVisibleIds = new Set(sortedByImpact.slice(0, topLimit).map((lineItem) => lineItem.id));
+  const globallyVisibleIds = new Set();
+  if (Number.isFinite(topN)) {
+    if (isQuickStage) {
+      const shippingAggregate = sortedByImpact.find((lineItem) => lineItem.id === quickShippingAggregateId);
+      if (shippingAggregate) {
+        globallyVisibleIds.add(quickShippingAggregateId);
+        const remaining = Math.max(0, topLimit - 1);
+        sortedByImpact
+          .filter((lineItem) => lineItem.id !== quickShippingAggregateId)
+          .slice(0, remaining)
+          .forEach((lineItem) => globallyVisibleIds.add(lineItem.id));
+      } else {
+        sortedByImpact.slice(0, topLimit).forEach((lineItem) => globallyVisibleIds.add(lineItem.id));
+      }
+    } else {
+      sortedByImpact.slice(0, topLimit).forEach((lineItem) => globallyVisibleIds.add(lineItem.id));
+    }
+  }
 
   return CHAIN_STAGE_ORDER.map((stageKey) => {
     const stageLines = lines
       .filter((lineItem) => lineItem.chainStageKey === stageKey)
       .sort((a, b) => b.impactMonthly - a.impactMonthly);
     const expandedKey = `${stage}:${stageKey}`;
-    const expanded = Boolean(state.ui.chainExpanded?.[expandedKey]);
+    const expanded = isQuickStage && stageKey === "shipping_to_3pl" ? false : Boolean(state.ui.chainExpanded?.[expandedKey]);
     const visibleLines = (!Number.isFinite(topN) || expanded)
       ? stageLines
       : stageLines.filter((lineItem) => globallyVisibleIds.has(lineItem.id));
@@ -7568,7 +8269,7 @@ function applyMouseoverHelp() {
     dom.stageQuickBtn.title = "Quick-Check: schnelle Entscheidung mit Top-10 Kostentreibern.";
   }
   if (dom.stageValidationBtn) {
-    dom.stageValidationBtn.title = "Validation: Top-15 Kostentreiber prüfen oder überschreiben.";
+    dom.stageValidationBtn.title = "Validation: Top-20 Kostentreiber prüfen oder überschreiben.";
   }
   if (dom.stageDeepBtn) {
     dom.stageDeepBtn.title = "Deep-Dive: Vollprüfung aller editierbaren kostentrelevanten Treiber.";
@@ -7791,6 +8492,22 @@ function bindEvents() {
     });
   }
 
+  if (dom.authLoginBtn) {
+    dom.authLoginBtn.addEventListener("click", async () => {
+      await handleAuthLogin();
+    });
+  }
+  if (dom.authRegisterBtn) {
+    dom.authRegisterBtn.addEventListener("click", async () => {
+      await handleAuthRegister();
+    });
+  }
+  if (dom.authLogoutBtn) {
+    dom.authLogoutBtn.addEventListener("click", async () => {
+      await handleAuthLogout();
+    });
+  }
+
   if (dom.costCategoryGrid) {
     dom.costCategoryGrid.addEventListener("click", (event) => {
       const target = event.target;
@@ -7977,31 +8694,65 @@ function bindEvents() {
   });
 }
 
-function init() {
-  loadSettings();
+function scrollToHashSectionIfPresent() {
+  if (!window.location.hash) {
+    return;
+  }
+  const target = document.querySelector(window.location.hash);
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const details = target.tagName.toLowerCase() === "details" ? target : target.closest("details");
+  if (details instanceof HTMLDetailsElement) {
+    details.open = true;
+  }
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderPageAfterLoad() {
   renderCategoryDefaultsAdmin();
-  bindEvents();
+  setStorageModeLabel();
+  setSessionInfoText();
 
   if (APP_PAGE === "settings") {
     renderSettingsInputs();
     applyMouseoverHelp();
-    if (window.location.hash) {
-      const target = document.querySelector(window.location.hash);
-      if (target instanceof HTMLElement) {
-        const details = target.tagName.toLowerCase() === "details" ? target : target.closest("details");
-        if (details instanceof HTMLDetailsElement) {
-          details.open = true;
-        }
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+    scrollToHashSectionIfPresent();
+    return;
+  }
+
+  renderFxStatus();
+  renderAll();
+}
+
+async function init() {
+  bindEvents();
+
+  await bootstrapCollaborationSession();
+  setStorageModeLabel();
+  setSessionInfoText();
+
+  if (state.session.requiresAuth && (!state.session.isAuthenticated || !state.session.hasWorkspaceAccess)) {
+    if (!state.session.isAuthenticated) {
+      setAuthStatus("Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+      setAppLockedState({ showAuth: true, showNoAccess: false });
+    } else {
+      setAppLockedState({ showAuth: false, showNoAccess: true });
     }
     return;
   }
 
-  loadProducts();
-  renderFxStatus();
-  renderAll();
+  setAppLockedState({ showAuth: false, showNoAccess: false });
+  renderPageAfterLoad();
   refreshFxRate();
 }
 
-init();
+init().catch((error) => {
+  console.error("App init failed", error);
+  setAuthStatus("Initialisierung fehlgeschlagen. Fallback auf lokale Daten.", true);
+  setAppLockedState({ showAuth: false, showNoAccess: false });
+  loadSettingsLocal();
+  loadProductsLocal();
+  selectFirstProductIfNeeded();
+  renderPageAfterLoad();
+});

@@ -26,6 +26,8 @@
             <p id="fxStatus" class="fx-status">USD→EUR Kurs: wird geladen ...</p>
             <button id="refreshFxBtn" type="button" class="btn btn-ghost">Kurs aktualisieren</button>
             <a href="settings.html" class="btn btn-ghost settings-link">Zu Settings</a>
+            <button id="authLogoutBtn" type="button" class="btn btn-ghost hidden">Abmelden</button>
+            <span id="sessionInfo" class="hint hidden"></span>
           </div>
         </div>
         <div class="meta-grid">
@@ -39,12 +41,37 @@
           </article>
           <article>
             <span>Speicher</span>
-            <strong>lokal</strong>
+            <strong id="storageModeLabel">lokal</strong>
           </article>
         </div>
       </header>
 
-      <section class="layout">
+      <section id="authPanel" class="card auth-card hidden">
+        <h2>Login erforderlich</h2>
+        <p class="hint">Melde dich an, um den gemeinsamen Workspace mit deinem Kollegen zu nutzen.</p>
+        <div class="grid cols-2">
+          <label>
+            E-Mail
+            <input id="authEmail" type="email" placeholder="du@firma.de" autocomplete="username" />
+          </label>
+          <label>
+            Passwort
+            <input id="authPassword" type="password" placeholder="••••••••" autocomplete="current-password" />
+          </label>
+        </div>
+        <div class="auth-actions">
+          <button id="authLoginBtn" type="button" class="btn btn-primary">Anmelden</button>
+          <button id="authRegisterBtn" type="button" class="btn btn-ghost">Registrieren</button>
+        </div>
+        <p id="authStatus" class="stage-status">-</p>
+      </section>
+
+      <section id="noAccessPanel" class="card auth-card hidden">
+        <h2>Kein Zugriff auf Workspace</h2>
+        <p class="hint">Dein Account ist noch keinem Workspace zugeordnet. Bitte füge dich in `workspace_members` hinzu.</p>
+      </section>
+
+      <section id="appContent" class="layout">
         <aside class="card sidebar">
           <div class="sidebar-head">
             <h2>Produkte</h2>
@@ -118,24 +145,8 @@
             <section id="quickStagePanel" class="card stage-impact">
               <h3>Quick-Check Fokus</h3>
               <p class="hint">
-                Nur Pflichtfelder eingeben. In der Lieferkette werden automatisch die Top-10 Kostentreiber angezeigt; pro Stufe kannst du weitere Kosten aufklappen.
+                Nur Pflichtfelder eingeben. In der Lieferkette werden automatisch die Top-10 Kostentreiber angezeigt. Shipping zu 3PL erscheint hier als ein aggregierter Block (ohne Vor-/Haupt-/Nachlauf-Details).
               </p>
-            </section>
-            <section id="validationReviewPanel" class="card review-panel hidden">
-              <h3>Validation: Top-15 Treiber prüfen</h3>
-              <p class="hint">
-                Nach Lieferkette gruppiert: Top-15 Treiber prüfen, überschreiben oder wieder auf ungeprüft setzen.
-              </p>
-              <p id="validationReviewStatus" class="stage-status">0/15 geprüft</p>
-              <div id="validationReviewList" class="review-list"></div>
-            </section>
-            <section id="deepDiveReviewPanel" class="card review-panel hidden">
-              <h3>Deep-Dive: Vollprüfung aller Treiber</h3>
-              <p class="hint">
-                Vollprüfung nach Lieferkette: alle editierbaren Treiber prüfen, überschreiben oder zurücksetzen.
-              </p>
-              <p id="deepDiveReviewStatus" class="stage-status">0/0 geprüft</p>
-              <div id="deepDiveReviewList" class="review-list"></div>
             </section>
 
             <form id="basicForm" class="form-grid">
@@ -637,6 +648,22 @@
               </div>
             </div>
           </section>
+          <section id="validationReviewPanel" class="card review-panel hidden">
+            <h3>Validation: Top-20 Treiber prüfen</h3>
+            <p class="hint">
+              Nach Lieferkette gruppiert: Top-20 Treiber prüfen, überschreiben oder wieder auf ungeprüft setzen.
+            </p>
+            <p id="validationReviewStatus" class="stage-status">0/20 geprüft</p>
+            <div id="validationReviewList" class="review-list"></div>
+          </section>
+          <section id="deepDiveReviewPanel" class="card review-panel hidden">
+            <h3>Deep-Dive: Vollprüfung aller Treiber</h3>
+            <p class="hint">
+              Vollprüfung nach Lieferkette: alle editierbaren Treiber prüfen, überschreiben oder zurücksetzen.
+            </p>
+            <p id="deepDiveReviewStatus" class="stage-status">0/0 geprüft</p>
+            <div id="deepDiveReviewList" class="review-list"></div>
+          </section>
           </div>
         </section>
       </section>
@@ -725,6 +752,7 @@
       </li>
     </template>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
 </html>
