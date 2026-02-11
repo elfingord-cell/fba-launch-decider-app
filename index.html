@@ -104,14 +104,30 @@
               <div class="stage-gate">
                 <p id="stageHint" class="hint">Quick-Check: Ballpark-Marge prüfen.</p>
                 <p id="stageGateStatus" class="stage-status">Status: -</p>
+                <p id="stageWarning" class="hint hidden">-</p>
               </div>
             </section>
-            <section id="stageImpactPanel" class="card stage-impact">
-              <h3>Wichtigste Kostentreiber in dieser Stufe</h3>
+            <section id="quickStagePanel" class="card stage-impact">
+              <h3>Quick-Check Fokus</h3>
               <p class="hint">
-                Klick auf einen Wert öffnet eine Maske mit exakt den relevanten Inputs/Annahmen und optionalem Override.
+                Nur Pflichtfelder eingeben. Die App zeigt Kategorie-Summen und Kosten entlang der Kette; Einzelposten kannst du bei Bedarf pro Kategorie aufklappen.
               </p>
-              <ul id="stageImpactList" class="calc-list"></ul>
+            </section>
+            <section id="validationReviewPanel" class="card review-panel hidden">
+              <h3>Validation: Top-8 Treiber prüfen</h3>
+              <p class="hint">
+                Markiere jeden Treiber als geprüft oder öffne ihn zum Überschreiben.
+              </p>
+              <p id="validationReviewStatus" class="stage-status">0/8 geprüft</p>
+              <ul id="validationReviewList" class="calc-list review-list"></ul>
+            </section>
+            <section id="deepDiveReviewPanel" class="card review-panel hidden">
+              <h3>Deep-Dive: Vollprüfung aller Treiber</h3>
+              <p class="hint">
+                Prüfe oder überschreibe alle editierbaren kostenrelevanten Treiber.
+              </p>
+              <p id="deepDiveReviewStatus" class="stage-status">0/0 geprüft</p>
+              <ul id="deepDiveReviewList" class="calc-list review-list"></ul>
             </section>
 
             <form id="basicForm" class="form-grid">
@@ -368,24 +384,6 @@
                     <input data-path="assumptions.import.overrideCustomsDutyRate" type="checkbox" />
                     <input data-path="assumptions.import.customsDutyRate" type="number" min="0" max="40" step="0.1" />
                   </div>
-                </label>
-                <label class="override-row">
-                  <span>
-                    Einfuhrumsatzsteuer %
-                    <small data-assumed="import.importVatRate"></small>
-                  </span>
-                  <div>
-                    <input data-path="assumptions.import.overrideImportVatRate" type="checkbox" />
-                    <input data-path="assumptions.import.importVatRate" type="number" min="0" max="30" step="0.1" />
-                  </div>
-                </label>
-                <label class="toggle-row">
-                  <input data-path="assumptions.import.includeImportVatAsCost" type="checkbox" />
-                  <span>EUSt als Kosten einpreisen</span>
-                </label>
-                <label class="toggle-row">
-                  <input data-path="assumptions.import.includeImportVatInCashRoi" type="checkbox" />
-                  <span>EUSt-Vorfinanzierung in Cash-ROI berücksichtigen</span>
                 </label>
                 <label class="override-row">
                   <span>

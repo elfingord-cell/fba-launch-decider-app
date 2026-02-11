@@ -100,7 +100,7 @@ const GLOBAL_DEFAULTS = {
   launchBoostMonths: 3,
   leakageRatePct: 3,
   returnHandlingCost: 1.1,
-  importCustomsDutyRate: 4.7,
+  importCustomsDutyRate: 6.5,
   importVatRate: 19,
 };
 
@@ -137,6 +137,7 @@ const RAIL_SHIPPING_V3_DEFAULTS = {
 const DEFAULT_SETTINGS = {
   tax: {
     fallbackUsdToEur: DEFAULT_USD_TO_EUR,
+    customsDutyRatePct: GLOBAL_DEFAULTS.importCustomsDutyRate,
     vatRates: {
       DE: MARKETPLACE_VAT.DE,
       FR: MARKETPLACE_VAT.FR,
@@ -359,9 +360,9 @@ const FIELD_HELP = {
   "assumptions.leakage.ratePct": "Pauschale vergessene Kosten als % vom Netto-Umsatz (Leakage-Block).",
 
   "assumptions.import.customsDutyRate": "Zollsatz in % auf Warenwert + Shipping bis Import.",
-  "assumptions.import.importVatRate": "Einfuhrumsatzsteuer in %.",
-  "assumptions.import.includeImportVatAsCost": "Wenn aktiv, wird EUSt direkt als Kostenblock berücksichtigt.",
-  "assumptions.import.includeImportVatInCashRoi": "Wenn aktiv, wird EUSt-Vorfinanzierung im Cash-ROI als gebundenes Kapital erfasst.",
+  "assumptions.import.importVatRate": "Legacy-Feld (EUSt wird im Modell nicht als Kosten oder Cash-ROI-Faktor verwendet).",
+  "assumptions.import.includeImportVatAsCost": "Legacy-Feld ohne Wirkung im aktuellen Modell.",
+  "assumptions.import.includeImportVatInCashRoi": "Legacy-Feld ohne Wirkung im aktuellen Modell.",
 
   "assumptions.amazon.referralRate": "Amazon Empfehlungsgebühr in % vom Brutto-Verkaufspreis.",
   "assumptions.amazon.useManualFbaFee": "Aktiviert eine manuelle FBA-Gebühr statt Auto-Tier-Erkennung.",
@@ -417,6 +418,7 @@ const FIELD_HELP = {
 
 const SETTINGS_HELP = {
   "tax.fallbackUsdToEur": "Fallback-Umrechnungskurs USD->EUR, falls kein Livekurs verfügbar ist.",
+  "tax.customsDutyRatePct": "Globaler Standard-Zollsatz in %, angewendet auf Warenwert (EUR) + Shipping D2D (EUR).",
   "tax.vatRates.DE": "MwSt-Satz für Marketplace DE in Prozent.",
   "tax.vatRates.FR": "MwSt-Satz für Marketplace FR in Prozent.",
   "tax.vatRates.IT": "MwSt-Satz für Marketplace IT in Prozent.",
@@ -542,6 +544,7 @@ const SETTINGS_HELP = {
 
 const PATH_LABEL_OVERRIDES = {
   "settings.tax.fallbackUsdToEur": "Fallback USD -> EUR",
+  "settings.tax.customsDutyRatePct": "Standard Zollsatz (%)",
   "settings.shipping12m.modes.sea_lcl.rateEurPerCbm": "Sea LCL Rate (EUR/CBM, 12M-Ø)",
   "settings.shipping12m.modes.sea_lcl.originFixedEurPerShipment": "Sea LCL Vorlauf fix (EUR/Shipment)",
   "settings.shipping12m.modes.sea_lcl.destinationFixedEurPerShipment": "Sea LCL Hauptlauf fix (EUR/Shipment)",
@@ -608,7 +611,7 @@ const KPI_HELP = {
     "Sellerboard-Marge % = (Gewinn vor Overhead / Brutto-Umsatz) × 100. Overhead = produktunabhängige Fixkosten.",
   kpiNetMargin: "Netto-Marge % = Gewinn netto / Netto-Umsatz × 100. Zielbereich: > 20%.",
   kpiShippingUnit: "Door-to-door Shipping je Unit als 12-Monats-Durchschnitt (ein Richtwert).",
-  kpiLandedUnit: "Landed je Unit = EXW(EUR) + Shipping + Zoll (+ optional EUSt als Kosten).",
+  kpiLandedUnit: "Landed je Unit = EXW(EUR) + Shipping + Zoll.",
   kpiDb1Unit: "DB1/Stück = Nettoverkaufspreis - Unit Economics je Stück (Landed, Amazon, Ads, Retouren).",
   kpiDb1Margin: "DB1-Marge % = DB1/Stück / Nettoverkaufspreis × 100.",
   kpiNetMarginBeforePpc: "Nettomarge vor PPC % = (Gewinn netto/Monat + Ads/Monat) / Netto-Umsatz/Monat × 100.",
@@ -619,7 +622,7 @@ const KPI_HELP = {
   kpiBreakEvenPrice: "Break-even Preis brutto: Preis, bei dem Gewinn netto/Monat = 0.",
   kpiMaxTacos: "Max TACoS: höchste Ads-Quote, bei der die Ziel-Nettomarge gerade noch erreicht wird.",
   kpiProductRoi: "Produkt-ROI = Gewinn im Zeitraum / (Landed Kapital + Launch-Budget) × 100.",
-  kpiCashRoi: "Cash-ROI = Gewinn im Zeitraum / (Produktkapital + Launch + optionale EUSt-Vorfinanzierung) × 100.",
+  kpiCashRoi: "Cash-ROI = Gewinn im Zeitraum / (Produktkapital + Launch) × 100.",
   kpiPayback: "Payback (Monate) = initial gebundenes Kapital / Gewinn netto pro Monat.",
 };
 
@@ -634,7 +637,7 @@ const TABLE_HEADER_HELP = [
   "DB1-Marge in % vom Nettoverkaufspreis.",
   "Gewinn netto pro Monat in EUR nach allen 3 Kostenblöcken.",
   "Produkt-ROI in % auf Waren- und Launch-Kapital.",
-  "Cash-ROI in % inkl. optionaler EUSt-Vorfinanzierung.",
+  "Cash-ROI in % auf gebundenes Produkt- und Launch-Kapital.",
   "Payback-Zeit bis Kapitalrückfluss in Monaten.",
   "Brutto-Preis, bei dem Gewinn netto = 0.",
   "Maximal mögliche TACoS-Quote für die Zielmarge.",
@@ -665,7 +668,7 @@ const TERM_HELP_BY_TEXT = [
   },
   {
     match: "Cash-ROI",
-    text: "Cash-ROI berücksichtigt optional auch gebundenes Kapital aus EUSt-Vorfinanzierung.",
+    text: "Cash-ROI setzt Gewinn ins Verhältnis zu gebundenem Produkt- und Launch-Kapital.",
   },
   {
     match: "Payback",
@@ -904,7 +907,14 @@ const dom = {
   stageDeepBtn: document.getElementById("stageDeepBtn"),
   stageHint: document.getElementById("stageHint"),
   stageGateStatus: document.getElementById("stageGateStatus"),
-  stageImpactList: document.getElementById("stageImpactList"),
+  stageWarning: document.getElementById("stageWarning"),
+  quickStagePanel: document.getElementById("quickStagePanel"),
+  validationReviewPanel: document.getElementById("validationReviewPanel"),
+  validationReviewStatus: document.getElementById("validationReviewStatus"),
+  validationReviewList: document.getElementById("validationReviewList"),
+  deepDiveReviewPanel: document.getElementById("deepDiveReviewPanel"),
+  deepDiveReviewStatus: document.getElementById("deepDiveReviewStatus"),
+  deepDiveReviewList: document.getElementById("deepDiveReviewList"),
   advancedToggleWrap: document.getElementById("advancedToggleWrap"),
   advancedToggle: document.getElementById("advancedToggle"),
   advancedPanel: document.getElementById("advancedPanel"),
@@ -1097,15 +1107,7 @@ function shippingModeDriverPaths(mode) {
     "settings.shipping12m.insurance.basis",
     "settings.shipping12m.insurance.ratePct",
   ];
-
-  return categories.map((category) => {
-    const totalMonthly = category.lines.reduce((sum, lineItem) => sum + num(lineItem.impactMonthly, 0), 0);
-    return {
-      ...category,
-      totalMonthly,
-      totalPerUnit: totalMonthly / monthlyUnits,
-    };
-  });
+  return categories;
 }
 
 function shippingOriginDriverPaths(mode) {
@@ -1143,7 +1145,7 @@ function shippingManualSurchargeDriverPaths(mode) {
 }
 
 function cartonizationSettingsPaths() {
-  const categories = [
+  return [
     "settings.cartonRules.estimationMode",
     "settings.cartonRules.maxLengthCm",
     "settings.cartonRules.maxWidthCm",
@@ -1247,6 +1249,10 @@ function defaultProduct(index = 1) {
     name: `Produkt ${index}`,
     workflow: {
       stage: "quick",
+      review: {
+        validation: {},
+        deep_dive: {},
+      },
       deepDive: {
         supplierValidated: false,
         complianceChecked: false,
@@ -1418,6 +1424,7 @@ function ensureTaxSettings(rawTax) {
   const source = rawTax && typeof rawTax === "object" ? rawTax : {};
   return {
     fallbackUsdToEur: clamp(num(source.fallbackUsdToEur, DEFAULT_USD_TO_EUR), 0.2, 2),
+    customsDutyRatePct: clamp(num(source.customsDutyRatePct, GLOBAL_DEFAULTS.importCustomsDutyRate), 0, 40),
     vatRates: {
       DE: clamp(num(source?.vatRates?.DE, MARKETPLACE_VAT.DE), 0, 30),
       FR: clamp(num(source?.vatRates?.FR, MARKETPLACE_VAT.FR), 0, 30),
@@ -1627,6 +1634,7 @@ function sanitizeSettings(settings) {
   settings.shipping12m = ensureShipping12mSettings(settings.shipping12m);
 
   settings.tax.fallbackUsdToEur = clamp(num(settings.tax.fallbackUsdToEur, DEFAULT_USD_TO_EUR), 0.2, 2);
+  settings.tax.customsDutyRatePct = clamp(num(settings.tax.customsDutyRatePct, GLOBAL_DEFAULTS.importCustomsDutyRate), 0, 40);
   settings.tax.vatRates.DE = clamp(num(settings.tax.vatRates.DE, MARKETPLACE_VAT.DE), 0, 30);
   settings.tax.vatRates.FR = clamp(num(settings.tax.vatRates.FR, MARKETPLACE_VAT.FR), 0, 30);
   settings.tax.vatRates.IT = clamp(num(settings.tax.vatRates.IT, MARKETPLACE_VAT.IT), 0, 30);
@@ -1808,6 +1816,18 @@ function migrateProduct(raw, index) {
     workflow: {
       ...base.workflow,
       ...(raw.workflow ?? {}),
+      review: {
+        ...(base.workflow.review ?? {}),
+        ...(raw.workflow?.review ?? {}),
+        validation: {
+          ...((base.workflow.review ?? {}).validation ?? {}),
+          ...((raw.workflow?.review ?? {}).validation ?? {}),
+        },
+        deep_dive: {
+          ...((base.workflow.review ?? {}).deep_dive ?? {}),
+          ...((raw.workflow?.review ?? {}).deep_dive ?? {}),
+        },
+      },
       deepDive: { ...base.workflow.deepDive, ...(raw.workflow?.deepDive ?? {}) },
     },
     basic: {
@@ -1884,6 +1904,46 @@ function migrateProduct(raw, index) {
   if (!WORKFLOW_STAGES.includes(merged.workflow.stage)) {
     merged.workflow.stage = "quick";
   }
+  if (!merged.workflow.review || typeof merged.workflow.review !== "object") {
+    merged.workflow.review = { validation: {}, deep_dive: {} };
+  }
+  if (!merged.workflow.review.validation || typeof merged.workflow.review.validation !== "object") {
+    merged.workflow.review.validation = {};
+  }
+  if (!merged.workflow.review.deep_dive || typeof merged.workflow.review.deep_dive !== "object") {
+    merged.workflow.review.deep_dive = {};
+  }
+  const normalizeReviewBucket = (bucket) => {
+    if (Array.isArray(bucket)) {
+      return bucket.reduce((acc, entry) => {
+        if (!entry || typeof entry !== "object" || !entry.targetId) {
+          return acc;
+        }
+        acc[entry.targetId] = {
+          targetId: String(entry.targetId),
+          status: ["pending", "checked", "overridden"].includes(entry.status) ? entry.status : "pending",
+          lastValue: num(entry.lastValue, 0),
+          updatedAt: entry.updatedAt ?? null,
+        };
+        return acc;
+      }, {});
+    }
+    if (!bucket || typeof bucket !== "object") {
+      return {};
+    }
+    return Object.entries(bucket).reduce((acc, [key, entry]) => {
+      const targetId = String(entry?.targetId ?? key);
+      acc[targetId] = {
+        targetId,
+        status: ["pending", "checked", "overridden"].includes(entry?.status) ? entry.status : "pending",
+        lastValue: num(entry?.lastValue, 0),
+        updatedAt: entry?.updatedAt ?? null,
+      };
+      return acc;
+    }, {});
+  };
+  merged.workflow.review.validation = normalizeReviewBucket(merged.workflow.review.validation);
+  merged.workflow.review.deep_dive = normalizeReviewBucket(merged.workflow.review.deep_dive);
 
   return merged;
 }
@@ -2699,7 +2759,7 @@ function resolveAssumptions(product, settings = state.settings) {
   const defaultReturnHandling = GLOBAL_DEFAULTS.returnHandlingCost;
 
   const defaultLeakage = clamp(num(costDefaults.leakageRatePct, GLOBAL_DEFAULTS.leakageRatePct), 0, 20);
-  const defaultCustomsRate = clamp(GLOBAL_DEFAULTS.importCustomsDutyRate, 0, 40);
+  const defaultCustomsRate = clamp(num(settings.tax?.customsDutyRatePct, GLOBAL_DEFAULTS.importCustomsDutyRate), 0, 40);
   const defaultImportVatRate = clamp(GLOBAL_DEFAULTS.importVatRate, 0, 30);
   const defaultReferralRate = clamp(category.referralRate, 0, 25);
   const defaultTargetMargin = clamp(category.targetMarginPct, 0, 50);
@@ -3165,72 +3225,229 @@ function getProductStage(product) {
   return "quick";
 }
 
+function isEditableDriverPath(path) {
+  return typeof path === "string" && (path.startsWith("basic.") || path.startsWith("assumptions.") || path.startsWith("settings."));
+}
+
+function hasEditableDriverPath(driverPaths) {
+  if (!Array.isArray(driverPaths) || driverPaths.length === 0) {
+    return false;
+  }
+  return driverPaths.some((path) => isEditableDriverPath(path));
+}
+
+function ensureReviewStore(product) {
+  if (!product.workflow || typeof product.workflow !== "object") {
+    product.workflow = {};
+  }
+  if (!product.workflow.review || typeof product.workflow.review !== "object") {
+    product.workflow.review = { validation: {}, deep_dive: {} };
+  }
+  if (!product.workflow.review.validation || typeof product.workflow.review.validation !== "object") {
+    product.workflow.review.validation = {};
+  }
+  if (!product.workflow.review.deep_dive || typeof product.workflow.review.deep_dive !== "object") {
+    product.workflow.review.deep_dive = {};
+  }
+  return product.workflow.review;
+}
+
+function getStageReviewStore(product, stage) {
+  const review = ensureReviewStore(product);
+  return stage === "deep_dive" ? review.deep_dive : review.validation;
+}
+
+function buildReviewTargets(metrics, stage) {
+  const categories = buildCostCategoryData(metrics);
+  const candidates = [];
+
+  categories.forEach((category) => {
+    category.lines.forEach((line) => {
+      if (!line || !line.reviewEligible || line.isSummary) {
+        return;
+      }
+      const editablePaths = (line.driverPaths ?? []).filter((path) => isEditableDriverPath(path));
+      if (editablePaths.length === 0) {
+        return;
+      }
+      candidates.push({
+        targetId: line.id,
+        categoryKey: category.key,
+        categoryTitle: category.title,
+        label: line.label,
+        valueRaw: num(line.valueRaw, 0),
+        value: line.value,
+        impactMonthly: Math.max(0, num(line.impactMonthly, 0)),
+        explain: line.explain ?? "",
+        formula: line.formula ?? "",
+        source: line.source ?? "",
+        robustness: line.robustness ?? "",
+        driverPaths: editablePaths,
+      });
+    });
+  });
+
+  candidates.sort((a, b) => b.impactMonthly - a.impactMonthly);
+  if (stage === "validation") {
+    return candidates.slice(0, 8);
+  }
+  return candidates;
+}
+
+function isReviewStale(savedValue, currentValue, tolerance = 0.01) {
+  if (!Number.isFinite(num(savedValue, NaN)) || !Number.isFinite(num(currentValue, NaN))) {
+    return true;
+  }
+  return Math.abs(num(savedValue, 0) - num(currentValue, 0)) > tolerance;
+}
+
+function getReviewProgress(product, metrics, stage) {
+  const targets = buildReviewTargets(metrics, stage);
+  const store = getStageReviewStore(product, stage);
+
+  let completed = 0;
+  const items = targets.map((target) => {
+    const saved = store[target.targetId];
+    let status = saved?.status ?? "pending";
+    if (status !== "pending" && isReviewStale(saved?.lastValue, target.valueRaw)) {
+      status = "pending";
+    }
+    const done = status === "checked" || status === "overridden";
+    if (done) {
+      completed += 1;
+    }
+    return {
+      ...target,
+      status,
+      updatedAt: saved?.updatedAt ?? null,
+      lastValue: saved?.lastValue ?? null,
+    };
+  });
+
+  return {
+    stage,
+    total: items.length,
+    completed,
+    isReady: items.length > 0 && completed >= items.length,
+    items,
+  };
+}
+
+function setReviewStatus(product, stage, targetId, status, lastValue) {
+  const store = getStageReviewStore(product, stage);
+  store[targetId] = {
+    targetId,
+    status,
+    lastValue: num(lastValue, 0),
+    updatedAt: new Date().toISOString(),
+  };
+  saveProducts();
+}
+
+function markReviewChecked(product, stage, targetId, lastValue) {
+  setReviewStatus(product, stage, targetId, "checked", lastValue);
+}
+
+function markReviewOverridden(product, stage, targetId, lastValue) {
+  setReviewStatus(product, stage, targetId, "overridden", lastValue);
+}
+
+function findReviewTarget(product, stage, targetId) {
+  const metrics = calculateProduct(product);
+  const targets = buildReviewTargets(metrics, stage);
+  return targets.find((target) => target.targetId === targetId) ?? null;
+}
+
+function markReviewOverriddenFromModal(product) {
+  const context = state.ui.driverModal;
+  if (!context?.reviewStage || !context?.reviewTargetId) {
+    return;
+  }
+  const metrics = calculateProduct(product);
+  const targets = buildReviewTargets(metrics, context.reviewStage);
+  const target = targets.find((item) => item.targetId === context.reviewTargetId);
+  if (!target) {
+    return;
+  }
+  markReviewOverridden(product, context.reviewStage, context.reviewTargetId, target.valueRaw);
+}
+
 function buildStageState(product, metrics) {
   const stage = getProductStage(product);
   const deepDive = product.workflow?.deepDive ?? {};
-
-  const quickPass = metrics.netMarginPct > 20 && metrics.db1Unit > 0;
-  const validationPass =
-    quickPass &&
-    metrics.sensitivity.worst.profitMonthly > 0 &&
-    metrics.paybackMonths !== null &&
-    metrics.paybackMonths <= 8;
+  const validationReview = getReviewProgress(product, metrics, "validation");
+  const deepDiveReview = getReviewProgress(product, metrics, "deep_dive");
   const deepChecklistPass =
     Boolean(deepDive.supplierValidated) &&
     Boolean(deepDive.complianceChecked) &&
     Boolean(deepDive.sampleDecisionReady);
-  const deepPass = validationPass && deepChecklistPass;
+
+  const quickReady = metrics.priceGrossTarget > 0 && metrics.monthlyUnits > 0;
+  const validationReady = validationReview.isReady;
+  const deepReady = deepDiveReview.isReady;
 
   const readinessByStage = {
-    quick: quickPass,
-    validation: validationPass,
-    deep_dive: deepPass,
+    quick: quickReady,
+    validation: validationReady,
+    deep_dive: deepReady,
   };
 
   const hintByStage = {
     quick:
-      "Quick-Check: Ballpark-Marge und Unit-Economics prüfen (Netto-Marge > 20%, DB1 > 0 als Leitwert).",
+      "Quick-Check: nur Pflichtinputs erfassen. Ergebnis zuerst auf Kategorie-Summen und Kette lesen; Einzelposten nur bei Bedarf aufklappen.",
     validation:
-      "Validation: kritische Annahmen validieren (Worst-Case > 0, Payback <= 8 Monate als Leitwert).",
+      "Validation: die Top-8 Kostentreiber einzeln prüfen. Jeder Treiber muss bestätigt oder überschrieben werden.",
     deep_dive:
-      "Deep-Dive: finale Risikoprüfung und Sample-Entscheidung.",
+      "Deep-Dive: Vollprüfung aller editierbaren kostentrelevanten Treiber plus finale Deep-Dive-Checklist.",
   };
 
-  let statusClass = "warn";
+  const statusClass = readinessByStage[stage] ? "pass" : (stage === "quick" ? "fail" : "warn");
   let statusText = "Status: in Prüfung";
-  if (readinessByStage[stage]) {
-    statusClass = "pass";
-    statusText = `Status: ${STAGE_LABELS[stage]} bereit`;
-  } else if (stage === "quick") {
-    statusClass = "fail";
-    statusText = "Status: Quick-Check offen";
-  } else {
-    statusClass = "warn";
-    statusText = `Status: ${STAGE_LABELS[stage]} offen`;
+  if (stage === "quick") {
+    statusText = readinessByStage.quick ? "Status: Quick-Check bereit" : "Status: Quick-Check unvollständig";
+  } else if (stage === "validation") {
+    statusText = validationReady
+      ? `Status: Validation bereit (${validationReview.completed}/${validationReview.total})`
+      : `Status: Validation ${validationReview.completed}/${validationReview.total} erledigt`;
+  } else if (stage === "deep_dive") {
+    statusText = deepReady
+      ? `Status: Deep-Dive bereit (${deepDiveReview.completed}/${deepDiveReview.total})`
+      : `Status: Deep-Dive ${deepDiveReview.completed}/${deepDiveReview.total} erledigt`;
   }
 
   const blockers = [];
-  if (!quickPass) {
-    blockers.push("Quick-Check offen: Netto-Marge > 20% und DB1 > 0 noch nicht erreicht.");
+  if (stage === "validation" && !validationReady) {
+    blockers.push(`Validation offen: ${validationReview.completed}/${validationReview.total} Top-Treiber erledigt.`);
   }
-  if (stage !== "quick" && !validationPass) {
-    blockers.push("Validation offen: Worst-Case oder Payback-Leitwert ist noch kritisch.");
+  if (stage === "deep_dive" && !deepReady) {
+    blockers.push(`Deep-Dive offen: ${deepDiveReview.completed}/${deepDiveReview.total} Treiber erledigt.`);
   }
-  if (stage === "deep_dive" && !deepChecklistPass) {
-    blockers.push("Deep-Dive Checklist unvollständig.");
+
+  const kpiWarnings = [];
+  if (!(metrics.netMarginPct > 20 && metrics.db1Unit > 0)) {
+    kpiWarnings.push("KPI-Warnung: Netto-Marge <= 20% oder DB1 <= 0.");
+  }
+  if (metrics.sensitivity?.worst?.profitMonthly <= 0) {
+    kpiWarnings.push("KPI-Warnung: Worst-Case Gewinn <= 0.");
+  }
+  if (metrics.paybackMonths === null || metrics.paybackMonths > 8) {
+    kpiWarnings.push("KPI-Warnung: Payback > 8 Monate oder nicht erreichbar.");
   }
 
   return {
     stage,
-    quickPass,
-    validationPass,
-    deepPass,
+    quickPass: quickReady,
+    validationPass: validationReady,
+    deepPass: deepReady,
     deepChecklistPass,
     readinessByStage,
     hint: hintByStage[stage],
     statusClass,
     statusText,
     blockers,
+    kpiWarnings,
+    validationReview,
+    deepDiveReview,
   };
 }
 
@@ -3292,10 +3509,11 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     amazonStoragePerUnit;
 
   const landedBeforeDuty = exwUnit + shippingUnit + packagingUnit + logisticsExtraUnit;
-  const customsUnit = landedBeforeDuty * (resolved.customsDutyRate / 100);
-  const importVatUnit = (landedBeforeDuty + customsUnit) * (resolved.importVatRate / 100);
+  const customsBaseUnit = exwUnit + shippingUnit;
+  const customsUnit = customsBaseUnit * (resolved.customsDutyRate / 100);
+  const importVatUnit = 0;
 
-  const landedUnit = landedBeforeDuty + customsUnit + (resolved.includeImportVatAsCost ? importVatUnit : 0);
+  const landedUnit = landedBeforeDuty + customsUnit;
 
   const fba = estimateFbaFee(product, resolved);
 
@@ -3358,7 +3576,7 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const returnsMonthly = returnsUnit * monthlyUnits;
   const referralMonthly = referralFeeUnit * monthlyUnits;
   const customsMonthly = customsUnit * monthlyUnits;
-  const importVatCostMonthly = resolved.includeImportVatAsCost ? importVatUnit * monthlyUnits : 0;
+  const importVatCostMonthly = 0;
 
   const launchAdsBaseUnit = priceNet * (tacosRate / 100);
   const launchAdsIncrementMonthly = Math.max(0, (adsUnit - launchAdsBaseUnit) * monthlyUnits);
@@ -3396,8 +3614,8 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const investedCapital = landedUnit * unitsHorizon + launchBudget + listingPackageCost + setupOneOffTotal;
   const productRoiPct = investedCapital > 0 ? (profitHorizon / investedCapital) * 100 : 0;
 
-  const importVatPrefinance = resolved.includeImportVatInCashRoi ? importVatUnit * unitsHorizon : 0;
-  const cashCapital = investedCapital + importVatPrefinance;
+  const importVatPrefinance = 0;
+  const cashCapital = investedCapital;
   const cashRoiPct = cashCapital > 0 ? (profitHorizon / cashCapital) * 100 : 0;
 
   const paybackBase = launchBudget + listingPackageCost + setupOneOffTotal + landedUnit * monthlyUnits;
@@ -4609,11 +4827,11 @@ function buildStageImpactItems(metrics, stage) {
       label: "Zoll / Monat",
       value: formatCurrency(metrics.customsMonthly),
       impactMonthly: metrics.customsMonthly,
-      explain: "Zoll auf importierten Warenwert (inkl. Shippinganteile im Landed-Teil).",
-      formula: "Zoll/Unit = Zollsatz × Landed before duty; danach × Monatsabsatz.",
-      source: "Default China->DE (oder Override) + Landed-Basis.",
+      explain: "Zoll auf Warenwert plus Shipping D2D.",
+      formula: "Zoll/Unit = Zollsatz × (Warenwert EUR + Shipping D2D/Unit); danach × Monatsabsatz.",
+      source: "Globaler Zollsatz aus Settings (oder Produkt-Override).",
       robustness: "Hoch (tariflich vorgegeben).",
-      driverPaths: ["assumptions.import.customsDutyRate", "basic.exwUnit", "basic.unitsPerOrder"],
+      driverPaths: ["assumptions.import.customsDutyRate", "settings.tax.customsDutyRatePct", "basic.exwUnit", "basic.unitsPerOrder"],
     },
     {
       label: "Leakage / Monat",
@@ -4653,6 +4871,8 @@ function openDriverModal(payload) {
     source: payload.source ?? "",
     robustness: payload.robustness ?? "",
     driverPaths: paths,
+    reviewStage: payload.reviewStage ?? null,
+    reviewTargetId: payload.reviewTargetId ?? null,
   };
   applyDriverFocus(paths, state.ui.driverModal.title);
   renderDriverModal();
@@ -5056,6 +5276,7 @@ function renderDriverModal() {
         }
         setByPath(selected.assumptions.localSettingOverrides, settingsPath, nextValue);
         saveProducts();
+        markReviewOverriddenFromModal(selected);
         refreshAfterModalInput();
       });
       actions.appendChild(saveProductBtn);
@@ -5076,6 +5297,7 @@ function renderDriverModal() {
           return;
         }
         updateSettingsField(settingsPath, nextValue);
+        markReviewOverriddenFromModal(selected);
         refreshAfterModalInput();
       });
       actions.appendChild(saveGlobalBtn);
@@ -5088,6 +5310,7 @@ function renderDriverModal() {
         clearBtn.addEventListener("click", () => {
           unsetByPath(selected.assumptions.localSettingOverrides, settingsPath);
           saveProducts();
+          markReviewOverriddenFromModal(selected);
           refreshAfterModalInput();
         });
         actions.appendChild(clearBtn);
@@ -5124,6 +5347,7 @@ function renderDriverModal() {
       toggle.checked = overrideEnabled;
       toggle.addEventListener("change", () => {
         updateSelectedField(overridePath, toggle.checked);
+        markReviewOverriddenFromModal(selected);
         refreshAfterModalInput();
       });
       const text = document.createElement("span");
@@ -5138,6 +5362,7 @@ function renderDriverModal() {
       control.disabled = !overrideEnabled;
       control.addEventListener("change", () => {
         updateSelectedField(path, control.checked);
+        markReviewOverriddenFromModal(selected);
         refreshAfterModalInput();
       });
       const checkboxWrap = document.createElement("label");
@@ -5151,6 +5376,7 @@ function renderDriverModal() {
       control.disabled = !overrideEnabled;
       control.addEventListener("change", () => {
         updateSelectedField(path, control.value);
+        markReviewOverriddenFromModal(selected);
         refreshAfterModalInput();
       });
       field.appendChild(control);
@@ -5160,6 +5386,7 @@ function renderDriverModal() {
       control.disabled = !overrideEnabled;
       control.addEventListener("change", () => {
         updateSelectedField(path, control.value);
+        markReviewOverriddenFromModal(selected);
         refreshAfterModalInput();
       });
       field.appendChild(control);
@@ -5237,19 +5464,28 @@ function renderBlockList(container, lines, options = { totalCostMonthly: 1 }) {
     const li = document.createElement("li");
     const label = document.createElement("span");
     const value = document.createElement("strong");
-    const impact = classifyImpact(line.impactMonthly, options.totalCostMonthly);
+    const isSummaryLine = Boolean(line.isSummary || line.excludeFromCategoryTotal);
+    const impact = isSummaryLine ? null : classifyImpact(line.impactMonthly, options.totalCostMonthly);
     const chip = document.createElement("em");
 
     label.textContent = line.label;
     value.textContent = line.value;
 
-    chip.className = `impact-chip ${impact.level}`;
-    chip.textContent = impact.label;
-    label.appendChild(chip);
+    if (!isSummaryLine && impact) {
+      chip.className = `impact-chip ${impact.level}`;
+      chip.textContent = impact.label;
+      label.appendChild(chip);
+    }
 
-    li.classList.add(`impact-${impact.level}`);
-    li.dataset.impactLevel = impact.level;
-    li.dataset.impactShare = String(impact.sharePct);
+    if (!isSummaryLine && impact) {
+      li.classList.add(`impact-${impact.level}`);
+      li.dataset.impactLevel = impact.level;
+      li.dataset.impactShare = String(impact.sharePct);
+    } else {
+      li.classList.add("is-summary-row");
+      li.dataset.impactLevel = "none";
+      li.dataset.impactShare = "0";
+    }
 
     const driverPaths = Array.isArray(line.driverPaths) ? line.driverPaths : [];
     if (driverPaths.length > 0) {
@@ -5265,7 +5501,10 @@ function renderBlockList(container, lines, options = { totalCostMonthly: 1 }) {
       const formula = line.formula ? `\nRechenweg: ${line.formula}` : "";
       const defaultSource = line.source ? `\nHerkunft: ${line.source}` : "";
       const robustness = line.robustness ? `\nRobustheit: ${line.robustness}` : "";
-      li.title = `${line.explain}${formula}\nImpact: ${impact.label} (${formatPercent(impact.sharePct)} der Gesamtkosten).${defaultSource}${robustness}`;
+      const impactText = !isSummaryLine && impact
+        ? `\nImpact: ${impact.label} (${formatPercent(impact.sharePct)} der Gesamtkosten).`
+        : "\nSummenzeile (nicht farbklassifiziert).";
+      li.title = `${line.explain}${formula}${impactText}${defaultSource}${robustness}`;
       label.title = li.title;
       value.title = li.title;
     }
@@ -5295,7 +5534,6 @@ function buildCostCategoryData(metrics) {
   const setupInspectionUnit = extra.inspectionPerProductEur / horizonUnits;
   const listingLifecycleUnit = metrics.block2Monthly / monthlyUnits;
   const leakageUnit = metrics.block3Monthly / monthlyUnits;
-  const importVatCostUnit = metrics.resolved.includeImportVatAsCost ? metrics.importVatUnit : 0;
   const amazonFeesUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit + metrics.amazonStoragePerUnit;
   const shippingUnitsBase = Math.max(1, metrics.shipping.unitsPerOrder);
   const shippingPreRunUnit = metrics.shipping.originTotal / shippingUnitsBase;
@@ -5312,7 +5550,7 @@ function buildCostCategoryData(metrics) {
     impactMonthly: num(config.impactMonthly, 0),
   });
 
-  return [
+  const categories = [
     {
       key: "product",
       title: "Produkt",
@@ -5529,25 +5767,11 @@ function buildCostCategoryData(metrics) {
           label: "Zoll (EUR/Unit)",
           valueRaw: metrics.customsUnit,
           impactMonthly: metrics.customsMonthly,
-          explain: "Zollkosten auf importierte Ware.",
-          formula: "Zoll/Unit = customsDutyRate × landed_before_duty.",
+          explain: "Zollkosten auf Warenwert plus Shipping D2D.",
+          formula: "Zoll/Unit = customsDutyRate × (warenwert_eur + shipping_d2d_per_unit).",
           source: "Import-Default/Override.",
           robustness: "Hoch.",
-          driverPaths: ["assumptions.import.customsDutyRate", "basic.exwUnit", "basic.unitsPerOrder"],
-        }),
-        line({
-          label: "EUSt als Kosten (EUR/Unit)",
-          valueRaw: importVatCostUnit,
-          impactMonthly: metrics.importVatCostMonthly,
-          explain: "Einfuhrumsatzsteuer, falls als Kostenblock aktiviert.",
-          formula: "EUSt/Unit = (landed_before_duty + duty) × EUSt%.",
-          source: "Import-Setting/Override.",
-          robustness: "Hoch.",
-          driverPaths: [
-            "assumptions.import.overrideImportVatRate",
-            "assumptions.import.importVatRate",
-            "assumptions.import.includeImportVatAsCost",
-          ],
+          driverPaths: ["assumptions.import.customsDutyRate", "settings.tax.customsDutyRatePct", "basic.exwUnit", "basic.unitsPerOrder"],
         }),
         line({
           label: "Order-Fixkosten (EUR/Unit)",
@@ -5664,6 +5888,8 @@ function buildCostCategoryData(metrics) {
           formula: "3PL total/Unit = inbound + storage + outbound service + carrier.",
           source: "Aggregierter 3PL-Block.",
           robustness: "Mittel.",
+          isSummary: true,
+          excludeFromCategoryTotal: true,
           driverPaths: [
             "derived.threepl.inboundTotal",
             "derived.threepl.storageTotal",
@@ -5732,6 +5958,8 @@ function buildCostCategoryData(metrics) {
           formula: "Amazon total/Unit = referral + fba + storage.",
           source: "Aggregierter Amazon-Block.",
           robustness: "Mittel.",
+          isSummary: true,
+          excludeFromCategoryTotal: true,
           driverPaths: [
             "assumptions.amazon.referralRate",
             "assumptions.amazon.useManualFbaFee",
@@ -5837,6 +6065,7 @@ function buildCostCategoryData(metrics) {
           formula: "Lifecycle total/Unit = block2_monthly / monthly_units.",
           source: "Aggregierter Block 2.",
           robustness: "Mittel.",
+          isSummary: true,
           driverPaths: [
             "basic.launchBudgetTotal",
             "basic.listingPackage",
@@ -5875,18 +6104,31 @@ function buildCostCategoryData(metrics) {
   ];
 
   return categories.map((category) => {
-    const totalMonthly = category.lines.reduce((sum, lineItem) => (
-      lineItem.excludeFromCategoryTotal ? sum : sum + num(lineItem.impactMonthly, 0)
+    const normalizedLines = category.lines.map((lineItem, index) => {
+      const driverPaths = Array.isArray(lineItem.driverPaths) ? [...new Set(lineItem.driverPaths)] : [];
+      const isSummary = Boolean(lineItem.isSummary || lineItem.excludeFromCategoryTotal);
+      return {
+        ...lineItem,
+        id: lineItem.id || `${category.key}.${index + 1}`,
+        driverPaths,
+        reviewEligible: !isSummary && hasEditableDriverPath(driverPaths),
+      };
+    });
+
+    const totalPerUnit = normalizedLines.reduce((sum, lineItem) => (
+      lineItem.excludeFromCategoryTotal ? sum : sum + num(lineItem.valueRaw, 0)
     ), 0);
+    const totalMonthly = totalPerUnit * Math.max(0, num(metrics.monthlyUnits, 0));
     return {
       ...category,
+      lines: normalizedLines,
       totalMonthly,
-      totalPerUnit: totalMonthly / monthlyUnits,
+      totalPerUnit,
     };
   });
 }
 
-function renderCostCategoryGrid(metrics) {
+function renderCostCategoryGrid(metrics, stage = "quick") {
   if (!dom.costCategoryGrid) {
     return;
   }
@@ -5894,6 +6136,11 @@ function renderCostCategoryGrid(metrics) {
   const categories = buildCostCategoryData(metrics);
 
   categories.forEach((category) => {
+    const computedTotalPerUnit = category.lines.reduce((sum, lineItem) => (
+      lineItem.excludeFromCategoryTotal ? sum : sum + num(lineItem.valueRaw, 0)
+    ), 0);
+    const computedTotalMonthly = computedTotalPerUnit * Math.max(0, num(metrics.monthlyUnits, 0));
+
     const card = document.createElement("article");
     card.className = "cost-category-card";
 
@@ -5903,7 +6150,7 @@ function renderCostCategoryGrid(metrics) {
     title.textContent = category.title;
     const summary = document.createElement("div");
     summary.className = "cost-category-summary";
-    summary.innerHTML = `<strong>Summe: ${formatCurrency(category.totalPerUnit)} / Unit</strong><small>${formatCurrency(category.totalMonthly)} / Monat</small>`;
+    summary.innerHTML = `<strong>Summe: ${formatCurrency(computedTotalPerUnit)} / Unit</strong><small>${formatCurrency(computedTotalMonthly)} / Monat</small>`;
     const subtitle = document.createElement("p");
     subtitle.textContent = category.description;
     head.append(title, summary, subtitle);
@@ -5914,7 +6161,7 @@ function renderCostCategoryGrid(metrics) {
     card.appendChild(list);
 
     const expanded = Boolean(state.ui.costCategoryExpanded?.[category.key]);
-    const collapsedRows = Math.max(1, num(category.collapsedRows, 4));
+    const collapsedRows = stage === "quick" ? 0 : Math.max(1, num(category.collapsedRows, 4));
     const visibleLines = expanded ? category.lines : category.lines.slice(0, collapsedRows);
     renderBlockList(list, visibleLines, { totalCostMonthly: metrics.totalCostMonthly });
 
@@ -5989,17 +6236,24 @@ function renderShippingDetails(metrics) {
   }
 }
 
-function renderLogisticsChain(metrics) {
+function renderLogisticsChain(metrics, stage = "quick") {
   if (!dom.chainSupplierChips) {
     return;
   }
 
-  const renderStation = (container, chips) => {
+  const renderStation = (container, chips, totalValue = null) => {
     if (!container) {
       return;
     }
     container.innerHTML = "";
-    chips.forEach((chipData) => {
+    if (totalValue !== null && totalValue !== undefined) {
+      const totalNode = document.createElement("div");
+      totalNode.className = "chain-station-total";
+      totalNode.innerHTML = `<span>Summe</span><strong>${formatCurrency(totalValue)} / Unit</strong>`;
+      container.appendChild(totalNode);
+    }
+    const visibleChips = stage === "quick" ? [] : chips;
+    visibleChips.forEach((chipData) => {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chain-chip";
@@ -6007,9 +6261,14 @@ function renderLogisticsChain(metrics) {
         chip.classList.add("is-summary");
       }
       chip.innerHTML = `<span>${chipData.label}</span><strong>${formatCurrency(chipData.value)}</strong>`;
-      const impact = classifyImpact(chipData.value * metrics.monthlyUnits, metrics.totalCostMonthly);
-      chip.classList.add(`impact-${impact.level}`);
-      chip.title = `${chipData.explain}\nRechenweg: ${chipData.formula}\nImpact: ${impact.label}`;
+      let impact = null;
+      if (!chipData.isSummary) {
+        impact = classifyImpact(chipData.value * metrics.monthlyUnits, metrics.totalCostMonthly);
+        chip.classList.add(`impact-${impact.level}`);
+      }
+      chip.title = chipData.isSummary
+        ? `${chipData.explain}\nRechenweg: ${chipData.formula}\nSummenzeile (nicht farbklassifiziert).`
+        : `${chipData.explain}\nRechenweg: ${chipData.formula}\nImpact: ${impact.label}`;
       chip.addEventListener("click", () => {
         openDriverModal({
           title: chipData.label,
@@ -6024,6 +6283,12 @@ function renderLogisticsChain(metrics) {
       container.appendChild(chip);
     });
   };
+
+  const supplierTotalPerUnit = metrics.exwUnit + metrics.packagingUnit;
+  const shippingTo3PlTotalPerUnit = metrics.shippingCategoryTotalEurPerUnit;
+  const threePlTotalPerUnit = metrics.threePlTotalPerUnit;
+  const inboundToAmazonTotalPerUnit = metrics.threePlOutboundServicePerUnit + metrics.threePlCarrierPerUnit;
+  const amazonTotalPerUnit = metrics.referralFeeUnit + metrics.fbaFeeUnit + metrics.amazonStoragePerUnit;
 
   renderStation(dom.chainSupplierChips, [
     {
@@ -6050,32 +6315,9 @@ function renderLogisticsChain(metrics) {
         "settings.costDefaults.otherUnitCostEur",
       ],
     },
-  ]);
+  ], supplierTotalPerUnit);
 
   renderStation(dom.chainImportChips, [
-    {
-      label: `Kategorie-Summe Shipping zu 3PL (${metrics.shipping.modeLabel}, EUR/Unit)`,
-      value: metrics.shippingCategoryTotalEurPerUnit,
-      explain: `Summe aus Vorlauf, Hauptlauf variabel/fix, Nachlauf, Zollabfertigung, Versicherung und optionaler Nachbelastung im Modus ${metrics.shipping.modeLabel}.`,
-      formula: "Shipping/Unit = (Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung + Nachbelastung) / PO Units.",
-      source: `Shipping 12M (${metrics.shipping.modeLabel}) + Kartonisierung.`,
-      robustness: "Mittel",
-      isSummary: true,
-      driverPaths: [
-        "derived.shipping.unitsPerOrder",
-        "derived.shipping.unitsPerCartonAuto",
-        "derived.shipping.estimatedCartonLengthCm",
-        "derived.shipping.estimatedCartonWidthCm",
-        "derived.shipping.estimatedCartonHeightCm",
-        "derived.shipping.estimatedCartonGrossWeightKg",
-        "derived.shipping.cartonizationSource",
-        "derived.shipping.chargeableCbm",
-        "derived.shipping.goodsValueEur",
-        ...cartonizationProductPaths(),
-        ...cartonizationSettingsPaths(),
-        ...shippingModeDriverPaths(metrics.shipping.modeKey),
-      ],
-    },
     {
       label: "Vorlauf (EUR/Unit)",
       value: metrics.shipping.originTotal / Math.max(1, metrics.shipping.unitsPerOrder),
@@ -6173,7 +6415,7 @@ function renderLogisticsChain(metrics) {
         ...shippingManualSurchargeDriverPaths(metrics.shipping.modeKey),
       ],
     },
-  ]);
+  ], shippingTo3PlTotalPerUnit);
 
   renderStation(dom.chainThreePlChips, [
     {
@@ -6227,6 +6469,7 @@ function renderLogisticsChain(metrics) {
     {
       label: "3PL gesamt (EUR/Unit)",
       value: metrics.threePlTotalPerUnit,
+      isSummary: true,
       explain: "Summe aus Inbound, Lagerung, Outbound-Service und Carrier.",
       formula: "3PL gesamt/Unit = Inbound + Lager + Service + Carrier.",
       source: "3PL Settings/Override.",
@@ -6238,7 +6481,7 @@ function renderLogisticsChain(metrics) {
         "assumptions.extraCosts.carrierCostPerCartonEur",
       ],
     },
-  ]);
+  ], threePlTotalPerUnit);
 
   renderStation(dom.chainInboundChips, [
     {
@@ -6280,7 +6523,7 @@ function renderLogisticsChain(metrics) {
         "settings.threePl.carrierCostPerCartonEur",
       ],
     },
-  ]);
+  ], inboundToAmazonTotalPerUnit);
 
   renderStation(dom.chainAmazonChips, [
     {
@@ -6321,10 +6564,10 @@ function renderLogisticsChain(metrics) {
         "settings.costDefaults.amazonStoragePerCbmMonthEur",
       ],
     },
-  ]);
+  ], amazonTotalPerUnit);
 }
 
-function renderSelectedOutputs(metrics) {
+function renderSelectedOutputs(metrics, stage = "quick") {
   setKpi(dom.kpiRevenueGross, metrics.grossRevenueMonthly, "currency");
   setKpi(dom.kpiRevenueNet, metrics.netRevenueMonthly, "currency");
   setKpi(dom.kpiSellerboardMargin, metrics.sellerboardMarginPct, "percent");
@@ -6373,8 +6616,8 @@ function renderSelectedOutputs(metrics) {
   }
 
   renderShippingDetails(metrics);
-  renderLogisticsChain(metrics);
-  renderCostCategoryGrid(metrics);
+  renderLogisticsChain(metrics, stage);
+  renderCostCategoryGrid(metrics, stage);
 
   setKpi(dom.sensPriceDown, metrics.sensitivity.priceDown.profitMonthly, "currency");
   setKpi(dom.sensTacosUp, metrics.sensitivity.tacosUp.profitMonthly, "currency");
@@ -6443,6 +6686,12 @@ function renderStagePanel(product, metrics) {
       : stageState.statusText;
   }
 
+  if (dom.stageWarning) {
+    const firstWarning = stageState.kpiWarnings?.[0];
+    dom.stageWarning.classList.toggle("hidden", !firstWarning);
+    dom.stageWarning.textContent = firstWarning ?? "";
+  }
+
   const stageButtonMap = {
     quick: dom.stageQuickBtn,
     validation: dom.stageValidationBtn,
@@ -6461,9 +6710,115 @@ function renderStagePanel(product, metrics) {
   return stageState;
 }
 
+function renderValidationReviewPanel(product, stageState) {
+  if (!dom.validationReviewList || !dom.validationReviewStatus) {
+    return;
+  }
+  const review = stageState.validationReview;
+  const totalLabel = review.total > 0 ? review.total : 8;
+  dom.validationReviewStatus.textContent = `${review.completed}/${totalLabel} geprüft`;
+  dom.validationReviewStatus.classList.remove("pass", "warn", "fail");
+  dom.validationReviewStatus.classList.add(review.isReady ? "pass" : "warn");
+  dom.validationReviewList.innerHTML = "";
+
+  review.items.forEach((target) => {
+    const li = document.createElement("li");
+    const left = document.createElement("div");
+    left.className = "review-item-main";
+    const rowTitle = document.createElement("strong");
+    rowTitle.textContent = target.label;
+    const rowMeta = document.createElement("small");
+    rowMeta.textContent = `${target.categoryTitle} · ${target.value}`;
+    left.append(rowTitle, rowMeta);
+
+    const actions = document.createElement("div");
+    actions.className = "review-actions";
+
+    const chip = document.createElement("span");
+    const status = target.status;
+    chip.className = `review-status-chip review-status-${status}`;
+    chip.textContent = status === "checked" ? "geprüft" : status === "overridden" ? "überschrieben" : "offen";
+    actions.appendChild(chip);
+
+    const checkBtn = document.createElement("button");
+    checkBtn.type = "button";
+    checkBtn.className = "btn btn-ghost";
+    checkBtn.dataset.reviewAction = "check";
+    checkBtn.dataset.reviewStage = "validation";
+    checkBtn.dataset.reviewTargetId = target.targetId;
+    checkBtn.textContent = status === "checked" ? "Geprüft" : "Prüfen";
+    actions.appendChild(checkBtn);
+
+    const overrideBtn = document.createElement("button");
+    overrideBtn.type = "button";
+    overrideBtn.className = "btn btn-primary";
+    overrideBtn.dataset.reviewAction = "override";
+    overrideBtn.dataset.reviewStage = "validation";
+    overrideBtn.dataset.reviewTargetId = target.targetId;
+    overrideBtn.textContent = "Öffnen & überschreiben";
+    actions.appendChild(overrideBtn);
+
+    li.append(left, actions);
+    dom.validationReviewList.appendChild(li);
+  });
+}
+
+function renderDeepDiveReviewPanel(product, stageState) {
+  if (!dom.deepDiveReviewList || !dom.deepDiveReviewStatus) {
+    return;
+  }
+  const review = stageState.deepDiveReview;
+  dom.deepDiveReviewStatus.textContent = `${review.completed}/${review.total} geprüft`;
+  dom.deepDiveReviewStatus.classList.remove("pass", "warn", "fail");
+  dom.deepDiveReviewStatus.classList.add(review.isReady ? "pass" : "warn");
+  dom.deepDiveReviewList.innerHTML = "";
+
+  review.items.forEach((target) => {
+    const li = document.createElement("li");
+    const left = document.createElement("div");
+    left.className = "review-item-main";
+    const rowTitle = document.createElement("strong");
+    rowTitle.textContent = target.label;
+    const rowMeta = document.createElement("small");
+    rowMeta.textContent = `${target.categoryTitle} · ${target.value}`;
+    left.append(rowTitle, rowMeta);
+
+    const actions = document.createElement("div");
+    actions.className = "review-actions";
+
+    const chip = document.createElement("span");
+    const status = target.status;
+    chip.className = `review-status-chip review-status-${status}`;
+    chip.textContent = status === "checked" ? "geprüft" : status === "overridden" ? "überschrieben" : "offen";
+    actions.appendChild(chip);
+
+    const checkBtn = document.createElement("button");
+    checkBtn.type = "button";
+    checkBtn.className = "btn btn-ghost";
+    checkBtn.dataset.reviewAction = "check";
+    checkBtn.dataset.reviewStage = "deep_dive";
+    checkBtn.dataset.reviewTargetId = target.targetId;
+    checkBtn.textContent = status === "checked" ? "Geprüft" : "Prüfen";
+    actions.appendChild(checkBtn);
+
+    const overrideBtn = document.createElement("button");
+    overrideBtn.type = "button";
+    overrideBtn.className = "btn btn-primary";
+    overrideBtn.dataset.reviewAction = "override";
+    overrideBtn.dataset.reviewStage = "deep_dive";
+    overrideBtn.dataset.reviewTargetId = target.targetId;
+    overrideBtn.textContent = "Öffnen & überschreiben";
+    actions.appendChild(overrideBtn);
+
+    li.append(left, actions);
+    dom.deepDiveReviewList.appendChild(li);
+  });
+}
+
 function applyStageVisibility(product, stageState) {
   const stage = stageState.stage;
   const isDeep = stage === "deep_dive";
+  const isValidation = stage === "validation";
   const isQuick = stage === "quick";
 
   if (dom.advancedToggleWrap) {
@@ -6478,6 +6833,16 @@ function applyStageVisibility(product, stageState) {
   if (dom.advancedToggle) {
     dom.advancedToggle.checked = state.ui.advancedVisible;
     dom.advancedToggle.disabled = isQuick;
+  }
+
+  if (dom.quickStagePanel) {
+    dom.quickStagePanel.classList.toggle("hidden", !isQuick);
+  }
+  if (dom.validationReviewPanel) {
+    dom.validationReviewPanel.classList.toggle("hidden", !isValidation);
+  }
+  if (dom.deepDiveReviewPanel) {
+    dom.deepDiveReviewPanel.classList.toggle("hidden", !isDeep);
   }
 
   const deepDiveSection = document.getElementById("advancedDeepDiveSection");
@@ -6823,9 +7188,10 @@ function renderSelectedProductPanels(metricsById = new Map()) {
   const diagnostics = buildDefaultDiagnostics(product, metrics);
   const stageState = renderStagePanel(product, metrics);
   applyStageVisibility(product, stageState);
-  renderStageImpactList(stageState.stage, metrics);
+  renderValidationReviewPanel(product, stageState);
+  renderDeepDiveReviewPanel(product, stageState);
 
-  renderSelectedOutputs(metrics);
+  renderSelectedOutputs(metrics, stageState.stage);
   renderAssumedLabels(resolved.assumedLabels, diagnostics);
   renderLaunchHint(product, resolved);
   syncControlStates(product);
@@ -6982,6 +7348,10 @@ function setSelectedStage(stage) {
   }
 
   selected.workflow.stage = stage;
+  if (stage === "quick") {
+    state.ui.advancedVisible = false;
+    state.ui.costCategoryExpanded = {};
+  }
   saveProducts();
   renderAll();
 }
@@ -7051,13 +7421,13 @@ function applyMouseoverHelp() {
     dom.advancedToggle.title = "Advanced blendet produktspezifische Defaults, Overwrites und Shipping-Details ein.";
   }
   if (dom.stageQuickBtn) {
-    dom.stageQuickBtn.title = "Quick-Check: schneller Ballpark-Check mit den wichtigsten Treibern.";
+    dom.stageQuickBtn.title = "Quick-Check: nur Kerninputs, Kategorie-Summen und Kette. Details optional aufklappen.";
   }
   if (dom.stageValidationBtn) {
-    dom.stageValidationBtn.title = "Validation: zentrale Annahmen prüfen und absichern.";
+    dom.stageValidationBtn.title = "Validation: Top-8 Kostentreiber prüfen oder überschreiben.";
   }
   if (dom.stageDeepBtn) {
-    dom.stageDeepBtn.title = "Deep-Dive: finale Prüfung vor Sample/PO-Entscheidung.";
+    dom.stageDeepBtn.title = "Deep-Dive: Vollprüfung aller editierbaren kostentrelevanten Treiber.";
   }
   if (dom.compareSort) {
     dom.compareSort.title = "Sortiert die Vergleichstabelle nach dem gewählten KPI.";
@@ -7315,6 +7685,57 @@ function bindEvents() {
         driverPaths,
       });
     });
+  }
+
+  const handleReviewClick = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const btn = target.closest("button[data-review-action]");
+    if (!(btn instanceof HTMLElement)) {
+      return;
+    }
+
+    const action = btn.dataset.reviewAction;
+    const stage = btn.dataset.reviewStage;
+    const targetId = btn.dataset.reviewTargetId;
+    const selected = getSelectedProduct();
+    if (!selected || !stage || !targetId) {
+      return;
+    }
+
+    const reviewTarget = findReviewTarget(selected, stage, targetId);
+    if (!reviewTarget) {
+      return;
+    }
+
+    if (action === "check") {
+      markReviewChecked(selected, stage, targetId, reviewTarget.valueRaw);
+      renderAll();
+      return;
+    }
+
+    if (action === "override") {
+      openDriverModal({
+        title: reviewTarget.label,
+        value: reviewTarget.value,
+        explain: reviewTarget.explain,
+        formula: reviewTarget.formula,
+        source: reviewTarget.source,
+        robustness: reviewTarget.robustness,
+        driverPaths: reviewTarget.driverPaths,
+        reviewStage: stage,
+        reviewTargetId: targetId,
+      });
+    }
+  };
+
+  if (dom.validationReviewList) {
+    dom.validationReviewList.addEventListener("click", handleReviewClick);
+  }
+  if (dom.deepDiveReviewList) {
+    dom.deepDiveReviewList.addEventListener("click", handleReviewClick);
   }
 
   if (dom.addProductBtn) {
