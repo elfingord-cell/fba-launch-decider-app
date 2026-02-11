@@ -2315,9 +2315,12 @@ async function flushRemoteSettingsSave() {
   }
 }
 
-function saveSettings() {
+function saveSettings({ flushRemoteNow = false } = {}) {
   saveSettingsLocal();
   scheduleRemoteSettingsSave();
+  if (flushRemoteNow && state.storage.mode === "shared") {
+    void flushRemoteSettingsSave();
+  }
 }
 
 function saveProducts() {
@@ -8385,7 +8388,7 @@ function updateSettingsField(path, rawValue) {
   if (path === "tax.fallbackUsdToEur" && state.fx.source.startsWith("Fallback")) {
     state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
   }
-  saveSettings();
+  saveSettings({ flushRemoteNow: true });
 }
 
 function addProduct() {
@@ -8716,7 +8719,7 @@ function bindEvents() {
         state.settings.cartonRules.preset = "custom";
       }
       sanitizeSettings(state.settings);
-      saveSettings();
+      saveSettings({ flushRemoteNow: true });
       renderAll();
     });
   }
