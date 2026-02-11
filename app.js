@@ -964,14 +964,19 @@ const SETTING_TO_EXTRA_COST_PATH = new Map(
   Object.entries(EXTRA_COST_TO_SETTING_PATH).map(([assumptionPath, settingPath]) => [settingPath, assumptionPath]),
 );
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const state = {
   products: [],
   settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
   selectedId: null,
   session: {
+    appMode: "loading",
     requiresAuth: false,
     isAuthenticated: false,
     hasWorkspaceAccess: false,
+    pendingLocalImport: false,
     userId: null,
     userEmail: "",
     workspaceId: null,
@@ -992,6 +997,8 @@ const state = {
     productsSaving: false,
     settingsPending: false,
     productsPending: false,
+    lastRemoteError: null,
+    lastRemoteSuccessAt: null,
   },
   fx: {
     usdToEur: DEFAULT_USD_TO_EUR,
@@ -1081,6 +1088,8 @@ const dom = {
   authStatus: document.getElementById("authStatus"),
   storageModeLabel: document.getElementById("storageModeLabel"),
   sessionInfo: document.getElementById("sessionInfo"),
+  importLocalBtn: document.getElementById("importLocalBtn"),
+  compareCard: document.getElementById("compareCard"),
   productWorkspace: document.getElementById("productWorkspace"),
   driverModal: document.getElementById("driverModal"),
   driverModalTitle: document.getElementById("driverModalTitle"),
@@ -1117,7 +1126,29 @@ const dom = {
 };
 
 function uid() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  const bytes = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function isUuid(value) {
+  return typeof value === "string" && UUID_REGEX.test(value);
+}
+
+function ensureProductId(product) {
+  if (!product || typeof product !== "object") {
+    return uid();
+  }
+  if (!isUuid(product.id)) {
+    product.id = uid();
+  }
+  return product.id;
 }
 
 function round2(value) {
@@ -2190,10 +2221,15 @@ function scheduleRemoteSettingsSave() {
       do {
         state.sync.settingsPending = false;
         await state.storage.adapter.saveSettings(state.settings);
+        state.sync.lastRemoteError = null;
+        state.sync.lastRemoteSuccessAt = new Date().toISOString();
+        setSessionInfoText();
       } while (state.sync.settingsPending);
     } catch (error) {
       console.error("Remote settings save failed", error);
+      state.sync.lastRemoteError = error?.message || "Settings konnten nicht gespeichert werden.";
       setAuthStatus("Speichern der Settings in Supabase fehlgeschlagen.", true);
+      setSessionInfoText();
     } finally {
       state.sync.settingsSaving = false;
     }
@@ -2218,14 +2254,65 @@ function scheduleRemoteProductsSave() {
       do {
         state.sync.productsPending = false;
         await state.storage.adapter.saveProducts(state.products);
+        state.sync.lastRemoteError = null;
+        state.sync.lastRemoteSuccessAt = new Date().toISOString();
+        setSessionInfoText();
       } while (state.sync.productsPending);
     } catch (error) {
       console.error("Remote products save failed", error);
+      state.sync.lastRemoteError = error?.message || "Produkte konnten nicht gespeichert werden.";
       setAuthStatus("Speichern der Produkte in Supabase fehlgeschlagen.", true);
+      setSessionInfoText();
     } finally {
       state.sync.productsSaving = false;
     }
   }, REMOTE_SAVE_DEBOUNCE_MS);
+}
+
+async function flushRemoteProductsSave() {
+  if (state.storage.mode !== "shared" || !state.storage.adapter?.saveProducts) {
+    return true;
+  }
+  if (state.sync.productsTimer) {
+    clearTimeout(state.sync.productsTimer);
+    state.sync.productsTimer = null;
+  }
+  try {
+    await state.storage.adapter.saveProducts(state.products);
+    state.sync.lastRemoteError = null;
+    state.sync.lastRemoteSuccessAt = new Date().toISOString();
+    setSessionInfoText();
+    return true;
+  } catch (error) {
+    console.error("Immediate remote products save failed", error);
+    state.sync.lastRemoteError = error?.message || "Produkte konnten nicht gespeichert werden.";
+    setAuthStatus("Remote-Speicherung fehlgeschlagen. Änderungen sind nur lokal.", true);
+    setSessionInfoText();
+    return false;
+  }
+}
+
+async function flushRemoteSettingsSave() {
+  if (state.storage.mode !== "shared" || !state.storage.adapter?.saveSettings) {
+    return true;
+  }
+  if (state.sync.settingsTimer) {
+    clearTimeout(state.sync.settingsTimer);
+    state.sync.settingsTimer = null;
+  }
+  try {
+    await state.storage.adapter.saveSettings(state.settings);
+    state.sync.lastRemoteError = null;
+    state.sync.lastRemoteSuccessAt = new Date().toISOString();
+    setSessionInfoText();
+    return true;
+  } catch (error) {
+    console.error("Immediate remote settings save failed", error);
+    state.sync.lastRemoteError = error?.message || "Settings konnten nicht gespeichert werden.";
+    setAuthStatus("Remote-Speicherung der Settings fehlgeschlagen.", true);
+    setSessionInfoText();
+    return false;
+  }
 }
 
 function saveSettings() {
@@ -2234,6 +2321,7 @@ function saveSettings() {
 }
 
 function saveProducts() {
+  state.products.forEach((product) => ensureProductId(product));
   saveProductsLocal();
   scheduleRemoteProductsSave();
 }
@@ -2256,7 +2344,20 @@ function setSessionInfoText() {
     return;
   }
   const workspaceLabel = state.session.workspaceName || state.session.workspaceId;
-  dom.sessionInfo.textContent = `${state.session.userEmail} · Workspace: ${workspaceLabel}`;
+  const base = `${state.session.userEmail} · Workspace: ${workspaceLabel}`;
+  if (state.storage.mode !== "shared") {
+    dom.sessionInfo.textContent = base;
+    return;
+  }
+  if (state.sync.lastRemoteError) {
+    dom.sessionInfo.textContent = `${base} · Sync-Fehler: ${state.sync.lastRemoteError}`;
+    return;
+  }
+  if (state.sync.lastRemoteSuccessAt) {
+    dom.sessionInfo.textContent = `${base} · Letzter Sync: ${formatDate(state.sync.lastRemoteSuccessAt)}`;
+    return;
+  }
+  dom.sessionInfo.textContent = `${base} · Sync läuft`;
 }
 
 function setAuthStatus(message, isError = false) {
@@ -2268,9 +2369,15 @@ function setAuthStatus(message, isError = false) {
   dom.authStatus.classList.toggle("pass", !isError && Boolean(message));
 }
 
-function setAppLockedState({ showAuth = false, showNoAccess = false } = {}) {
+function setAppMode(mode, reason = "") {
+  state.session.appMode = mode;
+
+  const showAuth = mode === "auth_required";
+  const showNoAccess = mode === "no_access";
+  const showApp = mode === "ready_shared" || mode === "ready_local" || mode === "loading";
+
   if (dom.appContent) {
-    dom.appContent.classList.toggle("hidden", showAuth || showNoAccess);
+    dom.appContent.classList.toggle("hidden", !showApp);
   }
   if (dom.authPanel) {
     dom.authPanel.classList.toggle("hidden", !showAuth);
@@ -2281,12 +2388,53 @@ function setAppLockedState({ showAuth = false, showNoAccess = false } = {}) {
   if (dom.authLogoutBtn) {
     dom.authLogoutBtn.classList.toggle("hidden", !(state.storage.mode === "shared" && state.session.isAuthenticated));
   }
+  if (dom.compareCard) {
+    dom.compareCard.classList.toggle("hidden", showAuth || showNoAccess);
+  }
+
+  if (showAuth) {
+    setAuthStatus(reason || "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+  } else if (showNoAccess) {
+    setAuthStatus(reason || "Kein Zugriff auf Workspace.", true);
+  } else if (mode === "ready_shared") {
+    if (dom.authPassword instanceof HTMLInputElement) {
+      dom.authPassword.value = "";
+    }
+    if (state.sync.lastRemoteError) {
+      setAuthStatus(`Remote-Sync Fehler: ${state.sync.lastRemoteError}`, true);
+    } else if (state.sync.lastRemoteSuccessAt) {
+      setAuthStatus(`Gemeinsamer Workspace aktiv · letzter Sync ${formatDate(state.sync.lastRemoteSuccessAt)}`);
+    } else {
+      setAuthStatus("Gemeinsamer Workspace aktiv.");
+    }
+  } else if (mode === "ready_local") {
+    setAuthStatus("Lokaler Modus aktiv.");
+  } else {
+    setAuthStatus(reason);
+  }
+}
+
+function setAppLockedState({ showAuth = false, showNoAccess = false } = {}) {
+  if (showAuth) {
+    setAppMode("auth_required");
+    return;
+  }
+  if (showNoAccess) {
+    setAppMode("no_access");
+    return;
+  }
+  if (state.storage.mode === "shared" && state.session.isAuthenticated && state.session.hasWorkspaceAccess) {
+    setAppMode("ready_shared");
+    return;
+  }
+  setAppMode("ready_local");
 }
 
 function configureSessionState({
   requiresAuth = false,
   isAuthenticated = false,
   hasWorkspaceAccess = false,
+  pendingLocalImport = false,
   userId = null,
   userEmail = "",
   workspaceId = null,
@@ -2295,6 +2443,7 @@ function configureSessionState({
   state.session.requiresAuth = requiresAuth;
   state.session.isAuthenticated = isAuthenticated;
   state.session.hasWorkspaceAccess = hasWorkspaceAccess;
+  state.session.pendingLocalImport = pendingLocalImport;
   state.session.userId = userId;
   state.session.userEmail = userEmail;
   state.session.workspaceId = workspaceId;
@@ -2512,7 +2661,7 @@ async function importLocalDataToRemoteIfNeeded(adapter) {
   const remoteProducts = normalizeRemoteProducts(remoteProductsRaw);
 
   if (remoteProducts.length > 0) {
-    return { imported: false, remoteProducts };
+    return { imported: false, skipped: true, reason: "remote_has_data", remoteProducts };
   }
 
   const localProductsRaw = localStorage.getItem(STORAGE_KEY_PRODUCTS) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
@@ -2520,14 +2669,33 @@ async function importLocalDataToRemoteIfNeeded(adapter) {
   const hasLocalProducts = Boolean(localProductsRaw);
   const hasLocalSettings = Boolean(localSettingsRaw);
   if (!hasLocalProducts && !hasLocalSettings) {
-    return { imported: false, remoteProducts: [] };
+    return { imported: false, skipped: true, reason: "no_local_data", remoteProducts: [] };
   }
 
-  const shouldImport = window.confirm(
-    "Lokale Daten gefunden. Sollen Produkte und Settings einmalig in den gemeinsamen Workspace importiert werden?",
-  );
-  if (!shouldImport) {
-    return { imported: false, remoteProducts: [] };
+  return {
+    imported: false,
+    skipped: true,
+    reason: "local_data_available",
+    hasLocalProducts,
+    hasLocalSettings,
+    remoteProducts: [],
+  };
+}
+
+async function importLocalDataIntoSharedWorkspace() {
+  const adapter = state.storage.adapter;
+  if (state.storage.mode !== "shared" || !adapter?.saveProducts || !adapter?.saveSettings) {
+    return false;
+  }
+
+  const localProductsRaw = localStorage.getItem(STORAGE_KEY_PRODUCTS) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+  const localSettingsRaw = localStorage.getItem(STORAGE_KEY_SETTINGS);
+  const hasLocalProducts = Boolean(localProductsRaw);
+  const hasLocalSettings = Boolean(localSettingsRaw);
+
+  if (!hasLocalProducts && !hasLocalSettings) {
+    setAuthStatus("Keine lokalen Daten für Import gefunden.");
+    return false;
   }
 
   let importProducts = [];
@@ -2555,10 +2723,22 @@ async function importLocalDataToRemoteIfNeeded(adapter) {
 
   await adapter.saveSettings(importSettings);
   await adapter.saveProducts(importProducts);
-  return { imported: true, remoteProducts: importProducts, remoteSettings: importSettings };
+  state.settings = normalizeRemoteSettings(importSettings) ?? defaultSettings();
+  state.products = importProducts.map((item, index) => migrateProduct(item, index));
+  state.products.forEach((product) => ensureProductId(product));
+  selectFirstProductIfNeeded();
+  saveSettingsLocal();
+  saveProductsLocal();
+  state.sync.lastRemoteError = null;
+  state.sync.lastRemoteSuccessAt = new Date().toISOString();
+  state.session.pendingLocalImport = false;
+  setAuthStatus("Lokale Daten wurden in den gemeinsamen Workspace importiert.");
+  renderPageAfterLoad();
+  return true;
 }
 
 function selectFirstProductIfNeeded() {
+  state.products.forEach((product) => ensureProductId(product));
   if (!state.products.length) {
     state.products = [defaultProduct(1)];
   }
@@ -2571,6 +2751,8 @@ async function activateSharedWorkspace(user) {
   if (!state.supabase.client) {
     return false;
   }
+
+  state.session.pendingLocalImport = false;
   const membership = await fetchWorkspaceMembership(state.supabase.client, user.id);
   if (!membership) {
     configureSessionState({
@@ -2611,6 +2793,7 @@ async function activateSharedWorkspace(user) {
   const normalizedSettings = normalizeRemoteSettings(remoteSettings) ?? defaultSettings();
   state.settings = normalizedSettings;
   state.products = normalizedProducts;
+  state.products.forEach((product) => ensureProductId(product));
   selectFirstProductIfNeeded();
 
   configureSessionState({
@@ -2621,6 +2804,7 @@ async function activateSharedWorkspace(user) {
     userEmail: user.email ?? "",
     workspaceId: membership.workspaceId,
     workspaceName: membership.workspaceName,
+    pendingLocalImport: importResult.reason === "local_data_available",
   });
 
   saveSettingsLocal();
@@ -2628,8 +2812,7 @@ async function activateSharedWorkspace(user) {
   state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
   state.fx.source = "Fallback (Settings)";
 
-  setAppLockedState({ showAuth: false, showNoAccess: false });
-  setAuthStatus("");
+  setAppMode("ready_shared");
   return true;
 }
 
@@ -2641,11 +2824,34 @@ async function setLocalMode() {
     requiresAuth: false,
     isAuthenticated: false,
     hasWorkspaceAccess: true,
+    pendingLocalImport: false,
   });
-  setAppLockedState({ showAuth: false, showNoAccess: false });
+  state.sync.lastRemoteError = null;
+  setAppMode("ready_local");
+}
+
+function exposeSyncDebug() {
+  window.__syncDebug = {
+    get mode() {
+      return state.storage.mode;
+    },
+    get workspaceId() {
+      return state.session.workspaceId;
+    },
+    get userId() {
+      return state.session.userId;
+    },
+    get lastRemoteError() {
+      return state.sync.lastRemoteError;
+    },
+    get lastRemoteSuccessAt() {
+      return state.sync.lastRemoteSuccessAt;
+    },
+  };
 }
 
 async function bootstrapCollaborationSession() {
+  setAppMode("loading", "Session wird geladen ...");
   await setLocalMode();
   loadSettingsLocal();
   loadProductsLocal();
@@ -2670,9 +2876,9 @@ async function bootstrapCollaborationSession() {
           requiresAuth: true,
           isAuthenticated: false,
           hasWorkspaceAccess: false,
+          pendingLocalImport: false,
         });
-        setAuthStatus("Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
-        setAppLockedState({ showAuth: true, showNoAccess: false });
+        setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
         return;
       }
       try {
@@ -2686,9 +2892,11 @@ async function bootstrapCollaborationSession() {
             renderFxStatus();
             renderAll();
           }
+          setAppMode("ready_shared");
         }
       } catch (error) {
         console.error("Supabase auth state change failed", error);
+        setAuthStatus("Supabase Session konnte nicht aktualisiert werden.", true);
       }
     });
   }
@@ -2699,8 +2907,7 @@ async function bootstrapCollaborationSession() {
   }
   const user = data?.session?.user ?? null;
   if (!user) {
-    setAuthStatus("Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
-    setAppLockedState({ showAuth: true, showNoAccess: false });
+    setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
     return;
   }
 
@@ -2711,8 +2918,8 @@ async function bootstrapCollaborationSession() {
     }
   } catch (error) {
     console.error("Supabase workspace activation failed", error);
+    setAppMode("auth_required", "Supabase-Verbindung fehlgeschlagen. Bitte später erneut versuchen.");
     setAuthStatus("Supabase-Verbindung fehlgeschlagen. Bitte später erneut versuchen.", true);
-    setAppLockedState({ showAuth: true, showNoAccess: false });
   }
 }
 
@@ -2728,12 +2935,46 @@ async function handleAuthLogin() {
     return;
   }
   setAuthStatus("Anmeldung läuft ...");
-  const { error } = await state.supabase.client.auth.signInWithPassword({ email, password });
+  const { data, error } = await state.supabase.client.auth.signInWithPassword({ email, password });
   if (error) {
     setAuthStatus(`Anmeldung fehlgeschlagen: ${error.message}`, true);
     return;
   }
-  setAuthStatus("Anmeldung erfolgreich.");
+
+  const user = data?.user ?? data?.session?.user ?? null;
+  if (!user?.id) {
+    setAuthStatus("Anmeldung erfolgreich, Session wird synchronisiert ...");
+    return;
+  }
+
+  setAppMode("loading", "Workspace wird geladen ...");
+
+  try {
+    const activated = await activateSharedWorkspace(user);
+    if (!activated) {
+      setAuthStatus("Anmeldung erfolgreich, aber kein Workspace-Zugriff gefunden.", true);
+      return;
+    }
+
+    if (APP_PAGE === "settings") {
+      renderCategoryDefaultsAdmin();
+      renderSettingsInputs();
+      applyMouseoverHelp();
+      scrollToHashSectionIfPresent();
+    } else {
+      renderFxStatus();
+      renderAll();
+    }
+
+    setAppMode("ready_shared");
+    renderPageAfterLoad();
+    return;
+  } catch (loginActivationError) {
+    console.error("Login activation failed", loginActivationError);
+    setAuthStatus(`Workspace-Laden fehlgeschlagen: ${loginActivationError?.message || "Unbekannter Fehler"}`, true);
+    setAppMode("auth_required", "Bitte erneut anmelden oder Workspace-Zugriff prüfen.");
+    return;
+  }
 }
 
 async function handleAuthRegister() {
@@ -2766,13 +3007,18 @@ async function handleAuthLogout() {
     return;
   }
   await state.supabase.client.auth.signOut();
+  state.storage.mode = "shared";
+  state.storage.adapter = null;
+  state.products = [];
+  state.selectedId = null;
   configureSessionState({
     requiresAuth: true,
     isAuthenticated: false,
     hasWorkspaceAccess: false,
+    pendingLocalImport: false,
   });
   setAuthStatus("Abgemeldet.");
-  setAppLockedState({ showAuth: true, showNoAccess: false });
+  setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
 }
 
 function getSelectedProduct() {
@@ -8144,10 +8390,13 @@ function updateSettingsField(path, rawValue) {
 
 function addProduct() {
   const product = defaultProduct(state.products.length + 1);
+  ensureProductId(product);
   state.products.push(product);
   state.selectedId = product.id;
   saveProducts();
-  renderAll();
+  flushRemoteProductsSave().finally(() => {
+    renderAll();
+  });
 }
 
 function duplicateProduct() {
@@ -8158,12 +8407,15 @@ function duplicateProduct() {
 
   const copy = deepClone(selected);
   copy.id = uid();
+  ensureProductId(copy);
   copy.name = `${selected.name} (Kopie)`;
 
   state.products.push(copy);
   state.selectedId = copy.id;
   saveProducts();
-  renderAll();
+  flushRemoteProductsSave().finally(() => {
+    renderAll();
+  });
 }
 
 function deleteProduct() {
@@ -8183,7 +8435,9 @@ function deleteProduct() {
   }
   state.selectedId = state.products[0].id;
   saveProducts();
-  renderAll();
+  flushRemoteProductsSave().finally(() => {
+    renderAll();
+  });
 }
 
 function setSelectedStage(stage) {
@@ -8508,6 +8762,23 @@ function bindEvents() {
     });
   }
 
+  if (dom.importLocalBtn) {
+    dom.importLocalBtn.addEventListener("click", async () => {
+      const confirmed = window.confirm(
+        "Lokale Produkte/Settings in den gemeinsamen Workspace importieren? Bestehende Remote-Daten werden ersetzt.",
+      );
+      if (!confirmed) {
+        return;
+      }
+      const imported = await importLocalDataIntoSharedWorkspace();
+      if (imported) {
+        await flushRemoteProductsSave();
+        await flushRemoteSettingsSave();
+        renderAll();
+      }
+    });
+  }
+
   if (dom.costCategoryGrid) {
     dom.costCategoryGrid.addEventListener("click", (event) => {
       const target = event.target;
@@ -8714,6 +8985,16 @@ function renderPageAfterLoad() {
   setStorageModeLabel();
   setSessionInfoText();
 
+  if (dom.importLocalBtn) {
+    const showImport =
+      APP_PAGE === "product" &&
+      state.storage.mode === "shared" &&
+      state.session.isAuthenticated &&
+      state.session.hasWorkspaceAccess &&
+      state.session.pendingLocalImport;
+    dom.importLocalBtn.classList.toggle("hidden", !showImport);
+  }
+
   if (APP_PAGE === "settings") {
     renderSettingsInputs();
     applyMouseoverHelp();
@@ -8727,6 +9008,7 @@ function renderPageAfterLoad() {
 
 async function init() {
   bindEvents();
+  exposeSyncDebug();
 
   await bootstrapCollaborationSession();
   setStorageModeLabel();
@@ -8734,15 +9016,18 @@ async function init() {
 
   if (state.session.requiresAuth && (!state.session.isAuthenticated || !state.session.hasWorkspaceAccess)) {
     if (!state.session.isAuthenticated) {
-      setAuthStatus("Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
-      setAppLockedState({ showAuth: true, showNoAccess: false });
+      setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
     } else {
-      setAppLockedState({ showAuth: false, showNoAccess: true });
+      setAppMode("no_access", "Kein Zugriff auf Workspace.");
     }
     return;
   }
 
-  setAppLockedState({ showAuth: false, showNoAccess: false });
+  if (state.storage.mode === "shared") {
+    setAppMode("ready_shared");
+  } else {
+    setAppMode("ready_local");
+  }
   renderPageAfterLoad();
   refreshFxRate();
 }
@@ -8750,7 +9035,7 @@ async function init() {
 init().catch((error) => {
   console.error("App init failed", error);
   setAuthStatus("Initialisierung fehlgeschlagen. Fallback auf lokale Daten.", true);
-  setAppLockedState({ showAuth: false, showNoAccess: false });
+  setAppMode("ready_local");
   loadSettingsLocal();
   loadProductsLocal();
   selectFirstProductIfNeeded();

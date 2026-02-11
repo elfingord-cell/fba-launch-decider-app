@@ -169,6 +169,10 @@ body {
   gap: 8px;
 }
 
+#importLocalBtn.hidden {
+  display: none;
+}
+
 .sidebar {
   position: sticky;
   top: 12px;
