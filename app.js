@@ -8662,6 +8662,25 @@ function applyMouseoverHelp() {
 }
 
 function bindEvents() {
+  document.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+      return;
+    }
+
+    const path = target.dataset.path;
+    if (!path) {
+      return;
+    }
+
+    if (target.type === "checkbox") {
+      return;
+    }
+
+    updateSelectedField(path, target.value);
+    renderComputedViews();
+  });
+
   document.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
