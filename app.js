@@ -1035,6 +1035,8 @@ const COST_METRIC_TOOLTIPS = {
 };
 
 const UI_HELP_TEXT = {
+  "ui.settings_flow":
+    "Globale Settings wirken auf alle Produkte. Empfohlene Reihenfolge: Shipping/3PL zuerst, danach Amazon/Kategorie, dann Launch/Overhead.",
   "ui.decision_bar":
     "Decision-Bar: Kompakter KPI-Block für die schnelle Go/Watch/No-Go Entscheidung. Details bleiben optional.",
   "ui.basic_flow":

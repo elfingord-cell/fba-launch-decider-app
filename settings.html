@@ -15,6 +15,38 @@
   <body data-page="settings">
     <div class="blob blob-a"></div>
     <div class="blob blob-b"></div>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-insight" viewBox="0 0 24 24">
+        <path d="M4 19.5h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M7 15.5v-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M12 15.5v-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M17 15.5v-3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-factory" viewBox="0 0 24 24">
+        <path d="M3.8 19.2h16.4V9.8l-3.6 2.1V9.8L13 11.9V9.8l-3.7 2.1V7.6H3.8z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M7.6 7.6V4.8h3.1v1.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-truck" viewBox="0 0 24 24">
+        <path d="M3.8 8h11.5v7.1H3.8z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M15.3 10.1h3.2l1.6 2.1v3H15.3z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <circle cx="8" cy="16.7" r="1.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <circle cx="17.5" cy="16.7" r="1.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-warehouse" viewBox="0 0 24 24">
+        <path d="M4 9.5 12 4.4l8 5.1v9.7H4z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M9.1 19.2v-5h5.8v5" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-store" viewBox="0 0 24 24">
+        <path d="M4.4 8.8 5.8 5h12.4l1.4 3.8" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M5.3 8.8h13.4v10.4H5.3z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M9.2 13.2h5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-megaphone" viewBox="0 0 24 24">
+        <path d="M4.6 12.9V9.6l8.9-3.8v11l-8.9-3.9z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M13.5 9.2h2.4c1.9 0 3.4 1.5 3.4 3.4S17.8 16 15.9 16h-2.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="m7.4 14.2 1.6 3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+    </svg>
 
     <main class="shell">
       <header class="card hero">
@@ -74,6 +106,7 @@
           <div class="sidebar-head">
             <h2>Navigation</h2>
           </div>
+          <p class="hint settings-sidebar-hint">Nutze die Ketten-Navigation, um gezielt zu einem Kostenbereich zu springen.</p>
           <div class="sidebar-actions">
             <a href="index.html" class="btn btn-primary settings-link">Zur Produktseite</a>
           </div>
@@ -82,27 +115,80 @@
         <section class="main-column">
           <section class="card settings-card" id="settingsPanel">
             <div class="section-head">
-              <div>
-                <h2>Settings entlang der Kette</h2>
-                <p>Alle Bereiche sind standardmäßig zugeklappt.</p>
+              <div class="help-context">
+                <div class="help-title-row">
+                  <div class="section-title-row">
+                    <span class="ui-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-insight"></use></svg>
+                    </span>
+                    <div class="section-title-copy">
+                      <h2>Settings entlang der Kette</h2>
+                      <p>Jeder Bereich steuert globale Defaults für alle Produkte.</p>
+                    </div>
+                  </div>
+                  <button type="button" class="info-trigger" data-help-key="ui.settings_flow" aria-label="Hilfe zu den globalen Settings" aria-expanded="false">
+                    i
+                  </button>
+                </div>
               </div>
+            </div>
+            <div class="settings-focus-strip">
+              <article>
+                <span>Zuerst</span>
+                <strong>Shipping + 3PL</strong>
+                <small>Größter Hebel auf Kosten/Unit</small>
+              </article>
+              <article>
+                <span>Dann</span>
+                <strong>Amazon + Kategorie</strong>
+                <small>Fees, TACoS und Retouren kalibrieren</small>
+              </article>
+              <article>
+                <span>Zum Schluss</span>
+                <strong>Launch + Overhead</strong>
+                <small>Feinschliff für realistische Szenarien</small>
+              </article>
             </div>
 
             <nav class="settings-chain-nav" aria-label="Kostenkette Navigation">
-              <a href="#settingsProductDefaultsSection">Lieferant</a>
-              <a href="#settingsShippingSection">Shipping/Import</a>
-              <a href="#settings3plReceivingSection">3PL</a>
-              <a href="#settings3plCarrierSection">Versand zu Amazon</a>
-              <a href="#settingsAmazonSection">Amazon</a>
-              <a href="#settingsCategorySection">Werbung/Retouren</a>
-              <a href="#settingsLifecycleSection">Launch</a>
-              <a href="#settingsOverheadSection">Overhead</a>
+              <a href="#settingsProductDefaultsSection">
+                <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-factory"></use></svg></span>
+                <span>Lieferant</span>
+              </a>
+              <a href="#settingsShippingSection">
+                <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-truck"></use></svg></span>
+                <span>Shipping/Import</span>
+              </a>
+              <a href="#settings3plReceivingSection">
+                <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-warehouse"></use></svg></span>
+                <span>3PL</span>
+              </a>
+              <a href="#settings3plCarrierSection">
+                <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-truck"></use></svg></span>
+                <span>Versand zu Amazon</span>
+              </a>
+              <a href="#settingsAmazonSection">
+                <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-store"></use></svg></span>
+                <span>Amazon</span>
+              </a>
+              <a href="#settingsCategorySection">
+                <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-insight"></use></svg></span>
+                <span>Werbung/Retouren</span>
+              </a>
+              <a href="#settingsLifecycleSection">
+                <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-megaphone"></use></svg></span>
+                <span>Launch</span>
+              </a>
+              <a href="#settingsOverheadSection">
+                <span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#icon-insight"></use></svg></span>
+                <span>Overhead</span>
+              </a>
             </nav>
 
             <div class="settings-accordion">
               <details id="settingsTaxSection" class="settings-section">
-                <summary>
-                  <span>A) Währung & Steuerlogik</span>
+                <summary data-group-label="A">
+                  <span>Währung & Steuerlogik</span>
                   <small>FX-Fallback und MwSt-Sätze je Marketplace</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -117,8 +203,8 @@
               </details>
 
               <details id="settingsShippingSection" class="settings-section">
-                <summary>
-                  <span>B) China -> DE Shipping (12M-Ø)</span>
+                <summary data-group-label="B">
+                  <span>China -> DE Shipping (12M-Ø)</span>
                   <small>Door-to-door Richtwert, kein Live-Tarif</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -164,8 +250,8 @@
               </details>
 
               <details id="settingsCartonSection" class="settings-section">
-                <summary>
-                  <span>C) Kartonisierung (Hard-Caps + Referenz)</span>
+                <summary data-group-label="C">
+                  <span>Kartonisierung (Hard-Caps + Referenz)</span>
                   <small>Auto-Kartonisierung über Gewicht/Maße, transparent und stabil</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -193,8 +279,8 @@
               </details>
 
               <details id="settings3plReceivingSection" class="settings-section">
-                <summary>
-                  <span>D) 3PL Deutschland: Wareneingang (Receiving)</span>
+                <summary data-group-label="D">
+                  <span>3PL Deutschland: Wareneingang (Receiving)</span>
                   <small>Receiving je Karton</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -205,8 +291,8 @@
               </details>
 
               <details id="settings3plStorageSection" class="settings-section">
-                <summary>
-                  <span>E) 3PL Deutschland: Lagerung (Storage)</span>
+                <summary data-group-label="E">
+                  <span>3PL Deutschland: Lagerung (Storage)</span>
                   <small>Palettenbasiert, umgerechnet auf EUR/Unit</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -220,8 +306,8 @@
               </details>
 
               <details id="settings3plOutboundSection" class="settings-section">
-                <summary>
-                  <span>F) 3PL Deutschland: Warenausgang (Outbound Services)</span>
+                <summary data-group-label="F">
+                  <span>3PL Deutschland: Warenausgang (Outbound Services)</span>
                   <small>Servicekosten je Karton</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Validation, Deep-Dive</p>
@@ -237,8 +323,8 @@
               </details>
 
               <details id="settings3plCarrierSection" class="settings-section">
-                <summary>
-                  <span>G) Carrier: 3PL -> Amazon (Transport je Karton)</span>
+                <summary data-group-label="G">
+                  <span>Carrier: 3PL -> Amazon (Transport je Karton)</span>
                   <small>Separat von 3PL-Servicekosten</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -249,8 +335,8 @@
               </details>
 
               <details id="settingsAmazonSection" class="settings-section">
-                <summary>
-                  <span>H) Amazon Defaults</span>
+                <summary data-group-label="H">
+                  <span>Amazon Defaults</span>
                   <small>Amazon-Lager + FBA-Ratecard (DE)</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -266,8 +352,8 @@
               </details>
 
               <details id="settingsCategorySection" class="settings-section">
-                <summary>
-                  <span>I) Kategorie-Defaults</span>
+                <summary data-group-label="I">
+                  <span>Kategorie-Defaults</span>
                   <small>TACoS, Retouren, Referral, Zielmarge</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -275,8 +361,8 @@
               </details>
 
               <details id="settingsLifecycleSection" class="settings-section">
-                <summary>
-                  <span>J) Listing & Launch</span>
+                <summary data-group-label="J">
+                  <span>Listing & Launch</span>
                   <small>Lifecycle 36M, Listing-Pakete, Launch-Profile</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
@@ -331,8 +417,8 @@
               </details>
 
               <details id="settingsProductDefaultsSection" class="settings-section">
-                <summary>
-                  <span>K) Produkt-Defaults</span>
+                <summary data-group-label="K">
+                  <span>Produkt-Defaults</span>
                   <small>Packaging, Dokumente, Grußkarte, Samples/Tooling/Zertifikate/Inspection</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Validation, Deep-Dive</p>
@@ -350,8 +436,8 @@
               </details>
 
               <details id="settingsOverheadSection" class="settings-section">
-                <summary>
-                  <span>L) Overhead / Leakage</span>
+                <summary data-group-label="L">
+                  <span>Overhead / Leakage</span>
                   <small>Pauschale vergessene Kosten im Modell</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
