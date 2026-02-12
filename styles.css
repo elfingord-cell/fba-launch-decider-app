@@ -918,6 +918,83 @@ body[data-page="settings"] .settings-section h4 {
   color: #24443d;
 }
 
+body[data-page="settings"] #settingsCartonSection .settings-inline-advanced {
+  margin-top: 9px;
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fbfcff;
+  padding: 6px 8px;
+}
+
+body[data-page="settings"] #settingsCartonSection .settings-inline-advanced > summary {
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #3a5169;
+}
+
+body[data-page="settings"] #settingsCartonSection .settings-inline-advanced .admin-grid {
+  margin-top: 8px;
+}
+
+body[data-page="settings"] #settingsCartonSection .carton-impact-preview {
+  margin-top: 9px;
+  padding: 9px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #a9c0d7 58%, white);
+  background: linear-gradient(180deg, #ffffff 0%, #f3f8ff 100%);
+  display: grid;
+  gap: 7px;
+}
+
+body[data-page="settings"] #settingsCartonSection .carton-impact-head {
+  display: grid;
+  gap: 2px;
+}
+
+body[data-page="settings"] #settingsCartonSection .carton-impact-head strong {
+  font-size: 0.75rem;
+  color: #244b72;
+}
+
+body[data-page="settings"] #settingsCartonSection .carton-impact-head small {
+  font-size: 0.68rem;
+  color: #4b6a89;
+}
+
+body[data-page="settings"] #settingsCartonSection .carton-impact-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+body[data-page="settings"] #settingsCartonSection .carton-impact-item {
+  border: 1px solid color-mix(in srgb, #c7d5e5 60%, white);
+  border-radius: 9px;
+  background: #ffffff;
+  padding: 6px 7px;
+  display: grid;
+  gap: 2px;
+}
+
+body[data-page="settings"] #settingsCartonSection .carton-impact-item span {
+  font-size: 0.64rem;
+  color: #5f7894;
+  font-weight: 700;
+}
+
+body[data-page="settings"] #settingsCartonSection .carton-impact-item strong {
+  font-size: 0.73rem;
+  color: #203f60;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+body[data-page="settings"] #settingsCartonSection .carton-impact-note {
+  margin: 0;
+  font-size: 0.67rem;
+  color: #4e6074;
+}
+
 body[data-page="settings"] #settingsLifecycleSection .settings-lifecycle-group {
   margin-top: 12px;
   padding: 10px;
@@ -2422,6 +2499,10 @@ body[data-page="settings"] #settingsLifecycleSection .launch-week-chip-value {
 
   .shipping-kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  body[data-page="settings"] #settingsCartonSection .carton-impact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .shipping-layout-3d-canvas {

@@ -4514,6 +4514,7 @@ function renderSettingsInputs() {
     });
   });
   renderLaunchProfileWeekPreviews();
+  renderCartonImpactPreview();
   applySoftLocksToUI();
 }
 
@@ -4669,6 +4670,62 @@ function renderLaunchProfileWeekPreviews() {
     }
     renderSingleLaunchProfileWeekPreview(profileKey, node, baseTacosRate);
   });
+}
+
+function renderCartonImpactPreview() {
+  const root = document.getElementById("cartonImpactPreview");
+  if (!(root instanceof HTMLElement)) {
+    return;
+  }
+
+  const selected = getSelectedProduct();
+  if (!selected) {
+    root.innerHTML = `<p class="hint">Kein Produkt ausgewählt. Impact-Vorschau wird angezeigt, sobald ein Produkt aktiv ist.</p>`;
+    return;
+  }
+
+  let metrics = null;
+  try {
+    metrics = calculateProduct(selected);
+  } catch (_error) {
+    root.innerHTML = `<p class="hint warn">Impact-Vorschau konnte nicht berechnet werden.</p>`;
+    return;
+  }
+
+  const shipping = metrics?.shipping;
+  if (!shipping) {
+    root.innerHTML = `<p class="hint warn">Shipping-Daten fehlen für die Impact-Vorschau.</p>`;
+    return;
+  }
+
+  const head = document.createElement("div");
+  head.className = "carton-impact-head";
+  head.innerHTML =
+    `<strong>Aktueller Impact für "${selected.name}"</strong>` +
+    `<small>Diese Werte reagieren direkt auf Hard-Caps, Outer Buffer und Gewichtsaufschlag.</small>`;
+
+  const grid = document.createElement("div");
+  grid.className = "carton-impact-grid";
+  [
+    { label: "Stück je Umkarton", value: formatNumber(shipping.unitsPerCartonAuto) },
+    { label: "Physische Kartons / PO", value: formatNumber(shipping.physicalCartonsCount) },
+    { label: "Sendungsvolumen", value: `${formatNumber(shipping.shipmentCbm)} CBM` },
+    { label: "Abrechnungsvolumen (W/M)", value: `${formatNumber(shipping.chargeableCbm)} CBM` },
+    { label: "Shipping D2D / Unit", value: formatCurrency(shipping.shippingPerUnit) },
+  ].forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "carton-impact-item";
+    card.innerHTML = `<span>${item.label}</span><strong>${item.value}</strong>`;
+    grid.appendChild(card);
+  });
+
+  const notes = document.createElement("p");
+  notes.className = "carton-impact-note";
+  notes.textContent =
+    "Hinweis: Äquivalenz-Referenz-Auslastung ist aktuell ein Info-/Benchmark-Wert und kein direkter Kostentreiber.";
+
+  root.innerHTML = "";
+  root.append(head, grid, notes);
 }
 
 function toSortedDims(lengthCm, widthCm, heightCm) {

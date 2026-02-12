@@ -255,10 +255,12 @@
                   <small>Auto-Kartonisierung über Gewicht/Maße, transparent und stabil</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
-                <h4>Amazon Hard-Caps (Obergrenze)</h4>
+                <h4>So nutzt du den Block</h4>
+                <p class="hint">1) Profil wählen (füllt Max-Maße/Gewicht). 2) Nur bei Bedarf feinjustieren. 3) Wirkung unten im Impact-Panel und im Shipping-Dashboard prüfen.</p>
+                <h4>Aktive Treiber (kostenwirksam)</h4>
                 <div class="admin-grid">
                   <label>
-                    Amazon-Kartonprofil
+                    Amazon-Hard-Cap-Profil (füllt Max-Werte)
                     <select id="cartonPresetSelect">
                       <option value="legacy">Standard (63,5cm / 23kg)</option>
                       <option value="update_2025">Update 20.06.2025 (91,4/63,5/63,5 / 22,7kg)</option>
@@ -269,11 +271,17 @@
                   <label>Karton max Breite (cm)<input data-settings-path="cartonRules.maxWidthCm" type="number" min="1" step="0.1" /></label>
                   <label>Karton max Höhe (cm)<input data-settings-path="cartonRules.maxHeightCm" type="number" min="1" step="0.1" /></label>
                   <label>Karton max Gewicht (kg)<input data-settings-path="cartonRules.maxWeightKg" type="number" min="1" step="0.1" /></label>
-                  <label>Packfaktor (Legacy)<input data-settings-path="cartonRules.packFactor" type="number" min="0.5" max="0.99" step="0.01" /></label>
                   <label>Outer Buffer je Achse (cm)<input data-settings-path="cartonRules.outerBufferCm" type="number" min="0" step="0.1" /></label>
                   <label>Gewichtsaufschlag netto -> brutto (%)<input data-settings-path="cartonRules.grossWeightUpliftPct" type="number" min="0" step="0.1" /></label>
-                  <label>Äquivalenz-Referenz Auslastung (%)<input data-settings-path="cartonRules.equivalentCartonFillPct" type="number" min="50" max="100" step="1" /></label>
                 </div>
+                <div id="cartonImpactPreview" class="carton-impact-preview" aria-live="polite"></div>
+                <details class="settings-inline-advanced">
+                  <summary>Erweiterte Referenz/Legacy (optional)</summary>
+                  <div class="admin-grid">
+                    <label>Äquivalenz-Referenz Auslastung (%) (Info, kein Kostentreiber)<input data-settings-path="cartonRules.equivalentCartonFillPct" type="number" min="50" max="100" step="1" /></label>
+                    <label>Packfaktor (Legacy, inaktiv)<input data-settings-path="cartonRules.packFactor" type="number" min="0.5" max="0.99" step="0.01" /></label>
+                  </div>
+                </details>
                 <p class="hint">Rail Vor-/Nachlauf variabel rechnet mit Shipment-CBM, nicht mit Kartonanzahl.</p>
                 <p class="hint">3PL-/Carrier-Kosten bleiben physisch je Karton.</p>
               </details>
