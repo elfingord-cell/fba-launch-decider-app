@@ -965,6 +965,83 @@ select:disabled {
   font-size: 0.7rem;
 }
 
+.shipping-layout-3d-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.shipping-layout-3d-canvas {
+  min-height: 320px;
+  border: 1px solid color-mix(in srgb, var(--line) 62%, white);
+  border-radius: 10px;
+  background: radial-gradient(circle at 20% 15%, #f8fcfb 0%, #eef6f3 58%, #e8f0ed 100%);
+  padding: 8px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.shipping-layout-3d-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 260px;
+  border-radius: 8px;
+}
+
+.shipping-layout-3d-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.shipping-layout-3d-meta p {
+  margin: 0;
+  font-size: 0.7rem;
+}
+
+.shipping-layout-3d-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shipping-layout-3d-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: #2d4f44;
+  font-weight: 700;
+}
+
+.shipping-layout-3d-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+
+.shipping-layout-3d-legend .tone-carton {
+  background: rgba(153, 206, 185, 0.35);
+  border-color: rgba(45, 95, 83, 0.48);
+}
+
+.shipping-layout-3d-legend .tone-product {
+  background: #7fcbb0;
+  border-color: #519b83;
+}
+
+.shipping-layout-3d-legend .tone-highlight {
+  background: #2f8e6f;
+  border-color: #20654f;
+}
+
+.shipping-layout-3d-fallback {
+  display: grid;
+  gap: 8px;
+}
+
 .amazon-core-modal {
   margin-top: 4px;
   display: grid;
@@ -1636,6 +1713,14 @@ select:disabled {
 
   .shipping-kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .shipping-layout-3d-canvas {
+    min-height: 240px;
+  }
+
+  .shipping-layout-3d-canvas canvas {
+    min-height: 190px;
   }
 
   .amazon-core-grid {

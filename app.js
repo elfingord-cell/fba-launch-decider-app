@@ -577,6 +577,10 @@ const FBA_OPTIMIZATION_LIMITS = {
   maxDimReductionCmTotalCap: 4,
 };
 
+const SHIPPING_3D_MAX_RENDER_UNITS = 240;
+const SHIPPING_3D_THREE_CDN = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js";
+const SHIPPING_3D_ORBIT_CDN = "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js";
+
 const FIELD_HELP = {
   name: "Interner Produktname zur Vergleichbarkeit in der Multi-Produkt-Ansicht.",
   "basic.priceGross": "Brutto-Verkaufspreis in EUR (inkl. USt.). Netto = Brutto / (1 + USt).",
@@ -1003,13 +1007,13 @@ const COST_METRIC_TOOLTIPS = {
   "shipping.volume_fill_pct":
     "Was bedeutet das? Volumen-Packgrad des Umkartons in %.\nFormel: (Produktvolumen im Umkarton / Umkartonvolumen) × 100.\nWofür genutzt? Transparenz, wie effizient der Umkarton mit Ware statt Luft gefüllt ist.",
   "shipping.void_volume_liters":
-    "Was bedeutet das? Freies Luftvolumen je Umkarton in Litern.\nFormel: max(0, Umkartonvolumen - Produktvolumen im Umkarton) × 1000.\nWofür genutzt? Transparenz für Verpackungsoptimierung.",
+    "Was bedeutet das? Freies Luftvolumen im Umkarton in Litern.\nFormel: max(0, Umkartonvolumen - Produktvolumen im Umkarton) × 1000.\nWofür genutzt? Transparenz für Verpackungsoptimierung.",
   "shipping.weight_fill_pct":
     "Was bedeutet das? Gewichtsauslastung je Umkarton gegenüber der maximal zulässigen Kartongrenze.\nFormel: (Umkarton-Bruttogewicht / maximales Kartongewicht) × 100.\nWofür genutzt? Frühwarnung, wenn Gewichtsgrenze knapp oder überschritten ist.",
   "shipping.manual_fit_status":
     "Was bedeutet das? Plausibilitätsstatus der manuellen Umkartonisierung (Maße/Gewicht).\nFormel: Prüft Stückzahl gegen physisch mögliche Belegung und Gewicht gegen maximal zulässiges Kartongewicht.\nWofür genutzt? Warnung mit konkretem Korrekturvorschlag.",
   "shipping.layout_preview":
-    "Was bedeutet das? Schematische 2D-Top-View der Produktanordnung im Umkarton.\nFormel: Raster aus nx × ny je Layer auf Basis der besten Orientierung.\nWofür genutzt? Schnelles Verständnis von belegter und freier Fläche.",
+    "Was bedeutet das? Drehbares 3D-Schema der Produktanordnung im Umkarton.\nFormel: Raster aus nx × ny × nz auf Basis der besten Orientierung.\nWofür genutzt? Visuelle Prüfung von Platzierung, Kantenmaßen und freiem Volumen.",
   "shipping.total_po": "Gesamte Shippingkosten für die komplette PO/Sendung.",
   "shipping.per_unit": "Shippingkosten je verkaufter Einheit.",
   "amazon.referral_unit": "Referral Fee pro Einheit (prozentual auf Bruttoverkaufspreis, mind. Mindestgebühr).",
@@ -1548,6 +1552,9 @@ const state = {
     validationSandboxProductId: null,
     validationBaselineMetrics: null,
     validationSandboxMetrics: null,
+    shipping3dLoaderPromise: null,
+    shipping3dLoadFailed: false,
+    shipping3dCleanup: null,
   },
 };
 
@@ -7840,7 +7847,71 @@ function openDriverModal(payload) {
   renderDriverModal();
 }
 
+function ensureShipping3dCleanup() {
+  if (typeof state.ui.shipping3dCleanup === "function") {
+    try {
+      state.ui.shipping3dCleanup();
+    } catch (error) {
+      console.error("Shipping 3D cleanup failed", error);
+    }
+  }
+  state.ui.shipping3dCleanup = null;
+}
+
+function loadScriptOnceWithMarker(src, marker) {
+  return new Promise((resolve, reject) => {
+    const selector = `script[data-shipping3d-script="${marker}"]`;
+    const existing = document.querySelector(selector);
+    if (existing) {
+      if (existing.dataset.loaded === "true") {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error(`Script load failed: ${src}`)), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.dataset.shipping3dScript = marker;
+    script.addEventListener("load", () => {
+      script.dataset.loaded = "true";
+      resolve();
+    }, { once: true });
+    script.addEventListener("error", () => reject(new Error(`Script load failed: ${src}`)), { once: true });
+    document.head.appendChild(script);
+  });
+}
+
+function loadShipping3dDependencies() {
+  if (window.THREE && window.THREE.OrbitControls) {
+    return Promise.resolve(window.THREE);
+  }
+  if (state.ui.shipping3dLoaderPromise) {
+    return state.ui.shipping3dLoaderPromise;
+  }
+
+  state.ui.shipping3dLoaderPromise = (async () => {
+    await loadScriptOnceWithMarker(SHIPPING_3D_THREE_CDN, "three");
+    await loadScriptOnceWithMarker(SHIPPING_3D_ORBIT_CDN, "three_orbit_controls");
+    if (!(window.THREE && window.THREE.OrbitControls)) {
+      throw new Error("Three.js dependencies not available.");
+    }
+    state.ui.shipping3dLoadFailed = false;
+    return window.THREE;
+  })().catch((error) => {
+    state.ui.shipping3dLoadFailed = true;
+    state.ui.shipping3dLoaderPromise = null;
+    throw error;
+  });
+
+  return state.ui.shipping3dLoaderPromise;
+}
+
 function closeDriverModal() {
+  ensureShipping3dCleanup();
   state.ui.driverModal = null;
   if (dom.driverModal) {
     dom.driverModal.classList.add("hidden");
@@ -8248,6 +8319,7 @@ function renderDriverModal() {
     return;
   }
   if (!state.ui.driverModal) {
+    ensureShipping3dCleanup();
     dom.driverModal.classList.add("hidden");
     return;
   }
@@ -8263,6 +8335,7 @@ function renderDriverModal() {
   dom.driverModalSubtitle.textContent = [state.ui.driverModal.value]
     .filter((item) => Boolean(item))
     .join(" · ");
+  ensureShipping3dCleanup();
   dom.driverModalFields.innerHTML = "";
 
   const modalMetrics = calculateProduct(selected);
@@ -9727,6 +9800,455 @@ function shippingManualFitStatusLabel(status) {
   return "Nicht geprüft";
 }
 
+function createShippingLayoutFallbackElement(metrics, reason = "") {
+  const wrapper = document.createElement("div");
+  wrapper.className = "shipping-layout-3d-fallback";
+  if (reason) {
+    const note = document.createElement("p");
+    note.className = "hint warn";
+    note.textContent = reason;
+    wrapper.appendChild(note);
+  }
+  wrapper.appendChild(createShippingLayoutPreviewElement(metrics));
+  return wrapper;
+}
+
+function createTextSprite(text, options = {}) {
+  const THREE = window.THREE;
+  const sprite = new THREE.Sprite();
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return sprite;
+  }
+
+  const fontPx = Math.max(20, roundInt(options.fontPx, 36));
+  const paddingX = Math.max(8, roundInt(options.paddingX, 14));
+  const paddingY = Math.max(6, roundInt(options.paddingY, 9));
+  const fontFamily = options.fontFamily ?? "\"Space Grotesk\", \"Manrope\", sans-serif";
+  context.font = `700 ${fontPx}px ${fontFamily}`;
+  const measuredWidth = Math.ceil(context.measureText(text).width);
+  canvas.width = Math.max(64, measuredWidth + paddingX * 2);
+  canvas.height = Math.max(40, Math.ceil(fontPx * 1.5) + paddingY * 2);
+
+  context.font = `700 ${fontPx}px ${fontFamily}`;
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = options.background ?? "rgba(247, 251, 250, 0.92)";
+  context.strokeStyle = options.border ?? "rgba(58, 96, 84, 0.45)";
+  context.lineWidth = 2;
+  context.beginPath();
+  if (typeof context.roundRect === "function") {
+    context.roundRect(1, 1, canvas.width - 2, canvas.height - 2, 9);
+  } else {
+    context.rect(1, 1, canvas.width - 2, canvas.height - 2);
+  }
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = options.color ?? "#1f3b33";
+  context.textBaseline = "middle";
+  context.fillText(text, paddingX, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+
+  sprite.material = new THREE.SpriteMaterial({
+    map: texture,
+    depthTest: false,
+    depthWrite: false,
+    transparent: true,
+  });
+  const scale = Math.max(0.0015, num(options.scale, 0.0043));
+  sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
+  sprite.renderOrder = 12;
+  return sprite;
+}
+
+function createDimensionAnnotation3d({
+  start,
+  end,
+  label,
+  color = 0x3a7a64,
+  offsetDirection = null,
+  tickFactor = 0.03,
+  labelOffsetFactor = 0.18,
+}) {
+  const THREE = window.THREE;
+  const group = new THREE.Group();
+  const startPoint = start.clone();
+  const endPoint = end.clone();
+  const direction = endPoint.clone().sub(startPoint);
+  const lineLength = Math.max(0.0001, direction.length());
+  const lineDir = direction.clone().normalize();
+
+  const baseGeom = new THREE.BufferGeometry().setFromPoints([startPoint, endPoint]);
+  const baseLine = new THREE.Line(baseGeom, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95 }));
+  baseLine.renderOrder = 10;
+  group.add(baseLine);
+
+  let labelDir = offsetDirection instanceof THREE.Vector3 ? offsetDirection.clone() : new THREE.Vector3(0, 1, 0);
+  if (labelDir.lengthSq() < 1e-8) {
+    labelDir = new THREE.Vector3(0, 1, 0);
+  }
+  labelDir.normalize();
+
+  let tickDir = new THREE.Vector3().crossVectors(lineDir, labelDir);
+  if (tickDir.lengthSq() < 1e-8) {
+    tickDir = new THREE.Vector3().crossVectors(lineDir, new THREE.Vector3(0, 0, 1));
+  }
+  if (tickDir.lengthSq() < 1e-8) {
+    tickDir = new THREE.Vector3(1, 0, 0);
+  }
+  tickDir.normalize();
+
+  const halfTick = tickDir.multiplyScalar(Math.max(0.016, lineLength * tickFactor));
+  [startPoint, endPoint].forEach((point) => {
+    const tickGeom = new THREE.BufferGeometry().setFromPoints([
+      point.clone().sub(halfTick),
+      point.clone().add(halfTick),
+    ]);
+    const tick = new THREE.Line(tickGeom, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95 }));
+    tick.renderOrder = 10;
+    group.add(tick);
+  });
+
+  const labelSprite = createTextSprite(label);
+  const labelOffset = labelDir.multiplyScalar(Math.max(0.08, lineLength * labelOffsetFactor));
+  labelSprite.position.copy(startPoint.clone().add(endPoint).multiplyScalar(0.5).add(labelOffset));
+  group.add(labelSprite);
+  return group;
+}
+
+function buildShippingLayout3dScene(container, metrics) {
+  const THREE = window.THREE;
+  const preview = metrics.shipping.layoutPreview ?? {};
+  if (!preview.available) {
+    throw new Error("Layout preview unavailable");
+  }
+
+  const cartonLengthCm = Math.max(0.1, num(metrics.shipping.estimatedCartonLengthCm, 1));
+  const cartonWidthCm = Math.max(0.1, num(metrics.shipping.estimatedCartonWidthCm, 1));
+  const cartonHeightCm = Math.max(0.1, num(metrics.shipping.estimatedCartonHeightCm, 1));
+
+  const orientation = Array.isArray(preview.orientation) && preview.orientation.length === 3
+    ? preview.orientation
+    : [cartonLengthCm, cartonWidthCm, cartonHeightCm];
+  const unitLengthCm = Math.max(0.05, num(orientation[0], cartonLengthCm));
+  const unitWidthCm = Math.max(0.05, num(orientation[1], cartonWidthCm));
+  const unitHeightCm = Math.max(0.05, num(orientation[2], cartonHeightCm));
+
+  const nx = Math.max(1, roundInt(preview.nx, 1));
+  const ny = Math.max(1, roundInt(preview.ny, 1));
+  const nz = Math.max(1, roundInt(preview.nz, 1));
+  const placedUnits = Math.max(0, roundInt(preview.placedUnits, 0));
+  const renderedUnits = Math.min(placedUnits, SHIPPING_3D_MAX_RENDER_UNITS);
+
+  const longestCartonDim = Math.max(cartonLengthCm, cartonWidthCm, cartonHeightCm);
+  const worldScale = 6 / Math.max(1, longestCartonDim);
+  const cartonX = cartonLengthCm * worldScale;
+  const cartonY = cartonHeightCm * worldScale;
+  const cartonZ = cartonWidthCm * worldScale;
+  const unitX = unitLengthCm * worldScale;
+  const unitY = unitHeightCm * worldScale;
+  const unitZ = unitWidthCm * worldScale;
+  const maxWorldDim = Math.max(cartonX, cartonY, cartonZ);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 800);
+  camera.position.set(maxWorldDim * 1.45, maxWorldDim * 1.05, maxWorldDim * 1.45);
+  camera.lookAt(0, 0, 0);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.92));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 0.78);
+  keyLight.position.set(maxWorldDim * 2.1, maxWorldDim * 2.2, maxWorldDim * 1.3);
+  scene.add(keyLight);
+  const fillLight = new THREE.DirectionalLight(0xbde0d4, 0.35);
+  fillLight.position.set(-maxWorldDim * 1.4, maxWorldDim * 0.8, -maxWorldDim * 1.8);
+  scene.add(fillLight);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.setClearColor(0x000000, 0);
+  container.innerHTML = "";
+  container.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.enablePan = false;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = maxWorldDim * 0.58;
+  controls.maxDistance = maxWorldDim * 8;
+  controls.target.set(0, 0, 0);
+  controls.update();
+
+  const cartonGeometry = new THREE.BoxGeometry(cartonX, cartonY, cartonZ);
+  const cartonMaterial = new THREE.MeshPhongMaterial({
+    color: 0x99ceb9,
+    transparent: true,
+    opacity: 0.12,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const cartonMesh = new THREE.Mesh(cartonGeometry, cartonMaterial);
+  cartonMesh.renderOrder = 1;
+  scene.add(cartonMesh);
+
+  const cartonEdges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(cartonGeometry),
+    new THREE.LineBasicMaterial({ color: 0x2d5f53, transparent: true, opacity: 0.9 }),
+  );
+  cartonEdges.renderOrder = 4;
+  scene.add(cartonEdges);
+
+  const productsGroup = new THREE.Group();
+  scene.add(productsGroup);
+  const productGeometry = new THREE.BoxGeometry(unitX, unitY, unitZ);
+  const productMaterial = new THREE.MeshPhongMaterial({ color: 0x7fcbb0, transparent: true, opacity: 0.94 });
+  const productHighlightMaterial = new THREE.MeshPhongMaterial({
+    color: 0x2f8e6f,
+    emissive: 0x133a2f,
+    emissiveIntensity: 0.26,
+    transparent: true,
+    opacity: 0.98,
+  });
+
+  let rendered = 0;
+  let highlightedMesh = null;
+  const startX = -cartonX / 2 + unitX / 2;
+  const startY = -cartonY / 2 + unitY / 2;
+  const startZ = -cartonZ / 2 + unitZ / 2;
+  for (let layer = 0; layer < nz && rendered < renderedUnits; layer += 1) {
+    for (let row = 0; row < ny && rendered < renderedUnits; row += 1) {
+      for (let col = 0; col < nx && rendered < renderedUnits; col += 1) {
+        const mesh = new THREE.Mesh(productGeometry, rendered === 0 ? productHighlightMaterial : productMaterial);
+        mesh.position.set(
+          startX + col * unitX,
+          startY + layer * unitY,
+          startZ + row * unitZ,
+        );
+        mesh.renderOrder = rendered === 0 ? 9 : 5;
+        productsGroup.add(mesh);
+        if (rendered === 0) {
+          highlightedMesh = mesh;
+        }
+        rendered += 1;
+      }
+    }
+  }
+
+  const cartonOffset = maxWorldDim * 0.11;
+  scene.add(
+    createDimensionAnnotation3d({
+      start: new THREE.Vector3(-cartonX / 2, -cartonY / 2 - cartonOffset, cartonZ / 2 + cartonOffset * 0.22),
+      end: new THREE.Vector3(cartonX / 2, -cartonY / 2 - cartonOffset, cartonZ / 2 + cartonOffset * 0.22),
+      label: `Umkarton L ${formatNumber(cartonLengthCm)} cm`,
+      offsetDirection: new THREE.Vector3(0, -1, 0),
+    }),
+  );
+  scene.add(
+    createDimensionAnnotation3d({
+      start: new THREE.Vector3(cartonX / 2 + cartonOffset * 0.3, -cartonY / 2 - cartonOffset, -cartonZ / 2),
+      end: new THREE.Vector3(cartonX / 2 + cartonOffset * 0.3, -cartonY / 2 - cartonOffset, cartonZ / 2),
+      label: `Umkarton B ${formatNumber(cartonWidthCm)} cm`,
+      offsetDirection: new THREE.Vector3(1, -1, 0),
+    }),
+  );
+  scene.add(
+    createDimensionAnnotation3d({
+      start: new THREE.Vector3(cartonX / 2 + cartonOffset * 0.38, -cartonY / 2, cartonZ / 2 + cartonOffset * 0.38),
+      end: new THREE.Vector3(cartonX / 2 + cartonOffset * 0.38, cartonY / 2, cartonZ / 2 + cartonOffset * 0.38),
+      label: `Umkarton H ${formatNumber(cartonHeightCm)} cm`,
+      offsetDirection: new THREE.Vector3(1, 0, 1),
+    }),
+  );
+
+  if (highlightedMesh) {
+    const halfX = unitX / 2;
+    const halfY = unitY / 2;
+    const halfZ = unitZ / 2;
+    const highlightOffset = Math.max(unitX, unitY, unitZ) * 0.55;
+    const cx = highlightedMesh.position.x;
+    const cy = highlightedMesh.position.y;
+    const cz = highlightedMesh.position.z;
+
+    scene.add(
+      createDimensionAnnotation3d({
+        start: new THREE.Vector3(cx - halfX, cy + halfY + highlightOffset, cz + halfZ + highlightOffset * 0.2),
+        end: new THREE.Vector3(cx + halfX, cy + halfY + highlightOffset, cz + halfZ + highlightOffset * 0.2),
+        label: `Produkt L ${formatNumber(unitLengthCm)} cm`,
+        offsetDirection: new THREE.Vector3(0, 1, 0),
+      }),
+    );
+    scene.add(
+      createDimensionAnnotation3d({
+        start: new THREE.Vector3(cx + halfX + highlightOffset * 0.24, cy + halfY + highlightOffset, cz - halfZ),
+        end: new THREE.Vector3(cx + halfX + highlightOffset * 0.24, cy + halfY + highlightOffset, cz + halfZ),
+        label: `Produkt B ${formatNumber(unitWidthCm)} cm`,
+        offsetDirection: new THREE.Vector3(1, 1, 0),
+      }),
+    );
+    scene.add(
+      createDimensionAnnotation3d({
+        start: new THREE.Vector3(cx + halfX + highlightOffset * 0.28, cy - halfY, cz + halfZ + highlightOffset * 0.24),
+        end: new THREE.Vector3(cx + halfX + highlightOffset * 0.28, cy + halfY, cz + halfZ + highlightOffset * 0.24),
+        label: `Produkt H ${formatNumber(unitHeightCm)} cm`,
+        offsetDirection: new THREE.Vector3(1, 0, 1),
+      }),
+    );
+  }
+
+  const resize = () => {
+    const width = Math.max(280, roundInt(container.clientWidth, 0) || 320);
+    const height = Math.max(220, roundInt(container.clientHeight, 0) || 320);
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+  };
+  resize();
+
+  let rafId = 0;
+  let disposed = false;
+  const renderFrame = () => {
+    if (disposed) {
+      return;
+    }
+    rafId = requestAnimationFrame(renderFrame);
+    controls.update();
+    renderer.render(scene, camera);
+  };
+  renderFrame();
+
+  window.addEventListener("resize", resize);
+  let resizeObserver = null;
+  if (typeof ResizeObserver !== "undefined") {
+    resizeObserver = new ResizeObserver(() => resize());
+    resizeObserver.observe(container);
+  }
+
+  const disposeMaterial = (material) => {
+    if (!material) {
+      return;
+    }
+    if (Array.isArray(material)) {
+      material.forEach((item) => disposeMaterial(item));
+      return;
+    }
+    if (material.map) {
+      material.map.dispose();
+    }
+    material.dispose();
+  };
+
+  const cleanup = () => {
+    if (disposed) {
+      return;
+    }
+    disposed = true;
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+    }
+    window.removeEventListener("resize", resize);
+    if (resizeObserver) {
+      resizeObserver.disconnect();
+    }
+    controls.dispose();
+    scene.traverse((node) => {
+      if (node.geometry) {
+        node.geometry.dispose();
+      }
+      if (node.material) {
+        disposeMaterial(node.material);
+      }
+    });
+    renderer.dispose();
+    if (renderer.domElement && renderer.domElement.parentNode === container) {
+      container.removeChild(renderer.domElement);
+    }
+  };
+
+  return {
+    cleanup,
+    renderedUnits: rendered,
+    totalUnits: placedUnits,
+  };
+}
+
+function createShippingLayout3dElement(metrics) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "shipping-layout-3d-wrap";
+  wrapper.title = tooltipForMetric("shipping.layout_preview", "");
+
+  const canvasHost = document.createElement("div");
+  canvasHost.className = "shipping-layout-3d-canvas";
+  const status = document.createElement("p");
+  status.className = "hint";
+  status.textContent = "3D-Packbild wird geladen ...";
+  canvasHost.appendChild(status);
+
+  const meta = document.createElement("div");
+  meta.className = "shipping-layout-3d-meta";
+  const freeVolumePct = clamp(100 - num(metrics.shipping.volumeFillPct, 0), 0, 100);
+  meta.innerHTML =
+    `<p><strong>Freies Volumen:</strong> ${formatNumber(metrics.shipping.voidVolumeLiters)} L (${formatNumber(metrics.shipping.voidVolumeCbm)} CBM)</p>` +
+    `<p><strong>Luftanteil:</strong> ${formatPercent(freeVolumePct)} · <strong>Volumen-Packgrad:</strong> ${formatPercent(metrics.shipping.volumeFillPct)}</p>` +
+    `<p><strong>Umkarton:</strong> ${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm</p>`;
+
+  const legend = document.createElement("div");
+  legend.className = "shipping-layout-3d-legend";
+  legend.innerHTML =
+    `<span><i class="tone-carton"></i>Umkarton (transparent)</span>` +
+    `<span><i class="tone-product"></i>Produktverpackungen</span>` +
+    `<span><i class="tone-highlight"></i>Referenz-Produkt</span>`;
+
+  wrapper.append(canvasHost, meta, legend);
+
+  const fallbackTo2d = (reason) => {
+    ensureShipping3dCleanup();
+    canvasHost.innerHTML = "";
+    canvasHost.appendChild(createShippingLayoutFallbackElement(metrics, reason));
+  };
+
+  if (!metrics.shipping.layoutPreview?.available) {
+    fallbackTo2d("3D-Packbild nicht verfügbar. Es werden zuerst konsistente Layoutdaten benötigt.");
+    return wrapper;
+  }
+  if (state.ui.shipping3dLoadFailed) {
+    fallbackTo2d("3D-Viewer konnte zuvor nicht geladen werden. 2D-Fallback ist aktiv.");
+    return wrapper;
+  }
+
+  loadShipping3dDependencies()
+    .then(() => {
+      if (!wrapper.isConnected) {
+        return;
+      }
+      try {
+        const result = buildShippingLayout3dScene(canvasHost, metrics);
+        state.ui.shipping3dCleanup = result.cleanup;
+        if (result.totalUnits > result.renderedUnits) {
+          const note = document.createElement("p");
+          note.className = "hint";
+          note.textContent =
+            `Visualisiert: ${formatNumber(result.renderedUnits)} von ${formatNumber(result.totalUnits)} Stück (Performance-Limit).`;
+          canvasHost.appendChild(note);
+        }
+      } catch (error) {
+        console.error("Shipping 3D render failed", error);
+        state.ui.shipping3dLoadFailed = true;
+        fallbackTo2d("3D-Rendering nicht möglich (WebGL/Browser). 2D-Fallback aktiv.");
+      }
+    })
+    .catch((error) => {
+      console.error("Shipping 3D dependency load failed", error);
+      state.ui.shipping3dLoadFailed = true;
+      fallbackTo2d("3D-Bibliothek konnte nicht geladen werden. 2D-Fallback aktiv.");
+    });
+
+  return wrapper;
+}
+
 function createShippingLayoutPreviewElement(metrics) {
   const wrapper = document.createElement("div");
   wrapper.className = "shipping-layout-wrap";
@@ -9922,8 +10444,17 @@ function createShippingDashboardModalContent(metrics) {
 
   const layoutDetails = document.createElement("details");
   layoutDetails.className = "shipping-detail-toggle";
-  layoutDetails.innerHTML = "<summary>Packbild (2D-Schema)</summary>";
-  layoutDetails.appendChild(createShippingLayoutPreviewElement(metrics));
+  layoutDetails.innerHTML = "<summary>Packbild (3D, drehbar)</summary>";
+  const layoutBody = document.createElement("div");
+  layoutBody.className = "shipping-detail-body";
+  const volumeHint = document.createElement("p");
+  const freeVolumePct = clamp(100 - num(metrics.shipping.volumeFillPct, 0), 0, 100);
+  volumeHint.innerHTML =
+    `<strong>Freies Volumen:</strong> ${formatNumber(metrics.shipping.voidVolumeLiters)} L (${formatNumber(metrics.shipping.voidVolumeCbm)} CBM) · ` +
+    `<strong>Luftanteil:</strong> ${formatPercent(freeVolumePct)}`;
+  layoutBody.appendChild(volumeHint);
+  layoutBody.appendChild(createShippingLayout3dElement(metrics));
+  layoutDetails.appendChild(layoutBody);
   cartonPanel.appendChild(layoutDetails);
 
   mainGrid.appendChild(cartonPanel);
