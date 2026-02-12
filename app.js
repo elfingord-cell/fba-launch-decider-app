@@ -9,8 +9,6 @@ const FX_ENDPOINT = "https://api.frankfurter.app/latest?from=USD&to=EUR";
 const SUPABASE_CONFIG_ENDPOINT = "/api/config";
 const REMOTE_SAVE_DEBOUNCE_MS = 350;
 const SUPABASE_CLIENT_TIMEOUT_MS = 12000;
-const SUPABASE_SESSION_TIMEOUT_MS = 45000;
-const SUPABASE_SIGNIN_TIMEOUT_MS = 45000;
 
 const MARKETPLACE_VAT = {
   DE: 19,
@@ -2944,12 +2942,7 @@ async function bootstrapCollaborationSession() {
 
   if (!state.supabase.authSubscribed) {
     state.supabase.authSubscribed = true;
-    client.auth.onAuthStateChange(async (event, session) => {
-      // Die Initial-Session wird direkt über getSession() behandelt.
-      if (event === "INITIAL_SESSION") {
-        return;
-      }
-
+    client.auth.onAuthStateChange(async (_event, session) => {
       const user = session?.user ?? null;
       if (!user) {
         state.storage.mode = "local";
@@ -2980,48 +2973,9 @@ async function bootstrapCollaborationSession() {
     });
   }
 
-  // UI sofort freigeben: Session-Restore blockiert den Login nicht.
+  // Auth-UI sofort freigeben; Session-Handling läuft über onAuthStateChange (inkl. INITIAL_SESSION).
   setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
-  setAuthStatus("Session wird im Hintergrund geprüft ...");
-
-  void (async () => {
-    let data = null;
-    let error = null;
-    try {
-      const result = await withTimeout(client.auth.getSession(), SUPABASE_SESSION_TIMEOUT_MS, "supabase_get_session");
-      data = result?.data ?? null;
-      error = result?.error ?? null;
-    } catch (sessionError) {
-      console.warn("Supabase session load timeout", sessionError);
-      setAuthStatus("Session-Check dauert länger (Supabase Wakeup). Du kannst dich jetzt anmelden.");
-      return;
-    }
-
-    if (error) {
-      console.error("Supabase session load failed", error);
-      setAuthStatus("Session-Prüfung fehlgeschlagen. Bitte anmelden.", true);
-      return;
-    }
-
-    const user = data?.session?.user ?? null;
-    if (!user) {
-      setAuthStatus("Keine aktive Session gefunden. Bitte anmelden.");
-      return;
-    }
-
-    try {
-      const activated = await activateSharedWorkspace(user);
-      if (!activated) {
-        return;
-      }
-      setAppMode("ready_shared");
-      renderPageAfterLoad();
-    } catch (activateError) {
-      console.error("Supabase workspace activation failed", activateError);
-      setAuthStatus("Session erkannt, aber Workspace konnte nicht geladen werden.", true);
-    }
-  })();
-
+  setAuthStatus("Bereit zur Anmeldung.");
   return;
 }
 
@@ -3048,54 +3002,48 @@ async function handleAuthLogin() {
 
   setAuthStatus("Anmeldung läuft ...");
 
-  let signInResult = null;
+  let slowHintTimer = null;
   try {
-    signInResult = await withTimeout(
-      state.supabase.client.auth.signInWithPassword({ email, password }),
-      SUPABASE_SIGNIN_TIMEOUT_MS,
-      "supabase_sign_in",
-    );
-  } catch (signInTimeout) {
-    console.warn("Supabase sign in timeout (attempt 1)", signInTimeout);
-    setAuthStatus("Supabase startet gerade (Wakeup). Zweiter Versuch läuft ...");
-    try {
-      signInResult = await withTimeout(
-        state.supabase.client.auth.signInWithPassword({ email, password }),
-        SUPABASE_SIGNIN_TIMEOUT_MS,
-        "supabase_sign_in_retry",
-      );
-    } catch (signInTimeout2) {
-      console.error("Supabase sign in timeout (attempt 2)", signInTimeout2);
-      setAppMode("auth_required", "Anmeldung timeout. Bitte in 30s erneut versuchen.");
-      setAuthStatus("Anmeldung timeout (2x). Prüfe Netzwerk/Supabase-Status und versuche es erneut.", true);
+    slowHintTimer = window.setTimeout(() => {
+      setAuthStatus("Anmeldung dauert länger (Supabase Wakeup). Bitte kurz warten ...");
+    }, 12000);
+
+    const { data, error } = await state.supabase.client.auth.signInWithPassword({ email, password });
+
+    if (slowHintTimer) {
+      window.clearTimeout(slowHintTimer);
+      slowHintTimer = null;
+    }
+
+    if (error) {
+      setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+      setAuthStatus("Anmeldung fehlgeschlagen: " + error.message, true);
       return;
     }
-  }
 
-  const { data, error } = signInResult ?? {};
-  if (error) {
-    setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
-    setAuthStatus("Anmeldung fehlgeschlagen: " + error.message, true);
-    return;
-  }
+    setAuthStatus("Anmeldung erfolgreich. Workspace wird geladen ...");
 
-  setAuthStatus("Anmeldung erfolgreich. Workspace wird geladen ...");
-
-  // Primär wird über onAuthStateChange aktiviert. Falls der Event ausbleibt, hier direkter Fallback.
-  const user = data?.user ?? data?.session?.user ?? null;
-  if (!user) {
-    return;
-  }
-  try {
-    const activated = await activateSharedWorkspace(user);
-    if (activated) {
-      setAppMode("ready_shared");
-      renderPageAfterLoad();
+    // Primär wird über onAuthStateChange aktiviert. Falls der Event ausbleibt, hier direkter Fallback.
+    const user = data?.user ?? data?.session?.user ?? null;
+    if (!user) {
+      return;
     }
-  } catch (activateError) {
-    console.error("Workspace activation after login failed", activateError);
-    setAuthStatus("Workspace konnte nach Login nicht geladen werden.", true);
-    setAppMode("auth_required", "Bitte erneut anmelden oder Workspace-Zugriff prüfen.");
+    try {
+      const activated = await activateSharedWorkspace(user);
+      if (activated) {
+        setAppMode("ready_shared");
+        renderPageAfterLoad();
+      }
+    } catch (activateError) {
+      console.error("Workspace activation after login failed", activateError);
+      setAuthStatus("Workspace konnte nach Login nicht geladen werden.", true);
+      setAppMode("auth_required", "Bitte erneut anmelden oder Workspace-Zugriff prüfen.");
+    }
+    return;
+  } finally {
+    if (slowHintTimer) {
+      window.clearTimeout(slowHintTimer);
+    }
   }
 }
 
