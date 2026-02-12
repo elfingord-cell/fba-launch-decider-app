@@ -982,7 +982,7 @@ const COST_METRIC_TOOLTIPS = {
   "shipping.units_by_dimension_cap":
     "Definition: Maximal mögliche Stück je Umkarton unter Maßgrenzen.\nFormel: Best-Fit über Orientierungen unter Hard-Caps inkl. Buffer.\nWird genutzt für: Auto-Kandidatenwahl der Kartonisierung.",
   "shipping.units_per_carton":
-    "Definition: Tatsächlich verwendete Stück je Umkarton (auto oder manuell).\nFormel: Auto = min(Gewichtsgrenze, Maßgrenze), ggf. Downshift bei nicht-exakter Belegung.\nWird genutzt für: physische Kartonanzahl, Sendungsvolumen und Teile der 3PL-Kosten.",
+    "Was bedeutet das? Tatsächlich verwendete Stück je Umkarton (auto oder manuell).\nFormel: Auto startet mit min(Gewichtsgrenze, Maßgrenze) und reduziert ggf., bis eine exakte Anordnung im zulässigen Umkarton möglich ist.\nWofür genutzt? Physische Kartonanzahl, Sendungsvolumen und Teile der 3PL-Kosten.\nWas kann ich tun? Bei Downshift reale Umkartonmaße manuell setzen oder Stück je Umkarton reduzieren.",
   "shipping.physical_cartons":
     "Definition: Physisch benötigte Umkartons für die PO.\nFormel: ceil(PO Stück / Stück je Umkarton).\nWird genutzt für: Shipment-Bildung und kartonbasierte 3PL-/Carrier-Positionen.",
   "shipping.shipment_cbm":
@@ -997,6 +997,16 @@ const COST_METRIC_TOOLTIPS = {
     "Definition: Referenzvolumen je Äquivalenz-Karton.\nFormel: Hard-Caps Volumen × Auslastung (%).\nWird genutzt für: Berechnung der Abrechnungs-Kartons (Äquivalenz) als Info-Wert.",
   "shipping.reference_weight_kg":
     "Definition: Referenzgewicht je Äquivalenz-Karton.\nFormel: Hard-Cap Gewicht × Auslastung (%).\nWird genutzt für: Berechnung der Abrechnungs-Kartons (Äquivalenz) als Info-Wert.",
+  "shipping.volume_fill_pct":
+    "Was bedeutet das? Volumen-Packgrad des Umkartons in %.\nFormel: (Produktvolumen im Umkarton / Umkartonvolumen) × 100.\nWofür genutzt? Transparenz, wie effizient der Umkarton mit Ware statt Luft gefüllt ist.",
+  "shipping.void_volume_liters":
+    "Was bedeutet das? Freies Luftvolumen je Umkarton in Litern.\nFormel: max(0, Umkartonvolumen - Produktvolumen im Umkarton) × 1000.\nWofür genutzt? Transparenz für Verpackungsoptimierung.",
+  "shipping.weight_fill_pct":
+    "Was bedeutet das? Gewichtsauslastung je Umkarton gegenüber der maximal zulässigen Kartongrenze.\nFormel: (Umkarton-Bruttogewicht / Hard-Cap-Gewicht) × 100.\nWofür genutzt? Frühwarnung, wenn Gewichtsgrenze knapp oder überschritten ist.",
+  "shipping.manual_fit_status":
+    "Was bedeutet das? Plausibilitätsstatus der manuellen Umkartonisierung (Maße/Gewicht).\nFormel: Prüft Stückzahl gegen physisch mögliche Belegung und Gewicht gegen Hard-Cap.\nWofür genutzt? Warnung mit konkretem Korrekturvorschlag.",
+  "shipping.layout_preview":
+    "Was bedeutet das? Schematische 2D-Top-View der Produktanordnung im Umkarton.\nFormel: Raster aus nx × ny je Layer auf Basis der besten Orientierung.\nWofür genutzt? Schnelles Verständnis von belegter und freier Fläche.",
   "shipping.total_po": "Gesamte Shippingkosten für die komplette PO/Sendung.",
   "shipping.per_unit": "Shippingkosten je verkaufter Einheit.",
   "amazon.referral_unit": "Referral Fee pro Einheit (prozentual auf Bruttoverkaufspreis, mind. Mindestgebühr).",
@@ -4709,7 +4719,7 @@ function cartonizationSourceLabel(source) {
   if (source === "manual_override") {
     return "Manuell (Packing-List Override)";
   }
-  return "Auto (Hard-Caps)";
+  return "Automatisch nach maximal zulässigen Karton-Grenzen";
 }
 
 function cartonizationSelectionReasonLabel(reason) {
@@ -4717,9 +4727,19 @@ function cartonizationSelectionReasonLabel(reason) {
     return "Manueller Override aktiv";
   }
   if (reason === "auto_cap_downshift_exact_fit") {
-    return "Auto-Downshift: exakte Belegung unter Hard-Caps nicht möglich";
+    return "Kandidatenwert reduziert, weil dafür keine exakte Anordnung im zulässigen Umkarton möglich war";
   }
-  return "Auto-Kandidat direkt verwendbar";
+  return "Kandidatenwert passt ohne Anpassung";
+}
+
+function cartonizationSelectionActionLabel(reason) {
+  if (reason === "auto_cap_downshift_exact_fit") {
+    return "Was tun: Stück je Umkarton reduzieren oder reale Umkartonmaße manuell setzen.";
+  }
+  if (reason === "manual_override") {
+    return "Was tun: Nur prüfen, ob manuelle Maße/Gewicht zur Stückzahl plausibel sind.";
+  }
+  return "Keine Aktion nötig.";
 }
 
 function buildDimensionOrientations(lengthCm, widthCm, heightCm) {
@@ -4742,19 +4762,94 @@ function buildDimensionOrientations(lengthCm, widthCm, heightCm) {
   });
 }
 
-function maxUnitsByDimensionCap(unitDims, hardCaps, outerBufferCm) {
+function bestOrientationFitForCarton(unitDims, cartonDims, outerBufferCm) {
+  const safeBuffer = Math.max(0, num(outerBufferCm, 0));
+  const safeCarton = {
+    lengthCm: Math.max(0, num(cartonDims?.lengthCm, 0)),
+    widthCm: Math.max(0, num(cartonDims?.widthCm, 0)),
+    heightCm: Math.max(0, num(cartonDims?.heightCm, 0)),
+  };
   const orientations = buildDimensionOrientations(unitDims[0], unitDims[1], unitDims[2]);
-  let best = 0;
+  let best = null;
+
   orientations.forEach(([unitL, unitW, unitH]) => {
-    const maxNx = Math.max(0, Math.floor((hardCaps.lengthCm - outerBufferCm) / Math.max(0.000001, unitL)));
-    const maxNy = Math.max(0, Math.floor((hardCaps.widthCm - outerBufferCm) / Math.max(0.000001, unitW)));
-    const maxNz = Math.max(0, Math.floor((hardCaps.heightCm - outerBufferCm) / Math.max(0.000001, unitH)));
-    const units = maxNx * maxNy * maxNz;
-    if (units > best) {
-      best = units;
+    const maxNx = Math.max(0, Math.floor((safeCarton.lengthCm - safeBuffer) / Math.max(0.000001, unitL)));
+    const maxNy = Math.max(0, Math.floor((safeCarton.widthCm - safeBuffer) / Math.max(0.000001, unitW)));
+    const maxNz = Math.max(0, Math.floor((safeCarton.heightCm - safeBuffer) / Math.max(0.000001, unitH)));
+    const maxUnits = maxNx * maxNy * maxNz;
+    const candidate = {
+      orientation: [unitL, unitW, unitH],
+      nx: maxNx,
+      ny: maxNy,
+      nz: maxNz,
+      maxUnits,
+    };
+    if (!best) {
+      best = candidate;
+      return;
+    }
+    if (candidate.maxUnits > best.maxUnits) {
+      best = candidate;
+      return;
+    }
+    if (candidate.maxUnits === best.maxUnits) {
+      const bestFootprint = best.nx * best.ny;
+      const candidateFootprint = candidate.nx * candidate.ny;
+      if (candidateFootprint > bestFootprint) {
+        best = candidate;
+      }
     }
   });
-  return Math.max(1, best);
+
+  return best;
+}
+
+function maxUnitsByDimensionCap(unitDims, hardCaps, outerBufferCm, minUnits = 1) {
+  const best = bestOrientationFitForCarton(unitDims, hardCaps, outerBufferCm);
+  const safeMin = Math.max(0, roundInt(minUnits, 0));
+  return Math.max(safeMin, num(best?.maxUnits, 0));
+}
+
+function calculateCartonLayoutPreview(options) {
+  const unitDims = Array.isArray(options?.unitDims) ? options.unitDims : [0, 0, 0];
+  const cartonDims = options?.cartonDims ?? {};
+  const requestedUnits = Math.max(1, roundInt(options?.units, 1));
+  const outerBufferCm = Math.max(0, num(options?.outerBufferCm, 0));
+  const manualEnabled = Boolean(options?.manualEnabled);
+  const manualDimsDeclared = Boolean(options?.manualDimsDeclared);
+
+  const best = bestOrientationFitForCarton(unitDims, cartonDims, outerBufferCm);
+  const defaultFitType = manualEnabled
+    ? (manualDimsDeclared ? "manual_declared" : "manual_estimated")
+    : "auto";
+  if (!best || best.maxUnits <= 0 || best.nx <= 0 || best.ny <= 0 || best.nz <= 0) {
+    return {
+      available: false,
+      orientation: null,
+      nx: 0,
+      ny: 0,
+      nz: 0,
+      placedUnits: 0,
+      freeAreaPctTopView: 100,
+      fitType: "fallback",
+    };
+  }
+
+  const placedUnits = Math.max(0, Math.min(requestedUnits, best.maxUnits));
+  const topSlots = Math.max(1, best.nx * best.ny);
+  const placedTopView = Math.min(topSlots, placedUnits);
+  const freeAreaPctTopView = clamp(((topSlots - placedTopView) / topSlots) * 100, 0, 100);
+
+  return {
+    available: true,
+    orientation: best.orientation,
+    nx: best.nx,
+    ny: best.ny,
+    nz: best.nz,
+    placedUnits,
+    freeAreaPctTopView,
+    fitType: defaultFitType,
+  };
 }
 
 function buildCartonCandidates(options) {
@@ -4970,6 +5065,10 @@ function estimateCartonForExactUnits(options) {
           cartonHeightCm,
           cartonGrossKg,
           cartonCbm,
+          nx,
+          ny,
+          nz,
+          orientation: [unitL, unitW, unitH],
           softValid,
         });
       }
@@ -5056,6 +5155,8 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
   let estimatedCartonWidthCm = estimatedAuto?.cartonWidthCm ?? (widthCm + outerBufferCm);
   let estimatedCartonHeightCm = estimatedAuto?.cartonHeightCm ?? (heightCm + outerBufferCm);
   let estimatedCartonGrossWeightKg = estimatedAuto?.cartonGrossKg ?? (unitWeightKgGross * unitsPerCartonAuto);
+  let manualDimensionsProvided = false;
+  let manualWeightProvided = false;
   let cartonizationSource = "auto_hard_caps";
   let unitsPerCartonSelectionReason = unitsPerCartonAuto < unitsPerCartonCapCandidate
     ? "auto_cap_downshift_exact_fit"
@@ -5067,8 +5168,10 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     const manualWidthCm = Math.max(0, num(assumptionsCarton.cartonWidthCm, 0));
     const manualHeightCm = Math.max(0, num(assumptionsCarton.cartonHeightCm, 0));
     const manualGrossKg = Math.max(0, num(assumptionsCarton.cartonGrossWeightKg, 0));
+    manualDimensionsProvided = manualLengthCm > 0 && manualWidthCm > 0 && manualHeightCm > 0;
+    manualWeightProvided = manualGrossKg > 0;
 
-    if (manualLengthCm > 0 && manualWidthCm > 0 && manualHeightCm > 0) {
+    if (manualDimensionsProvided) {
       estimatedCartonLengthCm = manualLengthCm;
       estimatedCartonWidthCm = manualWidthCm;
       estimatedCartonHeightCm = manualHeightCm;
@@ -5089,7 +5192,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
       }
     }
 
-    if (manualGrossKg > 0) {
+    if (manualWeightProvided) {
       estimatedCartonGrossWeightKg = manualGrossKg;
     } else if (!Number.isFinite(estimatedCartonGrossWeightKg) || estimatedCartonGrossWeightKg <= 0) {
       estimatedCartonGrossWeightKg = unitsPerCartonAuto * unitWeightKgGross;
@@ -5098,6 +5201,18 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     unitsPerCartonSelectionReason = "manual_override";
   }
   const unitsPerCartonDownshift = manualEnabled ? 0 : Math.max(0, unitsPerCartonCapCandidate - unitsPerCartonAuto);
+  const manualMaxUnitsByDimensions = manualDimensionsProvided
+    ? maxUnitsByDimensionCap(
+      [lengthCm, widthCm, heightCm],
+      {
+        lengthCm: estimatedCartonLengthCm,
+        widthCm: estimatedCartonWidthCm,
+        heightCm: estimatedCartonHeightCm,
+      },
+      outerBufferCm,
+      0,
+    )
+    : 0;
 
   const physicalCartonsCount = Math.max(1, Math.ceil(unitsPerOrder / Math.max(1, unitsPerCartonAuto)));
   const cartonsCount = physicalCartonsCount;
