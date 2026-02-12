@@ -251,13 +251,18 @@
               <details id="settingsAmazonSection" class="settings-section">
                 <summary>
                   <span>H) Amazon Defaults</span>
-                  <small>Amazon-Lager und Lagerdauer</small>
+                  <small>Amazon-Lager + FBA-Ratecard (DE)</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
                 <div class="admin-grid">
                   <label>Amazon Lager je CBM/Monat (EUR)<input data-settings-path="costDefaults.amazonStoragePerCbmMonthEur" type="number" min="0" step="0.1" /></label>
                   <label>Ø Amazon Lagerdauer (Monate)<input data-settings-path="costDefaults.avgAmazonStorageMonths" type="number" min="0" step="0.1" /></label>
+                  <label>Ratecard-Version (DE, fix)<input data-settings-path="amazonFba.de.rateCardVersion" type="text" readonly /></label>
+                  <label>Ratecard-Quellenlink (DE)<input data-settings-path="amazonFba.de.sourceUrl" type="text" /></label>
+                  <label>Volumetric Divisor<input data-settings-path="amazonFba.de.volumetricDivisor" type="number" min="3000" max="10000" step="1" /></label>
                 </div>
+                <p class="hint">Fulfillment-Fee-Auto ist nur für Amazon.de aktiv (DE Ratecard 2026-02).</p>
+                <p class="hint">Nicht-DE oder kein Tier-Match fallen transparent auf die manuelle FBA Fee zurück.</p>
               </details>
 
               <details id="settingsCategorySection" class="settings-section">

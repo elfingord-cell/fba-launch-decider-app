@@ -1010,6 +1010,74 @@ select:disabled {
   font-size: 0.68rem;
 }
 
+.fba-info-card {
+  margin-top: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+  padding: 11px;
+  display: grid;
+  gap: 9px;
+}
+
+.fba-info-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.fba-info-head h4 {
+  margin: 0 0 3px;
+  font-size: 0.86rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.fba-info-head strong {
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  font-size: 1.12rem;
+  line-height: 1.15;
+  color: #1f5e53;
+}
+
+.fba-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fba-info-grid > div {
+  border: 1px solid color-mix(in srgb, var(--line) 62%, white);
+  border-radius: 9px;
+  background: #fff;
+  padding: 7px;
+  display: grid;
+  gap: 2px;
+}
+
+.fba-info-grid span {
+  color: var(--muted);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.fba-info-grid strong {
+  font-size: 0.78rem;
+}
+
+.fba-info-grid small {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.fba-source-link {
+  color: var(--accent-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
 @media (max-width: 980px) {
   .shipping-dashboard-head {
     grid-template-columns: 1fr;
@@ -1017,6 +1085,10 @@ select:disabled {
 
   .shipping-dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .fba-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1961,6 +2033,10 @@ tbody tr:hover {
 
   .cols-3,
   .cols-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .fba-info-grid {
     grid-template-columns: 1fr;
   }
 

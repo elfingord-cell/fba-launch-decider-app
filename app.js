@@ -189,6 +189,9 @@ const RAIL_FORTO_V2_DEFAULTS = {
 };
 
 const LEGACY_RAIL_CARTON_EQUIVALENT_CBM = 0.05;
+const AMAZON_FBA_DE_RATECARD_VERSION = "2026-02";
+const AMAZON_FBA_DE_RATECARD_DEFAULT_URL = "https://m.media-amazon.com/images/G/02/sell/images/260114-FBA-Rate-Card-DE.pdf";
+const AMAZON_FBA_DE_DEFAULT_VOLUMETRIC_DIVISOR = 5000;
 
 const RAIL_SHIPPING_V3_DEFAULTS = {
   rateEurPerCbm: 164.7,
@@ -248,6 +251,13 @@ const DEFAULT_SETTINGS = {
     },
     manualSurchargeEnabled: RAIL_SHIPPING_V3_DEFAULTS.manualSurchargeEnabled,
     manualSurchargeEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.manualSurchargeEurPerShipment,
+  },
+  amazonFba: {
+    de: {
+      rateCardVersion: AMAZON_FBA_DE_RATECARD_VERSION,
+      sourceUrl: AMAZON_FBA_DE_RATECARD_DEFAULT_URL,
+      volumetricDivisor: AMAZON_FBA_DE_DEFAULT_VOLUMETRIC_DIVISOR,
+    },
   },
   cartonRules: {
     preset: "legacy",
@@ -342,65 +352,184 @@ const DEFAULT_SETTINGS = {
     railShippingModelVersion: 3,
   },
 };
-
-const FBA_STANDARD_TIERS = [
-  {
-    key: "small_1",
-    label: "Kleines Paket 1",
-    maxDims: [35, 25, 7],
-    maxWeightG: 3900,
-    baseFee: 3.3,
-    stepFee: 0.05,
-  },
-  {
-    key: "small_2",
-    label: "Kleines Paket 2",
-    maxDims: [35, 25, 9],
-    maxWeightG: 3900,
-    baseFee: 3.34,
-    stepFee: 0.06,
-  },
-  {
-    key: "small_3",
-    label: "Kleines Paket 3",
-    maxDims: [35, 25, 12],
-    maxWeightG: 3900,
-    baseFee: 3.38,
-    stepFee: 0.07,
-  },
-  {
-    key: "medium_1",
-    label: "Mittelgrosses Paket 1",
-    maxDims: [40, 30, 6],
-    maxWeightG: 11900,
-    baseFee: 3.5,
-    stepFee: 0.07,
-  },
-  {
-    key: "medium_2",
-    label: "Mittelgrosses Paket 2",
-    maxDims: [40, 30, 20],
-    maxWeightG: 11900,
-    baseFee: 3.73,
-    stepFee: 0.07,
-  },
-  {
-    key: "large_1",
-    label: "Grosses Paket 1",
-    maxDims: [45, 34, 10],
-    maxWeightG: 11900,
-    baseFee: 3.97,
-    stepFee: 0.07,
-  },
-  {
-    key: "large_2",
-    label: "Grosses Paket 2",
-    maxDims: [45, 34, 26],
-    maxWeightG: 11900,
-    baseFee: 4.38,
-    stepFee: 0.08,
-  },
-];
+const FBA_RATECARD_DE_2026 = {
+  standard: [
+    {
+      key: "light_envelope",
+      label: "Leichter Umschlag",
+      maxDimsCm: [33, 23, 2.5],
+      pricing: {
+        type: "bands",
+        bands: [
+          { maxWeightG: 20, feeEur: 2.33 },
+          { maxWeightG: 40, feeEur: 2.37 },
+          { maxWeightG: 60, feeEur: 2.39 },
+          { maxWeightG: 80, feeEur: 2.52 },
+          { maxWeightG: 100, feeEur: 2.54 },
+        ],
+      },
+    },
+    {
+      key: "standard_envelope",
+      label: "Standardumschlag",
+      maxDimsCm: [33, 23, 2.5],
+      pricing: {
+        type: "bands",
+        bands: [
+          { maxWeightG: 210, feeEur: 2.57 },
+          { maxWeightG: 460, feeEur: 2.68 },
+        ],
+      },
+    },
+    {
+      key: "large_envelope",
+      label: "Großer Umschlag",
+      maxDimsCm: [33, 23, 4],
+      pricing: {
+        type: "bands",
+        bands: [{ maxWeightG: 960, feeEur: 3.04 }],
+      },
+    },
+    {
+      key: "xlarge_envelope",
+      label: "Extra großer Umschlag",
+      maxDimsCm: [33, 23, 6],
+      pricing: {
+        type: "bands",
+        bands: [{ maxWeightG: 960, feeEur: 3.42 }],
+      },
+    },
+    {
+      key: "small_parcel",
+      label: "Kleines Paket",
+      maxDimsCm: [35, 25, 12],
+      pricing: {
+        type: "bands",
+        bands: [
+          { maxWeightG: 150, feeEur: 3.38 },
+          { maxWeightG: 400, feeEur: 3.39 },
+          { maxWeightG: 900, feeEur: 3.4 },
+          { maxWeightG: 1400, feeEur: 3.41 },
+          { maxWeightG: 1900, feeEur: 3.43 },
+          { maxWeightG: 3900, feeEur: 4.54 },
+        ],
+      },
+    },
+    {
+      key: "standard_parcel",
+      label: "Standardpaket",
+      maxDimsCm: [45, 34, 26],
+      pricing: {
+        type: "bands",
+        bands: [
+          { maxWeightG: 150, feeEur: 3.39 },
+          { maxWeightG: 400, feeEur: 3.42 },
+          { maxWeightG: 900, feeEur: 3.44 },
+          { maxWeightG: 1400, feeEur: 3.93 },
+          { maxWeightG: 1900, feeEur: 3.95 },
+          { maxWeightG: 2900, feeEur: 4.55 },
+          { maxWeightG: 3900, feeEur: 5.09 },
+          { maxWeightG: 5900, feeEur: 5.22 },
+          { maxWeightG: 8900, feeEur: 6.03 },
+          { maxWeightG: 11900, feeEur: 6.65 },
+        ],
+      },
+    },
+  ],
+  apparel: [
+    {
+      key: "small_1",
+      label: "Kleines Paket 1",
+      maxDimsCm: [35, 25, 7],
+      maxShippingWeightG: 3900,
+      pricing: {
+        type: "base_plus_step",
+        baseWeightG: 100,
+        baseFeeEur: 3.3,
+        stepWeightG: 100,
+        stepFeeEur: 0.05,
+      },
+    },
+    {
+      key: "small_2",
+      label: "Kleines Paket 2",
+      maxDimsCm: [35, 25, 9],
+      maxShippingWeightG: 3900,
+      pricing: {
+        type: "base_plus_step",
+        baseWeightG: 100,
+        baseFeeEur: 3.34,
+        stepWeightG: 100,
+        stepFeeEur: 0.06,
+      },
+    },
+    {
+      key: "small_3",
+      label: "Kleines Paket 3",
+      maxDimsCm: [35, 25, 12],
+      maxShippingWeightG: 3900,
+      pricing: {
+        type: "base_plus_step",
+        baseWeightG: 100,
+        baseFeeEur: 3.38,
+        stepWeightG: 100,
+        stepFeeEur: 0.07,
+      },
+    },
+    {
+      key: "medium_1",
+      label: "Mittelgroßes Paket 1",
+      maxDimsCm: [40, 30, 6],
+      maxShippingWeightG: 11900,
+      pricing: {
+        type: "base_plus_step",
+        baseWeightG: 100,
+        baseFeeEur: 3.5,
+        stepWeightG: 100,
+        stepFeeEur: 0.07,
+      },
+    },
+    {
+      key: "medium_2",
+      label: "Mittelgroßes Paket 2",
+      maxDimsCm: [40, 30, 20],
+      maxShippingWeightG: 11900,
+      pricing: {
+        type: "base_plus_step",
+        baseWeightG: 100,
+        baseFeeEur: 3.73,
+        stepWeightG: 100,
+        stepFeeEur: 0.07,
+      },
+    },
+    {
+      key: "large_1",
+      label: "Großes Paket 1",
+      maxDimsCm: [45, 34, 10],
+      maxShippingWeightG: 11900,
+      pricing: {
+        type: "base_plus_step",
+        baseWeightG: 100,
+        baseFeeEur: 3.97,
+        stepWeightG: 100,
+        stepFeeEur: 0.07,
+      },
+    },
+    {
+      key: "large_2",
+      label: "Großes Paket 2",
+      maxDimsCm: [45, 34, 26],
+      maxShippingWeightG: 11900,
+      pricing: {
+        type: "base_plus_step",
+        baseWeightG: 100,
+        baseFeeEur: 4.38,
+        stepWeightG: 100,
+        stepFeeEur: 0.08,
+      },
+    },
+  ],
+};
 
 const FIELD_HELP = {
   name: "Interner Produktname zur Vergleichbarkeit in der Multi-Produkt-Ansicht.",
@@ -519,6 +648,9 @@ const SETTINGS_HELP = {
   "shipping12m.insurance.ratePct": "Versicherungssatz in % auf die gewählte Versicherungsbasis.",
   "shipping12m.manualSurchargeEnabled": "Aktiviert optionale manuelle Nachbelastung je Shipment (z. B. Advance Commission).",
   "shipping12m.manualSurchargeEurPerShipment": "Manuelle Nachbelastung je Shipment in EUR (nur wenn aktiv).",
+  "amazonFba.de.rateCardVersion": "Version der hinterlegten DE-FBA-Ratecard. Verhalten ist auf 2026-02 fixiert.",
+  "amazonFba.de.sourceUrl": "Pflegbarer Link zur offiziellen DE-FBA-Ratecard (für Transparenz und Double-Check).",
+  "amazonFba.de.volumetricDivisor": "Divisor für dimensionsabhängiges Versandgewicht: (L×B×H / Divisor) × 1000g.",
   "cartonRules.maxLengthCm": "Maximale Karton-Länge in cm für Auto-Kartonisierung.",
   "cartonRules.maxWidthCm": "Maximale Karton-Breite in cm für Auto-Kartonisierung.",
   "cartonRules.maxHeightCm": "Maximale Karton-Höhe in cm für Auto-Kartonisierung.",
@@ -644,6 +776,9 @@ const PATH_LABEL_OVERRIDES = {
   "settings.shipping12m.insurance.ratePct": "Versicherungssatz (%)",
   "settings.shipping12m.manualSurchargeEnabled": "Nachbelastung aktiv",
   "settings.shipping12m.manualSurchargeEurPerShipment": "Nachbelastung (EUR/Shipment)",
+  "settings.amazonFba.de.rateCardVersion": "FBA-Ratecard Version (DE)",
+  "settings.amazonFba.de.sourceUrl": "FBA-Ratecard Quellenlink (DE)",
+  "settings.amazonFba.de.volumetricDivisor": "FBA Volumetric Divisor",
   "settings.cartonRules.maxLengthCm": "Karton max Länge (cm)",
   "settings.cartonRules.maxWidthCm": "Karton max Breite (cm)",
   "settings.cartonRules.maxHeightCm": "Karton max Höhe (cm)",
@@ -869,6 +1004,30 @@ const DERIVED_DRIVER_MAP = {
     format: "currency",
     read: (metrics) => metrics.shipping.goodsValueEur,
   },
+  "derived.amazon.fbaShippingWeightG": {
+    label: "FBA Versandgewicht (g)",
+    help: "Versandgewicht = max(tatsächliches Gewicht, dimensionsabhängiges Gewicht).",
+    format: "number",
+    read: (metrics) => metrics.fbaShippingWeightG,
+  },
+  "derived.amazon.fbaTierLabel": {
+    label: "FBA Auto-Tier",
+    help: "Gematchtes FBA-Tier aus DE-Ratecard 2026-02.",
+    format: "string",
+    read: (metrics) => metrics.fbaTierLabel,
+  },
+  "derived.amazon.fbaFeeSource": {
+    label: "FBA Fee Quelle",
+    help: "Quelle der Fulfillment-Fee: auto, manual oder Fallback.",
+    format: "string",
+    read: (metrics) => metrics.fbaFeeSource,
+  },
+  "derived.amazon.fbaRateCardVersion": {
+    label: "FBA Ratecard Version",
+    help: "Aktive DE-Ratecard-Version für die Auto-Berechnung.",
+    format: "string",
+    read: (metrics) => metrics.fbaRateCardVersion,
+  },
   "derived.threepl.palletsCount": {
     label: "Anzahl Paletten",
     help: "Paletten = ceil(PO Units / units_per_pallet).",
@@ -966,7 +1125,11 @@ const SETTINGS_BOOLEAN_PATHS = new Set([
   "shipping12m.insurance.enabled",
   "shipping12m.manualSurchargeEnabled",
 ]);
-const SETTINGS_STRING_PATHS = new Set(["shipping12m.insurance.basis"]);
+const SETTINGS_STRING_PATHS = new Set([
+  "shipping12m.insurance.basis",
+  "amazonFba.de.rateCardVersion",
+  "amazonFba.de.sourceUrl",
+]);
 
 const OVERRIDE_CONTROL_MAP = [
   ["assumptions.ads.overrideTacos", "assumptions.ads.tacosRate"],
@@ -1153,6 +1316,15 @@ const dom = {
   shippingOversizeNote: document.getElementById("shippingOversizeNote"),
   basicShippingUnit: document.getElementById("basicShippingUnit"),
   basicShippingMeta: document.getElementById("basicShippingMeta"),
+  fbaInfoCard: document.getElementById("fbaInfoCard"),
+  fbaInfoFeeUnit: document.getElementById("fbaInfoFeeUnit"),
+  fbaInfoProfile: document.getElementById("fbaInfoProfile"),
+  fbaInfoTier: document.getElementById("fbaInfoTier"),
+  fbaInfoShippingWeight: document.getElementById("fbaInfoShippingWeight"),
+  fbaInfoWeightBreakdown: document.getElementById("fbaInfoWeightBreakdown"),
+  fbaInfoSource: document.getElementById("fbaInfoSource"),
+  fbaInfoSourceLink: document.getElementById("fbaInfoSourceLink"),
+  fbaInfoFallback: document.getElementById("fbaInfoFallback"),
   chainSupplierChips: document.getElementById("chainSupplierChips"),
   chainImportChips: document.getElementById("chainImportChips"),
   chainThreePlChips: document.getElementById("chainThreePlChips"),
@@ -1685,6 +1857,20 @@ function ensureTaxSettings(rawTax) {
   };
 }
 
+function ensureAmazonFbaSettings(rawAmazonFba) {
+  const base = deepClone(DEFAULT_SETTINGS.amazonFba);
+  const source = rawAmazonFba && typeof rawAmazonFba === "object" ? rawAmazonFba : {};
+  const deSource = source.de && typeof source.de === "object" ? source.de : {};
+  return {
+    ...base,
+    ...source,
+    de: {
+      ...base.de,
+      ...deSource,
+    },
+  };
+}
+
 function ensureThreePlSettings(rawThreePl, rawCostDefaults) {
   const source = rawThreePl && typeof rawThreePl === "object" ? rawThreePl : {};
   const legacy = rawCostDefaults && typeof rawCostDefaults === "object" ? rawCostDefaults : {};
@@ -1905,6 +2091,7 @@ function applyCartonPreset(preset, settings) {
 
 function sanitizeSettings(settings) {
   settings.shipping12m = ensureShipping12mSettings(settings.shipping12m);
+  settings.amazonFba = ensureAmazonFbaSettings(settings.amazonFba);
 
   settings.tax.fallbackUsdToEur = clamp(num(settings.tax.fallbackUsdToEur, DEFAULT_USD_TO_EUR), 0.2, 2);
   settings.tax.customsDutyRatePct = clamp(num(settings.tax.customsDutyRatePct, GLOBAL_DEFAULTS.importCustomsDutyRate), 0, 40);
@@ -2001,6 +2188,15 @@ function sanitizeSettings(settings) {
     ? "goods_value_eur"
     : "goods_value_eur";
   settings.shipping12m.insurance.ratePct = clamp(num(settings.shipping12m.insurance?.ratePct, 0), 0, 20);
+
+  settings.amazonFba.de.rateCardVersion = AMAZON_FBA_DE_RATECARD_VERSION;
+  const sourceUrl = String(settings.amazonFba?.de?.sourceUrl ?? "").trim();
+  settings.amazonFba.de.sourceUrl = sourceUrl || AMAZON_FBA_DE_RATECARD_DEFAULT_URL;
+  settings.amazonFba.de.volumetricDivisor = clamp(
+    num(settings.amazonFba?.de?.volumetricDivisor, AMAZON_FBA_DE_DEFAULT_VOLUMETRIC_DIVISOR),
+    3000,
+    10000,
+  );
 
   settings.cartonRules.maxLengthCm = clamp(num(settings.cartonRules.maxLengthCm, 63.5), 1, 200);
   settings.cartonRules.maxWidthCm = clamp(num(settings.cartonRules.maxWidthCm, 63.5), 1, 200);
@@ -2255,6 +2451,7 @@ function loadSettingsLocal() {
       ...parsed,
       tax: ensureTaxSettings(parsed?.tax),
       shipping12m: ensureShipping12mSettings(parsed?.shipping12m),
+      amazonFba: ensureAmazonFbaSettings(parsed?.amazonFba),
       cartonRules: {
         ...defaultSettings().cartonRules,
         ...(parsed?.cartonRules ?? {}),
@@ -3275,6 +3472,7 @@ function normalizeRemoteSettings(rawSettings) {
     ...rawSettings,
     tax: ensureTaxSettings(rawSettings?.tax),
     shipping12m: ensureShipping12mSettings(rawSettings?.shipping12m),
+    amazonFba: ensureAmazonFbaSettings(rawSettings?.amazonFba),
     cartonRules: {
       ...defaultSettings().cartonRules,
       ...(rawSettings?.cartonRules ?? {}),
@@ -3822,48 +4020,160 @@ function dimsFit(sortedDims, maxDims) {
   );
 }
 
-function estimateFbaFee(product, resolved) {
+function fbaProfileLabel(profile) {
+  return profile === "apparel" ? "Apparel" : "Standard";
+}
+
+function resolveFbaProfile(product) {
+  return product?.basic?.category === "apparel" ? "apparel" : "standard";
+}
+
+function calculateFbaShippingWeightG(product, settings) {
+  const actualWeightG = Math.max(0, num(product?.basic?.netWeightG, 0));
+  const lengthCm = Math.max(0, num(product?.basic?.packLengthCm, 0));
+  const widthCm = Math.max(0, num(product?.basic?.packWidthCm, 0));
+  const heightCm = Math.max(0, num(product?.basic?.packHeightCm, 0));
+  const volumetricDivisor = clamp(
+    num(settings?.amazonFba?.de?.volumetricDivisor, AMAZON_FBA_DE_DEFAULT_VOLUMETRIC_DIVISOR),
+    3000,
+    10000,
+  );
+  const dimensionalWeightG = Math.max(0, ((lengthCm * widthCm * heightCm) / Math.max(1, volumetricDivisor)) * 1000);
+  const shippingWeightG = Math.max(actualWeightG, dimensionalWeightG);
+  return {
+    actualWeightG: Math.ceil(actualWeightG),
+    dimensionalWeightG: Math.ceil(dimensionalWeightG),
+    shippingWeightG: Math.ceil(shippingWeightG),
+    volumetricDivisor,
+  };
+}
+
+function resolveFbaTierFee(tier, shippingWeightG) {
+  if (!tier || !tier.pricing) {
+    return null;
+  }
+  const pricing = tier.pricing;
+  if (pricing.type === "bands") {
+    const matchedBand = (pricing.bands ?? []).find((band) => shippingWeightG <= num(band.maxWeightG, 0));
+    if (!matchedBand) {
+      return null;
+    }
+    return round2(num(matchedBand.feeEur, 0));
+  }
+  if (pricing.type === "base_plus_step") {
+    const baseWeightG = Math.max(1, num(pricing.baseWeightG, 100));
+    const baseFeeEur = Math.max(0, num(pricing.baseFeeEur, 0));
+    const stepWeightG = Math.max(1, num(pricing.stepWeightG, 100));
+    const stepFeeEur = Math.max(0, num(pricing.stepFeeEur, 0));
+    if (shippingWeightG <= baseWeightG) {
+      return round2(baseFeeEur);
+    }
+    const steps = Math.max(0, Math.ceil((shippingWeightG - baseWeightG) / stepWeightG));
+    return round2(baseFeeEur + steps * stepFeeEur);
+  }
+  return null;
+}
+
+function findFbaTierDe2026(profile, sortedDims, shippingWeightG) {
+  const tiers = FBA_RATECARD_DE_2026[profile] ?? FBA_RATECARD_DE_2026.standard;
+  for (const tier of tiers) {
+    if (!dimsFit(sortedDims, tier.maxDimsCm)) {
+      continue;
+    }
+    const maxShippingWeightG = num(tier.maxShippingWeightG, Number.POSITIVE_INFINITY);
+    if (shippingWeightG > maxShippingWeightG) {
+      continue;
+    }
+    const fee = resolveFbaTierFee(tier, shippingWeightG);
+    if (fee === null) {
+      continue;
+    }
+    return { tier, fee };
+  }
+  return null;
+}
+
+function estimateFbaFee(product, resolved, settings = state.settings) {
+  const marketplace = String(product?.basic?.marketplace ?? "").toUpperCase();
+  const rateCardVersion = settings?.amazonFba?.de?.rateCardVersion ?? AMAZON_FBA_DE_RATECARD_VERSION;
+  const rateCardUrl = String(settings?.amazonFba?.de?.sourceUrl ?? AMAZON_FBA_DE_RATECARD_DEFAULT_URL).trim() || AMAZON_FBA_DE_RATECARD_DEFAULT_URL;
+  const profile = resolveFbaProfile(product);
+  const weights = calculateFbaShippingWeightG(product, settings);
+  const dims = toSortedDims(
+    product?.basic?.packLengthCm,
+    product?.basic?.packWidthCm,
+    product?.basic?.packHeightCm,
+  );
+
   if (resolved.useManualFbaFee) {
     return {
       fee: Math.max(0, num(resolved.manualFbaFee)),
+      tierKey: "manual_override",
       tierLabel: "Manuell",
       source: "manual",
+      rateCardVersion,
+      rateCardUrl,
+      profile,
+      profileLabel: fbaProfileLabel(profile),
+      actualWeightG: weights.actualWeightG,
+      dimensionalWeightG: weights.dimensionalWeightG,
+      shippingWeightG: weights.shippingWeightG,
+      fallbackReason: "",
+      volumetricDivisor: weights.volumetricDivisor,
     };
   }
 
-  const dims = toSortedDims(
-    product.basic.packLengthCm,
-    product.basic.packWidthCm,
-    product.basic.packHeightCm,
-  );
-  const actualWeight = Math.max(0, num(product.basic.netWeightG));
-  const volumetricWeight =
-    (Math.max(0, num(product.basic.packLengthCm)) *
-      Math.max(0, num(product.basic.packWidthCm)) *
-      Math.max(0, num(product.basic.packHeightCm))) /
-    5000;
-  const shippingWeightG = Math.max(actualWeight, volumetricWeight * 1000);
-
-  for (const tier of FBA_STANDARD_TIERS) {
-    if (!dimsFit(dims, tier.maxDims)) {
-      continue;
-    }
-    if (shippingWeightG > tier.maxWeightG) {
-      continue;
-    }
-    const addSteps = Math.max(0, Math.ceil((shippingWeightG - 100) / 100));
-    const fee = tier.baseFee + addSteps * tier.stepFee;
+  if (marketplace !== "DE") {
     return {
-      fee: round2(fee),
-      tierLabel: tier.label,
+      fee: Math.max(0, num(resolved.manualFbaFee)),
+      tierKey: "fallback_non_de",
+      tierLabel: "Fallback (manuell)",
+      source: "fallback_non_de",
+      rateCardVersion,
+      rateCardUrl,
+      profile,
+      profileLabel: fbaProfileLabel(profile),
+      actualWeightG: weights.actualWeightG,
+      dimensionalWeightG: weights.dimensionalWeightG,
+      shippingWeightG: weights.shippingWeightG,
+      fallbackReason: "Auto-Berechnung ist aktuell nur für Amazon.de aktiv.",
+      volumetricDivisor: weights.volumetricDivisor,
+    };
+  }
+
+  const matched = findFbaTierDe2026(profile, dims, weights.shippingWeightG);
+  if (matched) {
+    return {
+      fee: matched.fee,
+      tierKey: matched.tier.key,
+      tierLabel: matched.tier.label,
       source: "auto",
+      rateCardVersion,
+      rateCardUrl,
+      profile,
+      profileLabel: fbaProfileLabel(profile),
+      actualWeightG: weights.actualWeightG,
+      dimensionalWeightG: weights.dimensionalWeightG,
+      shippingWeightG: weights.shippingWeightG,
+      fallbackReason: "",
+      volumetricDivisor: weights.volumetricDivisor,
     };
   }
 
   return {
     fee: Math.max(0, num(resolved.manualFbaFee)),
-    tierLabel: "Kein Standard-Tier (Fallback manuell)",
-    source: "fallback",
+    tierKey: "fallback_no_tier",
+    tierLabel: "Kein Tier-Match (Fallback manuell)",
+    source: "fallback_no_tier",
+    rateCardVersion,
+    rateCardUrl,
+    profile,
+    profileLabel: fbaProfileLabel(profile),
+    actualWeightG: weights.actualWeightG,
+    dimensionalWeightG: weights.dimensionalWeightG,
+    shippingWeightG: weights.shippingWeightG,
+    fallbackReason: "Produktmaße/-gewicht liegen außerhalb der modellierten DE-Ratecard-Tiers.",
+    volumetricDivisor: weights.volumetricDivisor,
   };
 }
 
@@ -5307,7 +5617,7 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
 
   const landedUnit = landedBeforeDuty + customsUnit;
 
-  const fba = estimateFbaFee(product, resolved);
+  const fba = estimateFbaFee(product, resolved, effectiveSettings);
 
   const launchProfileWeeks = clamp(num(resolved.launchProfile.weeks, 6), 1, 24);
   const launchMonthsFromProfile = Math.min(horizonMonths, Math.max(launchProfileWeeks / 4.345, 0.25));
@@ -5463,6 +5773,18 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     referralMonthly,
     fbaFeeUnit: fba.fee,
     fbaTier: fba.tierLabel,
+    fbaTierKey: fba.tierKey,
+    fbaTierLabel: fba.tierLabel,
+    fbaFeeSource: fba.source,
+    fbaRateCardVersion: fba.rateCardVersion,
+    fbaRateCardUrl: fba.rateCardUrl,
+    fbaProfile: fba.profile,
+    fbaProfileLabel: fba.profileLabel,
+    fbaActualWeightG: fba.actualWeightG,
+    fbaDimensionalWeightG: fba.dimensionalWeightG,
+    fbaShippingWeightG: fba.shippingWeightG,
+    fbaFallbackReason: fba.fallbackReason,
+    fbaVolumetricDivisor: fba.volumetricDivisor,
     customsMonthly,
     importVatCostMonthly,
 
@@ -6207,6 +6529,9 @@ function settingsSectionIdFromPath(settingsPath) {
   if (prefixed.startsWith("settings.threePl.carrierCostPerCartonEur")) {
     return "settings3plCarrierSection";
   }
+  if (prefixed.startsWith("settings.amazonFba.")) {
+    return "settingsAmazonSection";
+  }
   if (
     prefixed.startsWith("settings.costDefaults.amazonStoragePerCbmMonthEur") ||
     prefixed.startsWith("settings.costDefaults.avgAmazonStorageMonths")
@@ -6315,12 +6640,21 @@ function buildStageImpactItems(metrics, stage) {
       impactMonthly: amazonFeesMonthly,
       explain: "Amazon-Transaktionskosten pro Unit aus Referral Fee und FBA Fee.",
       formula: "Amazon Fees/Unit = Referral/Unit + FBA Fee/Unit.",
-      source: "Kategorie-Defaults + FBA-Tierlogik + globale Lager-Defaults.",
+      source: "Kategorie-Defaults + DE-Ratecard-Logik (2026-02) + globale Lager-Defaults.",
       robustness: "Mittel bis hoch (Referral stabil, FBA/Lager je nach Maße und Lagerdauer).",
       driverPaths: [
+        "basic.marketplace",
+        "basic.category",
         "assumptions.amazon.referralRate",
         "assumptions.amazon.useManualFbaFee",
         "assumptions.amazon.manualFbaFee",
+        "derived.amazon.fbaFeeSource",
+        "derived.amazon.fbaTierLabel",
+        "derived.amazon.fbaShippingWeightG",
+        "derived.amazon.fbaRateCardVersion",
+        "settings.amazonFba.de.rateCardVersion",
+        "settings.amazonFba.de.sourceUrl",
+        "settings.amazonFba.de.volumetricDivisor",
         "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
         "assumptions.extraCosts.avgAmazonStorageMonths",
       ],
@@ -7821,13 +8155,22 @@ function buildCostCategoryData(metrics) {
           label: "FBA Fee (EUR/Unit)",
           valueRaw: metrics.fbaFeeUnit,
           impactMonthly: metrics.fbaFeeUnit * metrics.monthlyUnits,
-          explain: "FBA-Gebühr je Unit nach Größen-/Gewichtstier oder manuellem Override.",
-          formula: "FBA/Unit = auto tier fee oder manual fee.",
-          source: "Amazon Fee-Logik + Produktdaten.",
+          explain: "Fulfillment-Gebühr je Unit aus DE-Ratecard 2026-02 (auto) oder manuellem Fallback/Override.",
+          formula: "FBA/Unit = Auto (Tier aus Maße + Versandgewicht) oder manueller Wert bei Override/Fallback.",
+          source: "Amazon DE Ratecard 2026-02 + Produktdaten + Settings-Link.",
           robustness: "Mittel bis hoch.",
           driverPaths: [
+            "basic.marketplace",
+            "basic.category",
             "assumptions.amazon.useManualFbaFee",
             "assumptions.amazon.manualFbaFee",
+            "derived.amazon.fbaFeeSource",
+            "derived.amazon.fbaTierLabel",
+            "derived.amazon.fbaShippingWeightG",
+            "derived.amazon.fbaRateCardVersion",
+            "settings.amazonFba.de.rateCardVersion",
+            "settings.amazonFba.de.sourceUrl",
+            "settings.amazonFba.de.volumetricDivisor",
             "basic.netWeightG",
             "basic.packLengthCm",
             "basic.packWidthCm",
@@ -7865,6 +8208,8 @@ function buildCostCategoryData(metrics) {
           driverPaths: [
             "assumptions.amazon.referralRate",
             "assumptions.amazon.useManualFbaFee",
+            "derived.amazon.fbaFeeSource",
+            "derived.amazon.fbaTierLabel",
             "assumptions.extraCosts.amazonStoragePerCbmMonthEur",
           ],
         }),
@@ -8080,6 +8425,70 @@ function renderCostCategoryGrid(metrics, stage = "quick", prebuiltCategories = n
 
     dom.costCategoryGrid.appendChild(card);
   });
+}
+
+function fbaFeeSourceLabel(source) {
+  switch (source) {
+    case "auto":
+      return "Auto (DE Ratecard)";
+    case "manual":
+      return "Manuell";
+    case "fallback_non_de":
+      return "Fallback: Nicht-DE";
+    case "fallback_no_tier":
+      return "Fallback: Kein Tier";
+    default:
+      return "Unbekannt";
+  }
+}
+
+function renderFbaDetails(metrics) {
+  if (!dom.fbaInfoCard) {
+    return;
+  }
+  if (dom.fbaInfoFeeUnit) {
+    dom.fbaInfoFeeUnit.textContent = formatCurrency(metrics.fbaFeeUnit);
+  }
+  if (dom.fbaInfoProfile) {
+    dom.fbaInfoProfile.textContent = metrics.fbaProfileLabel ?? fbaProfileLabel(metrics.fbaProfile);
+  }
+  if (dom.fbaInfoTier) {
+    dom.fbaInfoTier.textContent = metrics.fbaTierLabel || "-";
+  }
+  if (dom.fbaInfoShippingWeight) {
+    dom.fbaInfoShippingWeight.textContent = `${formatNumber(metrics.fbaShippingWeightG)} g`;
+  }
+  if (dom.fbaInfoWeightBreakdown) {
+    dom.fbaInfoWeightBreakdown.textContent =
+      `actual ${formatNumber(metrics.fbaActualWeightG)} g vs. dimensional ${formatNumber(metrics.fbaDimensionalWeightG)} g (Divisor ${formatNumber(metrics.fbaVolumetricDivisor)})`;
+  }
+  if (dom.fbaInfoSource) {
+    dom.fbaInfoSource.textContent = `${metrics.fbaRateCardVersion} · ${fbaFeeSourceLabel(metrics.fbaFeeSource)}`;
+  }
+  if (dom.fbaInfoSourceLink) {
+    const href = String(metrics.fbaRateCardUrl ?? "").trim();
+    if (href) {
+      dom.fbaInfoSourceLink.href = href;
+      dom.fbaInfoSourceLink.classList.remove("hidden");
+    } else {
+      dom.fbaInfoSourceLink.removeAttribute("href");
+      dom.fbaInfoSourceLink.classList.add("hidden");
+    }
+  }
+  if (dom.fbaInfoFallback) {
+    const isFallback = metrics.fbaFeeSource === "fallback_non_de" || metrics.fbaFeeSource === "fallback_no_tier";
+    const isManual = metrics.fbaFeeSource === "manual";
+    if (isFallback) {
+      dom.fbaInfoFallback.textContent = `Warnung: ${metrics.fbaFallbackReason || "Kein Tier-Match, daher manueller Wert."}`;
+      dom.fbaInfoFallback.classList.remove("hidden");
+    } else if (isManual) {
+      dom.fbaInfoFallback.textContent = "Hinweis: Manueller FBA-Override ist aktiv.";
+      dom.fbaInfoFallback.classList.remove("hidden");
+    } else {
+      dom.fbaInfoFallback.textContent = "";
+      dom.fbaInfoFallback.classList.add("hidden");
+    }
+  }
 }
 
 function renderShippingDetails(metrics) {
@@ -8447,6 +8856,7 @@ function renderSelectedOutputs(metrics, stage = "quick") {
   }
 
   renderShippingDetails(metrics);
+  renderFbaDetails(metrics);
   const categories = buildCostCategoryData(metrics);
   renderLogisticsChain(metrics, stage, categories);
   renderCostCategoryGrid(metrics, stage, categories);
