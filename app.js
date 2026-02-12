@@ -7,6 +7,7 @@ const MIN_REFERRAL_FEE = 0.3;
 const DEFAULT_USD_TO_EUR = 0.92;
 const FX_ENDPOINT = "https://api.frankfurter.app/latest?from=USD&to=EUR";
 const SUPABASE_CONFIG_ENDPOINT = "/api/config";
+const LOCAL_SUPABASE_CONFIG_KEY = "fba-margin-calculator.supabase-config";
 const REMOTE_SAVE_DEBOUNCE_MS = 350;
 const SUPABASE_CLIENT_TIMEOUT_MS = 12000;
 
@@ -2499,22 +2500,47 @@ function createLocalStoreAdapter() {
 }
 
 async function loadRemoteConfig() {
-  try {
-    if (window.APP_CONFIG?.supabaseUrl && window.APP_CONFIG?.supabaseAnonKey) {
-      return {
-        supabaseUrl: window.APP_CONFIG.supabaseUrl,
-        supabaseAnonKey: window.APP_CONFIG.supabaseAnonKey,
-      };
+  const normalizeConfig = (candidate) => {
+    if (!candidate || typeof candidate !== "object") {
+      return null;
     }
+    const supabaseUrl = String(candidate.supabaseUrl ?? "").trim();
+    const supabaseAnonKey = String(candidate.supabaseAnonKey ?? "").trim();
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return null;
+    }
+    return { supabaseUrl, supabaseAnonKey };
+  };
+
+  try {
+    const windowConfig = normalizeConfig(window.APP_CONFIG);
+    if (windowConfig) {
+      return windowConfig;
+    }
+  } catch (_error) {
+    // Ignore and continue with endpoint/local fallback.
+  }
+
+  try {
+    const localRaw = localStorage.getItem(LOCAL_SUPABASE_CONFIG_KEY);
+    if (localRaw) {
+      const parsedLocal = JSON.parse(localRaw);
+      const localConfig = normalizeConfig(parsedLocal);
+      if (localConfig) {
+        return localConfig;
+      }
+    }
+  } catch (_error) {
+    // Ignore invalid local override and continue.
+  }
+
+  try {
     const response = await fetch(SUPABASE_CONFIG_ENDPOINT, { cache: "no-store" });
     if (!response.ok) {
       return null;
     }
     const payload = await response.json();
-    if (!payload?.supabaseUrl || !payload?.supabaseAnonKey) {
-      return null;
-    }
-    return payload;
+    return normalizeConfig(payload);
   } catch (_error) {
     return null;
   }
@@ -2539,6 +2565,7 @@ async function fetchWorkspaceMembership(client, userId) {
     .from("workspace_members")
     .select("workspace_id, role")
     .eq("user_id", userId)
+    .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -2739,6 +2766,7 @@ async function importLocalDataIntoSharedWorkspace() {
   if (importProducts.length === 0) {
     importProducts = [defaultProduct(1)];
   }
+  importProducts.forEach((product) => ensureProductId(product));
 
   let importSettings = defaultSettings();
   if (hasLocalSettings) {
@@ -2846,6 +2874,90 @@ async function activateSharedWorkspace(user) {
   return true;
 }
 
+function formatAuthError(error, fallback = "Unbekannter Fehler") {
+  const message = error?.message ?? error?.error_description ?? fallback;
+  return String(message);
+}
+
+function resetToAuthRequiredState(
+  reason = "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.",
+) {
+  state.storage.mode = "local";
+  state.storage.adapter = createLocalStoreAdapter();
+  setStorageModeLabel();
+  configureSessionState({
+    requiresAuth: true,
+    isAuthenticated: false,
+    hasWorkspaceAccess: false,
+    pendingLocalImport: false,
+    userId: null,
+    userEmail: "",
+    workspaceId: null,
+    workspaceName: "",
+  });
+  setAppMode("auth_required", reason);
+}
+
+async function ensureSupabaseClient({ label = "supabase_client", showStatusOnError = true } = {}) {
+  if (state.supabase.client) {
+    return state.supabase.client;
+  }
+  try {
+    state.supabase.client = await withTimeout(createSupabaseClientFromConfig(), SUPABASE_CLIENT_TIMEOUT_MS, label);
+  } catch (clientError) {
+    console.error("Supabase client init failed", clientError);
+    if (showStatusOnError) {
+      setAuthStatus("Supabase-Verbindung nicht erreichbar. Bitte Seite neu laden.", true);
+    }
+    return null;
+  }
+  if (!state.supabase.client && showStatusOnError) {
+    setAuthStatus("Supabase ist nicht konfiguriert. /api/config prüfen.", true);
+  }
+  return state.supabase.client;
+}
+
+async function applySupabaseSession(session, source = "session_sync") {
+  const user = session?.user ?? null;
+  if (!user) {
+    resetToAuthRequiredState("Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+    return false;
+  }
+
+  try {
+    const activated = await activateSharedWorkspace(user);
+    if (!activated) {
+      return false;
+    }
+    setAppMode("ready_shared");
+    renderPageAfterLoad();
+    return true;
+  } catch (error) {
+    console.error(`Supabase session sync failed (${source})`, error);
+    resetToAuthRequiredState("Bitte erneut anmelden oder Workspace-Zugriff prüfen.");
+    setAuthStatus(`Workspace konnte nicht geladen werden: ${formatAuthError(error)}`, true);
+    return false;
+  }
+}
+
+async function syncSessionFromClient(source = "session_sync") {
+  if (!state.supabase.client) {
+    return null;
+  }
+  try {
+    const { data, error } = await state.supabase.client.auth.getSession();
+    if (error) {
+      throw error;
+    }
+    return await applySupabaseSession(data?.session ?? null, source);
+  } catch (error) {
+    console.error(`Supabase getSession failed (${source})`, error);
+    resetToAuthRequiredState("Bitte neu anmelden.");
+    setAuthStatus(`Session konnte nicht geladen werden: ${formatAuthError(error)}`, true);
+    return null;
+  }
+}
+
 async function setLocalMode() {
   state.storage.mode = "local";
   state.storage.adapter = createLocalStoreAdapter();
@@ -2906,93 +3018,34 @@ async function bootstrapCollaborationSession() {
   setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
   setAuthStatus("Supabase Verbindung wird aufgebaut ...");
 
-  let client = null;
-  try {
-    client = await withTimeout(createSupabaseClientFromConfig(), SUPABASE_CLIENT_TIMEOUT_MS, "supabase_client");
-  } catch (clientError) {
-    console.error("Supabase client init failed", clientError);
-    configureSessionState({
-      requiresAuth: true,
-      isAuthenticated: false,
-      hasWorkspaceAccess: false,
-      pendingLocalImport: false,
-    });
-    setAppMode("auth_required", "Supabase ist aktuell nicht erreichbar. Bitte Seite neu laden.");
-    setAuthStatus("Supabase-Initialisierung timeout/fehlerhaft.", true);
-    return;
-  }
+  const client = await ensureSupabaseClient({ label: "supabase_client_bootstrap", showStatusOnError: false });
   if (!client) {
-    configureSessionState({
-      requiresAuth: true,
-      isAuthenticated: false,
-      hasWorkspaceAccess: false,
-      pendingLocalImport: false,
-    });
-    setAppMode("auth_required", "Supabase ist aktuell nicht erreichbar. Bitte Seite neu laden.");
+    resetToAuthRequiredState("Supabase ist aktuell nicht erreichbar. Bitte Seite neu laden.");
+    setAuthStatus("Supabase-Konfiguration fehlt oder ist ungültig.", true);
     return;
   }
 
   state.supabase.client = client;
-  configureSessionState({
-    requiresAuth: true,
-    isAuthenticated: false,
-    hasWorkspaceAccess: false,
-    pendingLocalImport: false,
-  });
 
   if (!state.supabase.authSubscribed) {
     state.supabase.authSubscribed = true;
-    client.auth.onAuthStateChange(async (_event, session) => {
-      const user = session?.user ?? null;
-      if (!user) {
-        state.storage.mode = "local";
-        state.storage.adapter = createLocalStoreAdapter();
-        setStorageModeLabel();
-        configureSessionState({
-          requiresAuth: true,
-          isAuthenticated: false,
-          hasWorkspaceAccess: false,
-          pendingLocalImport: false,
-        });
-        setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
-        return;
-      }
-
-      try {
-        const activated = await activateSharedWorkspace(user);
-        if (!activated) {
-          return;
-        }
-        setAppMode("ready_shared");
-        renderPageAfterLoad();
-      } catch (error) {
-        console.error("Supabase auth state change failed", error);
-        setAuthStatus("Supabase Session konnte nicht aktualisiert werden.", true);
-        setAppMode("auth_required", "Bitte erneut anmelden oder Workspace-Zugriff prüfen.");
-      }
+    client.auth.onAuthStateChange((_event, session) => {
+      void applySupabaseSession(session, "auth_state_change");
     });
   }
 
-  // Auth-UI sofort freigeben; Session-Handling läuft über onAuthStateChange (inkl. INITIAL_SESSION).
-  setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
-  setAuthStatus("Bereit zur Anmeldung.");
-  return;
+  const restored = await syncSessionFromClient("bootstrap");
+  if (restored === false) {
+    setAuthStatus("Bereit zur Anmeldung.");
+  }
 }
 
 async function handleAuthLogin() {
-  if (!state.supabase.client) {
-    try {
-      state.supabase.client = await withTimeout(createSupabaseClientFromConfig(), SUPABASE_CLIENT_TIMEOUT_MS, "supabase_client_login");
-    } catch (clientError) {
-      console.error("Supabase client init in login failed", clientError);
-      setAuthStatus("Supabase-Verbindung nicht erreichbar. Bitte neu laden.", true);
-      return;
-    }
-    if (!state.supabase.client) {
-      setAuthStatus("Supabase ist nicht konfiguriert.", true);
-      return;
-    }
+  const client = await ensureSupabaseClient({ label: "supabase_client_login" });
+  if (!client) {
+    return;
   }
+
   const email = String(dom.authEmail?.value ?? "").trim();
   const password = String(dom.authPassword?.value ?? "");
   if (!email || !password) {
@@ -3008,7 +3061,7 @@ async function handleAuthLogin() {
       setAuthStatus("Anmeldung dauert länger (Supabase Wakeup). Bitte kurz warten ...");
     }, 12000);
 
-    const { data, error } = await state.supabase.client.auth.signInWithPassword({ email, password });
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
 
     if (slowHintTimer) {
       window.clearTimeout(slowHintTimer);
@@ -3017,29 +3070,17 @@ async function handleAuthLogin() {
 
     if (error) {
       setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
-      setAuthStatus("Anmeldung fehlgeschlagen: " + error.message, true);
+      setAuthStatus("Anmeldung fehlgeschlagen: " + formatAuthError(error), true);
       return;
     }
 
     setAuthStatus("Anmeldung erfolgreich. Workspace wird geladen ...");
-
-    // Primär wird über onAuthStateChange aktiviert. Falls der Event ausbleibt, hier direkter Fallback.
-    const user = data?.user ?? data?.session?.user ?? null;
-    if (!user) {
+    const session = data?.session ?? null;
+    if (session?.user) {
+      await applySupabaseSession(session, "login_result");
       return;
     }
-    try {
-      const activated = await activateSharedWorkspace(user);
-      if (activated) {
-        setAppMode("ready_shared");
-        renderPageAfterLoad();
-      }
-    } catch (activateError) {
-      console.error("Workspace activation after login failed", activateError);
-      setAuthStatus("Workspace konnte nach Login nicht geladen werden.", true);
-      setAppMode("auth_required", "Bitte erneut anmelden oder Workspace-Zugriff prüfen.");
-    }
-    return;
+    await syncSessionFromClient("login_post_signin");
   } finally {
     if (slowHintTimer) {
       window.clearTimeout(slowHintTimer);
@@ -3048,8 +3089,8 @@ async function handleAuthLogin() {
 }
 
 async function handleAuthRegister() {
-  if (!state.supabase.client) {
-    setAuthStatus("Supabase ist nicht konfiguriert.", true);
+  const client = await ensureSupabaseClient({ label: "supabase_client_register" });
+  if (!client) {
     return;
   }
   const email = String(dom.authEmail?.value ?? "").trim();
@@ -3059,42 +3100,35 @@ async function handleAuthRegister() {
     return;
   }
   setAuthStatus("Registrierung läuft ...");
-  const { error, data } = await state.supabase.client.auth.signUp({ email, password });
+  const { error, data } = await client.auth.signUp({ email, password });
   if (error) {
-    setAuthStatus(`Registrierung fehlgeschlagen: ${error.message}`, true);
+    setAuthStatus(`Registrierung fehlgeschlagen: ${formatAuthError(error)}`, true);
     return;
   }
   const hasSession = Boolean(data?.session?.user);
-  setAuthStatus(
-    hasSession
-      ? "Registrierung erfolgreich."
-      : "Registrierung angelegt. Bitte E-Mail bestätigen und danach anmelden.",
-  );
+  if (hasSession) {
+    setAuthStatus("Registrierung erfolgreich. Workspace wird geladen ...");
+    await applySupabaseSession(data.session, "register_result");
+    return;
+  }
+  setAuthStatus("Registrierung angelegt. Bitte E-Mail bestätigen und danach anmelden.");
 }
 
 async function handleAuthLogout() {
-  if (!state.supabase.client) {
+  const client = state.supabase.client;
+  if (!client) {
+    resetToAuthRequiredState("Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+    setAuthStatus("Abgemeldet.");
     return;
   }
 
-  await state.supabase.client.auth.signOut();
-  state.storage.mode = "local";
-  state.storage.adapter = createLocalStoreAdapter();
-  setStorageModeLabel();
-
-  configureSessionState({
-    requiresAuth: true,
-    isAuthenticated: false,
-    hasWorkspaceAccess: false,
-    pendingLocalImport: false,
-    userId: null,
-    userEmail: "",
-    workspaceId: null,
-    workspaceName: "",
-  });
-
+  try {
+    await client.auth.signOut();
+  } catch (error) {
+    console.error("Supabase logout failed", error);
+  }
+  resetToAuthRequiredState("Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
   setAuthStatus("Abgemeldet.");
-  setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
 }
 
 function getSelectedProduct() {
