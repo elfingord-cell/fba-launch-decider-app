@@ -188,12 +188,16 @@ const RAIL_FORTO_V2_DEFAULTS = {
   insuranceRatePct: 0.624,
 };
 
+const LEGACY_RAIL_CARTON_EQUIVALENT_CBM = 0.05;
+
 const RAIL_SHIPPING_V3_DEFAULTS = {
   rateEurPerCbm: 164.7,
   originBaseEurPerShipment: 36.69,
+  originPerCbmEur: 0.285 / LEGACY_RAIL_CARTON_EQUIVALENT_CBM,
   originPerCartonEur: 0.285,
   mainRunFixedEurPerShipment: 185,
   deOncarriageBaseEurPerShipment: 300,
+  deOncarriagePerCbmEur: 0.4 / LEGACY_RAIL_CARTON_EQUIVALENT_CBM,
   deOncarriagePerCartonEur: 0.4,
   customsBrokerFixedEurPerShipment: 50,
   insuranceRatePct: 0.624,
@@ -223,9 +227,11 @@ const DEFAULT_SETTINGS = {
       rail: {
         rateEurPerCbm: RAIL_SHIPPING_V3_DEFAULTS.rateEurPerCbm,
         originBaseEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.originBaseEurPerShipment,
+        originPerCbmEur: RAIL_SHIPPING_V3_DEFAULTS.originPerCbmEur,
         originPerCartonEur: RAIL_SHIPPING_V3_DEFAULTS.originPerCartonEur,
         mainRunFixedEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.mainRunFixedEurPerShipment,
         deOncarriageBaseEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.deOncarriageBaseEurPerShipment,
+        deOncarriagePerCbmEur: RAIL_SHIPPING_V3_DEFAULTS.deOncarriagePerCbmEur,
         deOncarriagePerCartonEur: RAIL_SHIPPING_V3_DEFAULTS.deOncarriagePerCartonEur,
         // Legacy-Felder bleiben lesbar.
         originFixedEurPerShipment: RAIL_SHIPPING_V3_DEFAULTS.originBaseEurPerShipment,
@@ -257,6 +263,7 @@ const DEFAULT_SETTINGS = {
     supplierSoftMaxGrossWeightKg: 18,
     outerBufferCm: 1.5,
     grossWeightUpliftPct: 5,
+    equivalentCartonFillPct: 90,
   },
   categoryDefaults: JSON.parse(JSON.stringify(BASE_CATEGORY_DEFAULTS)),
   lifecycle: {
@@ -496,12 +503,14 @@ const SETTINGS_HELP = {
   "shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment": "12-Monats-Durchschnitt: Sea LCL Nachlauf-Fixkosten je Shipment in EUR.",
   "shipping12m.modes.rail.rateEurPerCbm": "12-Monats-Durchschnitt: Rail variabler Tarif in EUR pro CBM (W/M).",
   "shipping12m.modes.rail.originBaseEurPerShipment": "Rail Vorlauf-Fixanteil je Shipment in EUR.",
-  "shipping12m.modes.rail.originPerCartonEur": "Rail Vorlauf variabel je Karton in EUR.",
+  "shipping12m.modes.rail.originPerCbmEur": "Rail Vorlauf variabel je CBM in EUR.",
+  "shipping12m.modes.rail.originPerCartonEur": "Legacy-Feld für Rail Vorlauf variabel je Karton in EUR.",
   "shipping12m.modes.rail.originFixedEurPerShipment": "Legacy-Feld für Rail Vorlauf-Fixkosten (wird auf Vorlauf-Basis gemappt).",
   "shipping12m.modes.rail.mainRunFixedEurPerShipment": "12-Monats-Durchschnitt: Rail Hauptlauf-Fixkosten je Shipment in EUR (z. B. THC/Handling).",
   "shipping12m.modes.rail.destinationFixedEurPerShipment": "Legacy-Feld für Rail Hauptlauf-Fixkosten (wird für neue Rail-Logik nicht mehr primär genutzt).",
   "shipping12m.modes.rail.deOncarriageBaseEurPerShipment": "Rail Nachlauf-Fixanteil je Shipment in EUR.",
-  "shipping12m.modes.rail.deOncarriagePerCartonEur": "Rail Nachlauf variabel je Karton in EUR.",
+  "shipping12m.modes.rail.deOncarriagePerCbmEur": "Rail Nachlauf variabel je CBM in EUR.",
+  "shipping12m.modes.rail.deOncarriagePerCartonEur": "Legacy-Feld für Rail Nachlauf variabel je Karton in EUR.",
   "shipping12m.modes.rail.deOncarriageFixedEurPerShipment": "Legacy-Feld für Rail Nachlauf-Fixkosten (wird auf Nachlauf-Basis gemappt).",
   "shipping12m.customsBrokerEnabled": "Aktiviert optionalen Fixkostenblock für Zollabfertigung.",
   "shipping12m.customsBrokerFixedEurPerShipment": "12-Monats-Durchschnitt: fixer Betrag für Zollabfertigung je Shipment in EUR.",
@@ -514,14 +523,15 @@ const SETTINGS_HELP = {
   "cartonRules.maxWidthCm": "Maximale Karton-Breite in cm für Auto-Kartonisierung.",
   "cartonRules.maxHeightCm": "Maximale Karton-Höhe in cm für Auto-Kartonisierung.",
   "cartonRules.maxWeightKg": "Maximales Karton-Gewicht in kg für Auto-Kartonisierung.",
-  "cartonRules.packFactor": "Legacy-Parameter aus früherer Volumenlogik (Kompatibilität). Für v1-Schätzung sind Soft-/Hard-Caps, Buffer und Gewichtsaufschlag maßgeblich.",
-  "cartonRules.estimationMode": "Schätzmodus für Auto-Kartonisierung: konservativ (Supplier-nah), balanced (Mittelweg), maximal (Kapazität priorisiert).",
-  "cartonRules.supplierSoftMaxLengthCm": "Konservatives Supplier-Soft-Cap für Umkarton-Länge in cm.",
-  "cartonRules.supplierSoftMaxWidthCm": "Konservatives Supplier-Soft-Cap für Umkarton-Breite in cm.",
-  "cartonRules.supplierSoftMaxHeightCm": "Konservatives Supplier-Soft-Cap für Umkarton-Höhe in cm.",
-  "cartonRules.supplierSoftMaxGrossWeightKg": "Konservatives Supplier-Soft-Cap für Umkarton-Bruttogewicht in kg.",
+  "cartonRules.packFactor": "Legacy-Parameter aus früherer Volumenlogik (nur Kompatibilität, aktuell inaktiv).",
+  "cartonRules.estimationMode": "Legacy-Parameter (konservativ/balanced/maximal), wird in der aktiven Kartonisierung nicht mehr verwendet.",
+  "cartonRules.supplierSoftMaxLengthCm": "Legacy-Parameter für Supplier-Soft-Caps (aktuell inaktiv).",
+  "cartonRules.supplierSoftMaxWidthCm": "Legacy-Parameter für Supplier-Soft-Caps (aktuell inaktiv).",
+  "cartonRules.supplierSoftMaxHeightCm": "Legacy-Parameter für Supplier-Soft-Caps (aktuell inaktiv).",
+  "cartonRules.supplierSoftMaxGrossWeightKg": "Legacy-Parameter für Supplier-Soft-Caps (aktuell inaktiv).",
   "cartonRules.outerBufferCm": "Zusätzlicher Umkarton-Puffer je Achse in cm (Polster/Luft).",
   "cartonRules.grossWeightUpliftPct": "Aufschlag von Netto- auf Bruttogewicht je Unit in %.",
+  "cartonRules.equivalentCartonFillPct": "Auslastung der Äquivalenz-Referenz in %. Referenz = Hard-Caps × Auslastung.",
   "lifecycle.defaultMonths": "Lifecycle-Horizont für die Amortisation von Listing-Kosten (Monate).",
   "lifecycle.listingPackages.ai.listingCreationEur": "Kosten für Listing-Erstellung im Paket KI (EUR).",
   "lifecycle.listingPackages.ai.imagesInfographicsEur": "Kosten für Bilder/Infografiken im Paket KI (EUR).",
@@ -618,12 +628,14 @@ const PATH_LABEL_OVERRIDES = {
   "settings.shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment": "Sea LCL Nachlauf fix (EUR/Shipment)",
   "settings.shipping12m.modes.rail.rateEurPerCbm": "Rail Rate (EUR/CBM, 12M-Ø)",
   "settings.shipping12m.modes.rail.originBaseEurPerShipment": "Rail Vorlauf Basis (EUR/Shipment)",
-  "settings.shipping12m.modes.rail.originPerCartonEur": "Rail Vorlauf variabel (EUR/Karton)",
+  "settings.shipping12m.modes.rail.originPerCbmEur": "Rail Vorlauf variabel (EUR/CBM)",
+  "settings.shipping12m.modes.rail.originPerCartonEur": "Rail Vorlauf variabel (legacy, EUR/Karton)",
   "settings.shipping12m.modes.rail.originFixedEurPerShipment": "Rail Vorlauf fix (legacy, EUR/Shipment)",
   "settings.shipping12m.modes.rail.mainRunFixedEurPerShipment": "Rail Hauptlauf fix (EUR/Shipment)",
   "settings.shipping12m.modes.rail.destinationFixedEurPerShipment": "Rail Hauptlauf fix (legacy, EUR/Shipment)",
   "settings.shipping12m.modes.rail.deOncarriageBaseEurPerShipment": "Rail Nachlauf Basis (EUR/Shipment)",
-  "settings.shipping12m.modes.rail.deOncarriagePerCartonEur": "Rail Nachlauf variabel (EUR/Karton)",
+  "settings.shipping12m.modes.rail.deOncarriagePerCbmEur": "Rail Nachlauf variabel (EUR/CBM)",
+  "settings.shipping12m.modes.rail.deOncarriagePerCartonEur": "Rail Nachlauf variabel (legacy, EUR/Karton)",
   "settings.shipping12m.modes.rail.deOncarriageFixedEurPerShipment": "Rail Nachlauf fix (legacy, EUR/Shipment)",
   "settings.shipping12m.customsBrokerEnabled": "Zollabfertigung aktiv",
   "settings.shipping12m.customsBrokerFixedEurPerShipment": "Zollabfertigung fix (EUR/Shipment)",
@@ -637,13 +649,14 @@ const PATH_LABEL_OVERRIDES = {
   "settings.cartonRules.maxHeightCm": "Karton max Höhe (cm)",
   "settings.cartonRules.maxWeightKg": "Karton max Gewicht (kg)",
   "settings.cartonRules.packFactor": "Packfaktor (Legacy)",
-  "settings.cartonRules.estimationMode": "Schätzmodus (konservativ/balanced/maximal)",
-  "settings.cartonRules.supplierSoftMaxLengthCm": "Supplier Soft-Cap Länge (cm)",
-  "settings.cartonRules.supplierSoftMaxWidthCm": "Supplier Soft-Cap Breite (cm)",
-  "settings.cartonRules.supplierSoftMaxHeightCm": "Supplier Soft-Cap Höhe (cm)",
-  "settings.cartonRules.supplierSoftMaxGrossWeightKg": "Supplier Soft-Cap Bruttogewicht (kg)",
+  "settings.cartonRules.estimationMode": "Schätzmodus (Legacy, inaktiv)",
+  "settings.cartonRules.supplierSoftMaxLengthCm": "Supplier Soft-Cap Länge (Legacy)",
+  "settings.cartonRules.supplierSoftMaxWidthCm": "Supplier Soft-Cap Breite (Legacy)",
+  "settings.cartonRules.supplierSoftMaxHeightCm": "Supplier Soft-Cap Höhe (Legacy)",
+  "settings.cartonRules.supplierSoftMaxGrossWeightKg": "Supplier Soft-Cap Bruttogewicht (Legacy)",
   "settings.cartonRules.outerBufferCm": "Outer Buffer je Achse (cm)",
   "settings.cartonRules.grossWeightUpliftPct": "Gewichtsaufschlag netto->brutto (%)",
+  "settings.cartonRules.equivalentCartonFillPct": "Äquivalenz-Referenz Auslastung (%)",
   "settings.threePl.receivingPerCartonSortedEur": "3PL Receiving sortenrein (EUR/Karton)",
   "settings.threePl.receivingPerCartonMixedEur": "3PL Receiving gemischt (EUR/Karton)",
   "settings.threePl.storagePerPalletPerMonthEur": "3PL Lagerung (EUR/Palette/Monat)",
@@ -756,15 +769,51 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.shipping.unitsPerCartonAuto": {
     label: "Units je Umkarton (auto/manuell)",
-    help: "Units pro Umkarton aus Supplier-Soft-Caps/Hard-Fallback oder manuellem Packing-List-Override.",
+    help: "Units pro Umkarton aus min(Gewichtsgrenze, Maßgrenze) unter Hard-Caps oder manuellem Packing-List-Override.",
     format: "number",
     read: (metrics) => metrics.shipping.unitsPerCartonAuto,
   },
+  "derived.shipping.unitsByWeightCap": {
+    label: "Units je Umkarton nach Gewichtscap",
+    help: "Maximal mögliche Units je Umkarton unter Amazon-Gewichtsgrenze.",
+    format: "number",
+    read: (metrics) => metrics.shipping.unitsByWeightCap,
+  },
+  "derived.shipping.unitsByDimensionCap": {
+    label: "Units je Umkarton nach Maßcap",
+    help: "Maximal mögliche Units je Umkarton unter Amazon-Maßgrenzen (inkl. Outer-Buffer).",
+    format: "number",
+    read: (metrics) => metrics.shipping.unitsByDimensionCap,
+  },
   "derived.shipping.cartonsCount": {
-    label: "Anzahl Umkartons",
-    help: "Kartonanzahl = ceil(PO Units / units_per_carton_auto).",
+    label: "Anzahl Umkartons (physisch)",
+    help: "Physische Kartonanzahl = ceil(PO Units / units_per_carton_auto).",
     format: "number",
     read: (metrics) => metrics.shipping.cartonsCount,
+  },
+  "derived.shipping.physicalCartonsCount": {
+    label: "Anzahl Umkartons (physisch)",
+    help: "Physische Kartonanzahl = ceil(PO Units / units_per_carton_auto).",
+    format: "number",
+    read: (metrics) => metrics.shipping.physicalCartonsCount,
+  },
+  "derived.shipping.equivalentCartonsCount": {
+    label: "Äquivalenz-Kartons",
+    help: "Äquivalenz-Kartons aus Shipment-CBM/Gewicht relativ zur Referenz (Hard-Caps × Fill).",
+    format: "number",
+    read: (metrics) => metrics.shipping.equivalentCartonsCount,
+  },
+  "derived.shipping.equivalentReferenceCbm": {
+    label: "Äquivalenz-Referenz CBM",
+    help: "Volumen-Referenz je Äquivalenz-Karton = Hard-Caps CBM × Fill.",
+    format: "number",
+    read: (metrics) => metrics.shipping.equivalentReferenceCbm,
+  },
+  "derived.shipping.equivalentReferenceWeightKg": {
+    label: "Äquivalenz-Referenz Gewicht (kg)",
+    help: "Gewichts-Referenz je Äquivalenz-Karton = Hard-Cap Gewicht × Fill.",
+    format: "number",
+    read: (metrics) => metrics.shipping.equivalentReferenceWeightKg,
   },
   "derived.shipping.shipmentCbm": {
     label: "Sendungsvolumen (CBM)",
@@ -810,7 +859,7 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.shipping.cartonizationSource": {
     label: "Quelle der Kartonisierung",
-    help: "Quelle der Kartonisierung: Auto mit Soft-Caps, Hard-Fallback oder manueller Override.",
+    help: "Quelle der Kartonisierung: Auto über Hard-Caps oder manueller Override.",
     format: "string",
     read: (metrics) => metrics.shipping.cartonizationSourceLabel ?? metrics.shipping.cartonizationSource,
   },
@@ -917,7 +966,7 @@ const SETTINGS_BOOLEAN_PATHS = new Set([
   "shipping12m.insurance.enabled",
   "shipping12m.manualSurchargeEnabled",
 ]);
-const SETTINGS_STRING_PATHS = new Set(["shipping12m.insurance.basis", "cartonRules.estimationMode"]);
+const SETTINGS_STRING_PATHS = new Set(["shipping12m.insurance.basis"]);
 
 const OVERRIDE_CONTROL_MAP = [
   ["assumptions.ads.overrideTacos", "assumptions.ads.tacosRate"],
@@ -1085,11 +1134,23 @@ const dom = {
   categoryDefaultsAdmin: document.getElementById("categoryDefaultsAdmin"),
   shippingMethodText: document.getElementById("shippingMethodText"),
   shippingDetailList: document.getElementById("shippingDetailList"),
-  shippingDebugInfo: document.getElementById("shippingDebugInfo"),
+  shippingTotalPo: document.getElementById("shippingTotalPo"),
+  shippingTotalUnit: document.getElementById("shippingTotalUnit"),
+  shippingUnitsByWeightCap: document.getElementById("shippingUnitsByWeightCap"),
+  shippingUnitsByDimensionCap: document.getElementById("shippingUnitsByDimensionCap"),
   shippingCartonUnits: document.getElementById("shippingCartonUnits"),
+  shippingPhysicalCartons: document.getElementById("shippingPhysicalCartons"),
+  shippingShipmentCbm: document.getElementById("shippingShipmentCbm"),
+  shippingShipmentWeight: document.getElementById("shippingShipmentWeight"),
+  shippingChargeableCbm: document.getElementById("shippingChargeableCbm"),
+  shippingEquivalentFillPct: document.getElementById("shippingEquivalentFillPct"),
+  shippingEquivalentReferenceCbm: document.getElementById("shippingEquivalentReferenceCbm"),
+  shippingEquivalentReferenceWeightKg: document.getElementById("shippingEquivalentReferenceWeightKg"),
+  shippingEquivalentCartons: document.getElementById("shippingEquivalentCartons"),
   shippingCartonDims: document.getElementById("shippingCartonDims"),
   shippingCartonWeight: document.getElementById("shippingCartonWeight"),
   shippingCartonSource: document.getElementById("shippingCartonSource"),
+  shippingOversizeNote: document.getElementById("shippingOversizeNote"),
   basicShippingUnit: document.getElementById("basicShippingUnit"),
   basicShippingMeta: document.getElementById("basicShippingMeta"),
   chainSupplierChips: document.getElementById("chainSupplierChips"),
@@ -1277,10 +1338,10 @@ function shippingModeDriverPaths(mode) {
     return [
       `${prefix}.rateEurPerCbm`,
       `${prefix}.originBaseEurPerShipment`,
-      `${prefix}.originPerCartonEur`,
+      `${prefix}.originPerCbmEur`,
       `${prefix}.mainRunFixedEurPerShipment`,
       `${prefix}.deOncarriageBaseEurPerShipment`,
-      `${prefix}.deOncarriagePerCartonEur`,
+      `${prefix}.deOncarriagePerCbmEur`,
       "settings.shipping12m.customsBrokerEnabled",
       "settings.shipping12m.customsBrokerFixedEurPerShipment",
       "settings.shipping12m.insurance.enabled",
@@ -1308,7 +1369,7 @@ function shippingOriginDriverPaths(mode) {
   const normalized = normalizeShippingMode(mode);
   const prefix = shippingModeSettingsPathPrefix(normalized);
   if (normalized === "rail") {
-    return [`${prefix}.originBaseEurPerShipment`, `${prefix}.originPerCartonEur`];
+    return [`${prefix}.originBaseEurPerShipment`, `${prefix}.originPerCbmEur`];
   }
   return [`${prefix}.originFixedEurPerShipment`];
 }
@@ -1326,7 +1387,7 @@ function shippingOncarriageDriverPaths(mode) {
   const normalized = normalizeShippingMode(mode);
   const prefix = shippingModeSettingsPathPrefix(normalized);
   if (normalized === "rail") {
-    return [`${prefix}.deOncarriageBaseEurPerShipment`, `${prefix}.deOncarriagePerCartonEur`];
+    return [`${prefix}.deOncarriageBaseEurPerShipment`, `${prefix}.deOncarriagePerCbmEur`];
   }
   return [`${prefix}.deOncarriageFixedEurPerShipment`];
 }
@@ -1340,17 +1401,13 @@ function shippingManualSurchargeDriverPaths(mode) {
 
 function cartonizationSettingsPaths() {
   return [
-    "settings.cartonRules.estimationMode",
     "settings.cartonRules.maxLengthCm",
     "settings.cartonRules.maxWidthCm",
     "settings.cartonRules.maxHeightCm",
     "settings.cartonRules.maxWeightKg",
-    "settings.cartonRules.supplierSoftMaxLengthCm",
-    "settings.cartonRules.supplierSoftMaxWidthCm",
-    "settings.cartonRules.supplierSoftMaxHeightCm",
-    "settings.cartonRules.supplierSoftMaxGrossWeightKg",
     "settings.cartonRules.outerBufferCm",
     "settings.cartonRules.grossWeightUpliftPct",
+    "settings.cartonRules.equivalentCartonFillPct",
   ];
 }
 
@@ -1717,6 +1774,26 @@ function ensureShipping12mSettings(rawShipping12m) {
   if (merged.modes.rail.deOncarriageFixedEurPerShipment === undefined) {
     merged.modes.rail.deOncarriageFixedEurPerShipment = merged.modes.rail.deOncarriageBaseEurPerShipment;
   }
+  if (
+    source?.modes?.rail?.originPerCbmEur === undefined &&
+    source?.modes?.rail?.originPerCartonEur !== undefined
+  ) {
+    merged.modes.rail.originPerCbmEur = num(source.modes.rail.originPerCartonEur, 0) / LEGACY_RAIL_CARTON_EQUIVALENT_CBM;
+  }
+  if (
+    source?.modes?.rail?.deOncarriagePerCbmEur === undefined &&
+    source?.modes?.rail?.deOncarriagePerCartonEur !== undefined
+  ) {
+    merged.modes.rail.deOncarriagePerCbmEur = num(source.modes.rail.deOncarriagePerCartonEur, 0) / LEGACY_RAIL_CARTON_EQUIVALENT_CBM;
+  }
+  if (merged.modes.rail.originPerCbmEur === undefined) {
+    merged.modes.rail.originPerCbmEur =
+      num(merged.modes.rail.originPerCartonEur, 0) / LEGACY_RAIL_CARTON_EQUIVALENT_CBM;
+  }
+  if (merged.modes.rail.deOncarriagePerCbmEur === undefined) {
+    merged.modes.rail.deOncarriagePerCbmEur =
+      num(merged.modes.rail.deOncarriagePerCartonEur, 0) / LEGACY_RAIL_CARTON_EQUIVALENT_CBM;
+  }
   if (merged.manualSurchargeEnabled === undefined) {
     merged.manualSurchargeEnabled = base.manualSurchargeEnabled;
   }
@@ -1743,9 +1820,11 @@ function applyRailFortoV2Defaults(settings) {
 function applyRailShippingV3Defaults(settings) {
   settings.shipping12m.modes.rail.rateEurPerCbm = RAIL_SHIPPING_V3_DEFAULTS.rateEurPerCbm;
   settings.shipping12m.modes.rail.originBaseEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.originBaseEurPerShipment;
+  settings.shipping12m.modes.rail.originPerCbmEur = RAIL_SHIPPING_V3_DEFAULTS.originPerCbmEur;
   settings.shipping12m.modes.rail.originPerCartonEur = RAIL_SHIPPING_V3_DEFAULTS.originPerCartonEur;
   settings.shipping12m.modes.rail.mainRunFixedEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.mainRunFixedEurPerShipment;
   settings.shipping12m.modes.rail.deOncarriageBaseEurPerShipment = RAIL_SHIPPING_V3_DEFAULTS.deOncarriageBaseEurPerShipment;
+  settings.shipping12m.modes.rail.deOncarriagePerCbmEur = RAIL_SHIPPING_V3_DEFAULTS.deOncarriagePerCbmEur;
   settings.shipping12m.modes.rail.deOncarriagePerCartonEur = RAIL_SHIPPING_V3_DEFAULTS.deOncarriagePerCartonEur;
 
   // Legacy-Felder bleiben für Bestandsdaten/alte Treiberpfade lesbar.
@@ -1861,6 +1940,14 @@ function sanitizeSettings(settings) {
     0,
     200,
   );
+  settings.shipping12m.modes.rail.originPerCbmEur = clamp(
+    num(
+      settings.shipping12m.modes.rail.originPerCbmEur,
+      num(settings.shipping12m.modes.rail.originPerCartonEur, 0) / LEGACY_RAIL_CARTON_EQUIVALENT_CBM,
+    ),
+    0,
+    500,
+  );
   settings.shipping12m.modes.rail.mainRunFixedEurPerShipment = clamp(
     num(
       settings.shipping12m.modes.rail.mainRunFixedEurPerShipment,
@@ -1881,6 +1968,14 @@ function sanitizeSettings(settings) {
     num(settings.shipping12m.modes.rail.deOncarriagePerCartonEur, 0),
     0,
     200,
+  );
+  settings.shipping12m.modes.rail.deOncarriagePerCbmEur = clamp(
+    num(
+      settings.shipping12m.modes.rail.deOncarriagePerCbmEur,
+      num(settings.shipping12m.modes.rail.deOncarriagePerCartonEur, 0) / LEGACY_RAIL_CARTON_EQUIVALENT_CBM,
+    ),
+    0,
+    500,
   );
   settings.shipping12m.modes.rail.originFixedEurPerShipment = clamp(
     num(settings.shipping12m.modes.rail.originFixedEurPerShipment, settings.shipping12m.modes.rail.originBaseEurPerShipment),
@@ -1921,6 +2016,7 @@ function sanitizeSettings(settings) {
   settings.cartonRules.supplierSoftMaxGrossWeightKg = clamp(num(settings.cartonRules.supplierSoftMaxGrossWeightKg, 18), 1, 80);
   settings.cartonRules.outerBufferCm = clamp(num(settings.cartonRules.outerBufferCm, 1.5), 0, 20);
   settings.cartonRules.grossWeightUpliftPct = clamp(num(settings.cartonRules.grossWeightUpliftPct, 5), 0, 50);
+  settings.cartonRules.equivalentCartonFillPct = clamp(num(settings.cartonRules.equivalentCartonFillPct, 90), 50, 100);
 
   const preset = settings.cartonRules.preset;
   if (!["legacy", "update_2025", "custom"].includes(preset)) {
@@ -3787,10 +3883,7 @@ function cartonizationSourceLabel(source) {
   if (source === "manual_override") {
     return "Manuell (Packing-List Override)";
   }
-  if (source === "auto_soft") {
-    return "Auto (Supplier Soft-Caps)";
-  }
-  return "Auto (Hard-Cap Fallback)";
+  return "Auto (Hard-Caps)";
 }
 
 function buildDimensionOrientations(lengthCm, widthCm, heightCm) {
@@ -3811,6 +3904,21 @@ function buildDimensionOrientations(lengthCm, widthCm, heightCm) {
     seen.add(key);
     return true;
   });
+}
+
+function maxUnitsByDimensionCap(unitDims, hardCaps, outerBufferCm) {
+  const orientations = buildDimensionOrientations(unitDims[0], unitDims[1], unitDims[2]);
+  let best = 0;
+  orientations.forEach(([unitL, unitW, unitH]) => {
+    const maxNx = Math.max(0, Math.floor((hardCaps.lengthCm - outerBufferCm) / Math.max(0.000001, unitL)));
+    const maxNy = Math.max(0, Math.floor((hardCaps.widthCm - outerBufferCm) / Math.max(0.000001, unitW)));
+    const maxNz = Math.max(0, Math.floor((hardCaps.heightCm - outerBufferCm) / Math.max(0.000001, unitH)));
+    const units = maxNx * maxNy * maxNz;
+    if (units > best) {
+      best = units;
+    }
+  });
+  return Math.max(1, best);
 }
 
 function buildCartonCandidates(options) {
@@ -4075,44 +4183,43 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     heightCm: Math.max(1, num(rules.maxHeightCm, 63.5)),
     weightKg: Math.max(1, num(rules.maxWeightKg, 23)),
   };
-  const softCaps = {
-    lengthCm: Math.max(1, num(rules.supplierSoftMaxLengthCm, 40)),
-    widthCm: Math.max(1, num(rules.supplierSoftMaxWidthCm, 40)),
-    heightCm: Math.max(1, num(rules.supplierSoftMaxHeightCm, 35)),
-    weightKg: Math.max(1, num(rules.supplierSoftMaxGrossWeightKg, 18)),
-  };
   const outerBufferCm = clamp(num(rules.outerBufferCm, 1.5), 0, 20);
   const grossWeightUpliftPct = clamp(num(rules.grossWeightUpliftPct, 5), 0, 50);
-  const estimationMode = ["conservative", "balanced", "maximal"].includes(rules.estimationMode)
-    ? rules.estimationMode
-    : "conservative";
+  const equivalentFillPct = clamp(num(rules.equivalentCartonFillPct, 90), 50, 100);
   const unitWeightKgGross = unitWeightKgNet * (1 + grossWeightUpliftPct / 100);
 
   const unitDimsSorted = toSortedDims(lengthCm, widthCm, heightCm);
   const hardDimsSorted = toSortedDims(hardCaps.lengthCm, hardCaps.widthCm, hardCaps.heightCm);
   const oversizeFlag = unitDimsSorted[0] > hardDimsSorted[0] || unitDimsSorted[1] > hardDimsSorted[1] || unitDimsSorted[2] > hardDimsSorted[2];
 
-  const candidates = buildCartonCandidates({
-    unitDims: [lengthCm, widthCm, heightCm],
-    unitCbm,
-    unitGrossKg: unitWeightKgGross,
-    hardCaps,
-    softCaps,
-    outerBufferCm,
-  });
-
-  const selectedAuto = selectCartonCandidateByMode(candidates, estimationMode, hardCaps, softCaps);
-
   const assumptionsCarton = product.assumptions?.cartonization ?? {};
   const manualEnabled = Boolean(assumptionsCarton.manualEnabled);
-  const manualUnitsPerCarton = Math.max(1, roundInt(assumptionsCarton.unitsPerCarton, selectedAuto?.units ?? 1));
+  const unitsByWeightCap = Math.max(1, Math.floor(hardCaps.weightKg / Math.max(0.000001, unitWeightKgGross)));
+  const unitsByDimensionCap = maxUnitsByDimensionCap([lengthCm, widthCm, heightCm], hardCaps, outerBufferCm);
 
-  let unitsPerCartonAuto = selectedAuto?.units ?? 1;
-  let estimatedCartonLengthCm = selectedAuto?.cartonLengthCm ?? (lengthCm + outerBufferCm);
-  let estimatedCartonWidthCm = selectedAuto?.cartonWidthCm ?? (widthCm + outerBufferCm);
-  let estimatedCartonHeightCm = selectedAuto?.cartonHeightCm ?? (heightCm + outerBufferCm);
-  let estimatedCartonGrossWeightKg = selectedAuto?.cartonGrossKg ?? (unitWeightKgGross * unitsPerCartonAuto);
-  let cartonizationSource = selectedAuto?.softValid ? "auto_soft" : "auto_hard_fallback";
+  const estimateForUnits = (targetUnits) => estimateCartonForExactUnits({
+    unitDims: [lengthCm, widthCm, heightCm],
+    unitGrossKg: unitWeightKgGross,
+    hardCaps,
+    softCaps: hardCaps,
+    outerBufferCm,
+    targetUnits,
+  });
+
+  let unitsPerCartonAuto = Math.max(1, Math.min(unitsByWeightCap, unitsByDimensionCap));
+  let estimatedAuto = estimateForUnits(unitsPerCartonAuto);
+  while (!estimatedAuto && unitsPerCartonAuto > 1) {
+    unitsPerCartonAuto -= 1;
+    estimatedAuto = estimateForUnits(unitsPerCartonAuto);
+  }
+
+  const manualUnitsPerCarton = Math.max(1, roundInt(assumptionsCarton.unitsPerCarton, unitsPerCartonAuto));
+
+  let estimatedCartonLengthCm = estimatedAuto?.cartonLengthCm ?? (lengthCm + outerBufferCm);
+  let estimatedCartonWidthCm = estimatedAuto?.cartonWidthCm ?? (widthCm + outerBufferCm);
+  let estimatedCartonHeightCm = estimatedAuto?.cartonHeightCm ?? (heightCm + outerBufferCm);
+  let estimatedCartonGrossWeightKg = estimatedAuto?.cartonGrossKg ?? (unitWeightKgGross * unitsPerCartonAuto);
+  let cartonizationSource = "auto_hard_caps";
 
   if (manualEnabled) {
     unitsPerCartonAuto = manualUnitsPerCarton;
@@ -4130,7 +4237,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
         unitDims: [lengthCm, widthCm, heightCm],
         unitGrossKg: unitWeightKgGross,
         hardCaps,
-        softCaps,
+        softCaps: hardCaps,
         outerBufferCm,
         targetUnits: manualUnitsPerCarton,
       });
@@ -4150,12 +4257,13 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     cartonizationSource = "manual_override";
   }
 
-  const cartonsCount = Math.max(1, Math.ceil(unitsPerOrder / Math.max(1, unitsPerCartonAuto)));
+  const physicalCartonsCount = Math.max(1, Math.ceil(unitsPerOrder / Math.max(1, unitsPerCartonAuto)));
+  const cartonsCount = physicalCartonsCount;
   const cartonCbm = Math.max(
     0.000001,
     (estimatedCartonLengthCm * estimatedCartonWidthCm * estimatedCartonHeightCm) / 1_000_000,
   );
-  const shipmentCbm = cartonsCount * cartonCbm;
+  const shipmentCbm = physicalCartonsCount * cartonCbm;
 
   let shipmentWeightKg = unitsPerOrder * unitWeightKgGross;
   if (manualEnabled && estimatedCartonGrossWeightKg > 0 && unitsPerCartonAuto > 0) {
@@ -4163,6 +4271,20 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     shipmentWeightKg = unitsPerOrder * manualGrossPerUnit;
   }
   shipmentWeightKg = Math.max(0.001, shipmentWeightKg);
+
+  const equivalentFill = equivalentFillPct / 100;
+  const hardCbm = (hardCaps.lengthCm * hardCaps.widthCm * hardCaps.heightCm) / 1_000_000;
+  const equivalentReferenceCbm = Math.max(0.000001, hardCbm * equivalentFill);
+  const equivalentReferenceWeightKg = Math.max(0.001, hardCaps.weightKg * equivalentFill);
+  const equivalentCartonsCount = Math.max(
+    1,
+    Math.ceil(
+      Math.max(
+        shipmentCbm / equivalentReferenceCbm,
+        shipmentWeightKg / equivalentReferenceWeightKg,
+      ),
+    ),
+  );
 
   const chargeableCbm = Math.max(shipmentCbm, shipmentWeightKg / 1000);
 
@@ -4180,22 +4302,36 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
   const destinationFixedLegacy = Math.max(0, num(modeSettings.destinationFixedEurPerShipment));
 
   let originBaseEurPerShipment = 0;
+  let originPerCbmEur = 0;
   let originPerCartonEur = 0;
   let deOncarriageBaseEurPerShipment = 0;
+  let deOncarriagePerCbmEur = 0;
   let deOncarriagePerCartonEur = 0;
   let originTotal = 0;
   let deOncarriageTotal = 0;
+  let originVariableCartonBasis = "fixed";
+  let deOncarriageVariableCartonBasis = "fixed";
 
   if (modeKey === "rail") {
     originBaseEurPerShipment = Math.max(0, num(modeSettings.originBaseEurPerShipment, modeSettings.originFixedEurPerShipment));
+    originPerCbmEur = Math.max(
+      0,
+      num(modeSettings.originPerCbmEur, num(modeSettings.originPerCartonEur, 0) / LEGACY_RAIL_CARTON_EQUIVALENT_CBM),
+    );
     originPerCartonEur = Math.max(0, num(modeSettings.originPerCartonEur, 0));
     deOncarriageBaseEurPerShipment = Math.max(
       0,
       num(modeSettings.deOncarriageBaseEurPerShipment, modeSettings.deOncarriageFixedEurPerShipment),
     );
+    deOncarriagePerCbmEur = Math.max(
+      0,
+      num(modeSettings.deOncarriagePerCbmEur, num(modeSettings.deOncarriagePerCartonEur, 0) / LEGACY_RAIL_CARTON_EQUIVALENT_CBM),
+    );
     deOncarriagePerCartonEur = Math.max(0, num(modeSettings.deOncarriagePerCartonEur, 0));
-    originTotal = originBaseEurPerShipment + originPerCartonEur * cartonsCount;
-    deOncarriageTotal = deOncarriageBaseEurPerShipment + deOncarriagePerCartonEur * cartonsCount;
+    originTotal = originBaseEurPerShipment + originPerCbmEur * shipmentCbm;
+    deOncarriageTotal = deOncarriageBaseEurPerShipment + deOncarriagePerCbmEur * shipmentCbm;
+    originVariableCartonBasis = "shipment_cbm";
+    deOncarriageVariableCartonBasis = "shipment_cbm";
   } else {
     originBaseEurPerShipment = Math.max(0, num(modeSettings.originFixedEurPerShipment));
     deOncarriageBaseEurPerShipment = Math.max(0, num(modeSettings.deOncarriageFixedEurPerShipment));
@@ -4223,7 +4359,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
       label: "Vorlauf",
       total: originTotal,
       formula: modeKey === "rail"
-        ? "Vorlauf = Vorlauf-Basis + (Vorlauf je Karton × Anzahl Umkartons)"
+        ? "Vorlauf = Vorlauf-Basis + (Vorlauf je CBM × Shipment-CBM)"
         : "Vorlauf = origin_fixed",
       source: `Global Setting -> Shipping 12M -> ${modeLabel}`,
     },
@@ -4246,7 +4382,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
       label: "Nachlauf",
       total: deOncarriageTotal,
       formula: modeKey === "rail"
-        ? "Nachlauf = Nachlauf-Basis + (Nachlauf je Karton × Anzahl Umkartons)"
+        ? "Nachlauf = Nachlauf-Basis + (Nachlauf je CBM × Shipment-CBM)"
         : "Nachlauf = de_oncarriage_fixed",
       source: `Global Setting -> Shipping 12M -> ${modeLabel}`,
     },
@@ -4288,7 +4424,10 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     unitWeightKg: unitWeightKgNet,
     unitGrossWeightKg: unitWeightKgGross,
     unitsPerOrder,
+    unitsByWeightCap,
+    unitsByDimensionCap,
     unitsPerCartonAuto,
+    physicalCartonsCount,
     cartonsCount,
     estimatedCartonLengthCm,
     estimatedCartonWidthCm,
@@ -4299,12 +4438,17 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     shipmentCbm,
     shipmentWeightKg,
     chargeableCbm,
+    equivalentCartonsCount,
+    equivalentReferenceCbm,
+    equivalentReferenceWeightKg,
+    equivalentFillPct,
     goodsValueEur,
     insuranceEnabled,
     insuranceBasis,
     insuranceRatePct,
     insuranceBaseEur,
     originBaseEurPerShipment,
+    originPerCbmEur,
     originPerCartonEur,
     originTotal,
     originFixed: originTotal,
@@ -4312,9 +4456,12 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     mainRunFixed,
     destinationFixed: destinationFixedLegacy,
     deOncarriageBaseEurPerShipment,
+    deOncarriagePerCbmEur,
     deOncarriagePerCartonEur,
     deOncarriageTotal,
     oncarriageFixed: deOncarriageTotal,
+    originVariableCartonBasis,
+    deOncarriageVariableCartonBasis,
     customsBroker,
     insuranceTotal,
     manualSurchargeEnabled,
@@ -6588,17 +6735,6 @@ function settingsValueText(path, value) {
     if (path === "shipping12m.insurance.basis") {
       return value === "goods_value_eur" ? "Nur Warenwert (EUR)" : String(value ?? "-");
     }
-    if (path === "cartonRules.estimationMode") {
-      if (value === "conservative") {
-        return "Konservativ";
-      }
-      if (value === "balanced") {
-        return "Balanced";
-      }
-      if (value === "maximal") {
-        return "Maximal";
-      }
-    }
     return String(value ?? "-");
   }
   if (
@@ -7428,13 +7564,13 @@ function buildCostCategoryData(metrics) {
           impactMonthly: shippingPreRunUnit * metrics.monthlyUnits,
           explain: "Abholung/Trucking am Ursprung.",
           formula: metrics.shipping.modeKey === "rail"
-            ? "Vorlauf/Unit = (Vorlauf-Basis + Vorlauf je Karton × Anzahl Umkartons) / PO-Menge."
+            ? "Vorlauf/Unit = (Vorlauf-Basis + Vorlauf je CBM × Shipment-CBM) / PO-Menge."
             : "Vorlauf/Unit = origin_fixed / PO Units.",
           source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
           robustness: "Mittel.",
           driverPaths: [
             "basic.unitsPerOrder",
-            "derived.shipping.cartonsCount",
+            "derived.shipping.shipmentCbm",
             ...shippingOriginDriverPaths(metrics.shipping.modeKey),
           ],
         }),
@@ -7471,13 +7607,13 @@ function buildCostCategoryData(metrics) {
           impactMonthly: shippingPostRunUnit * metrics.monthlyUnits,
           explain: "Inlandstransport in DE nach Ankunft.",
           formula: metrics.shipping.modeKey === "rail"
-            ? "Nachlauf/Unit = (Nachlauf-Basis + Nachlauf je Karton × Anzahl Umkartons) / PO-Menge."
+            ? "Nachlauf/Unit = (Nachlauf-Basis + Nachlauf je CBM × Shipment-CBM) / PO-Menge."
             : "Nachlauf/Unit = de_oncarriage_fixed / PO Units.",
           source: `Shipping 12M (${metrics.shipping.modeLabel}).`,
           robustness: "Mittel.",
           driverPaths: [
             "basic.unitsPerOrder",
-            "derived.shipping.cartonsCount",
+            "derived.shipping.shipmentCbm",
             ...shippingOncarriageDriverPaths(metrics.shipping.modeKey),
           ],
         }),
@@ -7566,7 +7702,7 @@ function buildCostCategoryData(metrics) {
           valueRaw: metrics.threePlInboundPerUnit,
           impactMonthly: metrics.threePlInboundPerUnit * metrics.monthlyUnits,
           explain: "Wareneingangskosten im 3PL je Karton.",
-          formula: "Inbound/Unit = Anzahl Umkartons × Receiving-Rate je Karton / PO-Menge.",
+          formula: "Inbound/Unit = physische Umkartons × Receiving-Rate je Karton / PO-Menge.",
           source: "3PL Settings/Override.",
           robustness: "Mittel.",
           driverPaths: [
@@ -7576,6 +7712,7 @@ function buildCostCategoryData(metrics) {
             "derived.shipping.estimatedCartonWidthCm",
             "derived.shipping.estimatedCartonHeightCm",
             "derived.shipping.cartonizationSource",
+            "derived.shipping.physicalCartonsCount",
             "derived.shipping.cartonsCount",
             ...cartonizationProductPaths(),
             ...cartonizationSettingsPaths(),
@@ -7610,11 +7747,12 @@ function buildCostCategoryData(metrics) {
           valueRaw: metrics.threePlOutboundServicePerUnit,
           impactMonthly: metrics.threePlOutboundServicePerUnit * metrics.monthlyUnits,
           explain: "Outbound-Service je Karton (Base, Pick & Pack, FBA Processing, optionale Extras).",
-          formula: "Service/Unit = Anzahl Umkartons × Servicekosten je Karton / PO-Menge.",
+          formula: "Service/Unit = physische Umkartons × Servicekosten je Karton / PO-Menge.",
           source: "3PL Settings/Override.",
           robustness: "Mittel.",
           driverPaths: [
             "derived.shipping.unitsPerOrder",
+            "derived.shipping.physicalCartonsCount",
             "derived.shipping.cartonsCount",
             "assumptions.extraCosts.outboundBasePerCartonEur",
             "assumptions.extraCosts.pickPackPerCartonEur",
@@ -7633,11 +7771,12 @@ function buildCostCategoryData(metrics) {
           valueRaw: metrics.threePlCarrierPerUnit,
           impactMonthly: metrics.threePlCarrierPerUnit * metrics.monthlyUnits,
           explain: "Transportkosten vom 3PL zu Amazon je Karton.",
-          formula: "Carrier/Unit = Anzahl Umkartons × Carrier-Kosten je Karton / PO-Menge.",
+          formula: "Carrier/Unit = physische Umkartons × Carrier-Kosten je Karton / PO-Menge.",
           source: "3PL Settings/Override.",
           robustness: "Mittel.",
           driverPaths: [
             "derived.shipping.unitsPerOrder",
+            "derived.shipping.physicalCartonsCount",
             "derived.shipping.cartonsCount",
             "assumptions.extraCosts.carrierCostPerCartonEur",
             "settings.threePl.carrierCostPerCartonEur",
@@ -7953,12 +8092,48 @@ function renderShippingDetails(metrics) {
     dom.basicShippingUnit.textContent = formatCurrency(metrics.shippingUnit);
   }
   if (dom.basicShippingMeta) {
-    dom.basicShippingMeta.textContent = `${modeLabel} · Chargeable: ${formatNumber(metrics.shipping.chargeableCbm)} CBM · PO: ${formatNumber(metrics.shipping.unitsPerOrder)} Units`;
+    dom.basicShippingMeta.textContent =
+      `${modeLabel} · Shipment: ${formatNumber(metrics.shipping.shipmentCbm)} CBM · Chargeable: ${formatNumber(metrics.shipping.chargeableCbm)} CBM · Kartons physisch: ${formatNumber(metrics.shipping.physicalCartonsCount)} · PO: ${formatNumber(metrics.shipping.unitsPerOrder)} Units`;
   }
-
+  if (dom.shippingTotalPo) {
+    dom.shippingTotalPo.textContent = formatCurrency(metrics.shipping.shippingTotal);
+  }
+  if (dom.shippingTotalUnit) {
+    dom.shippingTotalUnit.textContent = `${formatCurrency(metrics.shipping.shippingPerUnit)} / Unit`;
+  }
+  if (dom.shippingUnitsByWeightCap) {
+    dom.shippingUnitsByWeightCap.textContent = formatNumber(metrics.shipping.unitsByWeightCap);
+  }
+  if (dom.shippingUnitsByDimensionCap) {
+    dom.shippingUnitsByDimensionCap.textContent = formatNumber(metrics.shipping.unitsByDimensionCap);
+  }
+  if (dom.shippingShipmentCbm) {
+    dom.shippingShipmentCbm.textContent = `${formatNumber(metrics.shipping.shipmentCbm)} CBM`;
+  }
   if (dom.shippingCartonUnits) {
     const modeText = metrics.shipping.cartonizationSource === "manual_override" ? "manuell" : "auto";
     dom.shippingCartonUnits.textContent = `${formatNumber(metrics.shipping.unitsPerCartonAuto)} (${modeText})`;
+  }
+  if (dom.shippingPhysicalCartons) {
+    dom.shippingPhysicalCartons.textContent = formatNumber(metrics.shipping.physicalCartonsCount);
+  }
+  if (dom.shippingShipmentWeight) {
+    dom.shippingShipmentWeight.textContent = `${formatNumber(metrics.shipping.shipmentWeightKg)} kg`;
+  }
+  if (dom.shippingChargeableCbm) {
+    dom.shippingChargeableCbm.textContent = `${formatNumber(metrics.shipping.chargeableCbm)} CBM`;
+  }
+  if (dom.shippingEquivalentFillPct) {
+    dom.shippingEquivalentFillPct.textContent = formatPercent(metrics.shipping.equivalentFillPct);
+  }
+  if (dom.shippingEquivalentReferenceCbm) {
+    dom.shippingEquivalentReferenceCbm.textContent = `${formatNumber(metrics.shipping.equivalentReferenceCbm)} CBM`;
+  }
+  if (dom.shippingEquivalentReferenceWeightKg) {
+    dom.shippingEquivalentReferenceWeightKg.textContent = `${formatNumber(metrics.shipping.equivalentReferenceWeightKg)} kg`;
+  }
+  if (dom.shippingEquivalentCartons) {
+    dom.shippingEquivalentCartons.textContent = formatNumber(metrics.shipping.equivalentCartonsCount);
   }
   if (dom.shippingCartonDims) {
     dom.shippingCartonDims.textContent =
@@ -7973,44 +8148,28 @@ function renderShippingDetails(metrics) {
 
   if (dom.shippingMethodText) {
     dom.shippingMethodText.textContent =
-      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Für China→DE schätzen wir Umkartons konservativ über Supplier-Soft-Caps und nutzen Amazon-Hard-Caps nur als Fallback. Optional kannst du reale Packing-List-Werte manuell setzen. Daraus berechnen wir chargeable CBM (W/M) und addieren Vorlauf, Hauptlauf (variabel + fix), Nachlauf, Zollabfertigung, Versicherung und optionale Nachbelastung. Ergebnis ist ein einzelner Richtwert in EUR/Unit, kein Live-Tarif.`;
+      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Auto-Kartonisierung nutzt min(Gewichtscap, Maßcap) unter Amazon-Hard-Caps. Optional kannst du reale Packing-List-Werte manuell setzen. Daraus entstehen physische Kartons, Shipment-CBM und Chargeable-CBM (W/M). Bei Rail werden Vorlauf und Nachlauf variabel über Shipment-CBM gerechnet, nicht über Kartonanzahl.`;
+  }
+
+  if (dom.shippingOversizeNote) {
+    if (metrics.shipping.oversizeFlag) {
+      dom.shippingOversizeNote.textContent = metrics.shipping.oversizeNote;
+      dom.shippingOversizeNote.classList.remove("hidden");
+    } else {
+      dom.shippingOversizeNote.textContent = "";
+      dom.shippingOversizeNote.classList.add("hidden");
+    }
   }
 
   if (dom.shippingDetailList) {
     dom.shippingDetailList.innerHTML = "";
     metrics.shipping.breakdown.forEach((line) => {
       const li = document.createElement("li");
-      li.innerHTML = `<span>${line.label}</span><strong>${formatCurrency(line.total)} · ${formatCurrency(line.perUnit)}/Unit</strong>`;
-      if (line.formula || line.source) {
-        li.title = `${line.label}: ${line.formula ?? ""}${line.source ? `\nHerkunft: ${line.source}` : ""}`;
-      }
+      li.classList.add("shipping-breakdown-row");
+      li.innerHTML = `<div><span>${line.label}</span><small>${line.formula ?? ""}</small></div><strong>${formatCurrency(line.total)} · ${formatCurrency(line.perUnit)}/Unit</strong>`;
+      li.title = line.source ? `Herkunft: ${line.source}` : line.label;
       dom.shippingDetailList.appendChild(li);
     });
-
-    const totalLi = document.createElement("li");
-    totalLi.innerHTML = `<span>Shipping total (${modeLabel})</span><strong>${formatCurrency(metrics.shipping.shippingTotal)} · ${formatCurrency(metrics.shipping.shippingPerUnit)}/Unit</strong>`;
-    totalLi.title = "Shipping Total = Vorlauf + Hauptlauf variabel + Hauptlauf fix + Nachlauf + Zollabfertigung + Versicherung + optionale Nachbelastung.";
-    dom.shippingDetailList.appendChild(totalLi);
-  }
-
-  if (dom.shippingDebugInfo) {
-    const base = [
-      `Modus: ${metrics.shipping.modeLabel}`,
-      `Kartonisierung: ${metrics.shipping.cartonizationSourceLabel}`,
-      `Units je Umkarton: ${formatNumber(metrics.shipping.unitsPerCartonAuto)}`,
-      `Umkarton (cm): ${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)}`,
-      `Umkarton Brutto (kg): ${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)}`,
-      `Anzahl Umkartons: ${formatNumber(metrics.shipping.cartonsCount)}`,
-      `Sendungsvolumen (CBM): ${formatNumber(metrics.shipping.shipmentCbm)}`,
-      `Sendungsgewicht (kg): ${formatNumber(metrics.shipping.shipmentWeightKg)}`,
-      `Abrechnungsvolumen (CBM): ${formatNumber(metrics.shipping.chargeableCbm)}`,
-      `Warenwert (EUR): ${formatCurrency(metrics.shipping.goodsValueEur)}`,
-      `Versicherungssatz: ${formatPercent(metrics.shipping.insuranceRatePct)}`,
-      `Nachbelastung: ${formatCurrency(metrics.shipping.manualSurchargeTotal)}`,
-    ].join(" · ");
-    dom.shippingDebugInfo.textContent = metrics.shipping.oversizeFlag
-      ? `${base} · Hinweis: ${metrics.shipping.oversizeNote}`
-      : base;
   }
 }
 
@@ -8550,11 +8709,6 @@ function applyStageVisibility(product, stageState) {
     deepDiveSection.classList.add("hidden");
   }
 
-  const packingListOverrideSection = document.getElementById("packingListOverrideSection");
-  if (packingListOverrideSection) {
-    packingListOverrideSection.classList.add("hidden");
-  }
-
   const deepDiveCheckboxes = document.querySelectorAll('[data-path^="workflow.deepDive."]');
   deepDiveCheckboxes.forEach((node) => {
     node.disabled = true;
@@ -8623,12 +8777,9 @@ function syncControlStates(product) {
 }
 
 function openAdvancedSection(sectionId) {
-  if (APP_PAGE === "product" && sectionId.startsWith("settings")) {
+  const isSettingsSection = sectionId.startsWith("settings");
+  if (APP_PAGE === "product" && isSettingsSection) {
     window.location.href = `settings.html#${sectionId}`;
-    return;
-  }
-
-  if (!sectionId.startsWith("settings")) {
     return;
   }
 
@@ -8637,12 +8788,15 @@ function openAdvancedSection(sectionId) {
     return;
   }
 
-  const details = section.tagName.toLowerCase() === "details" ? section : section.closest("details");
-  if (details instanceof HTMLDetailsElement) {
-    details.open = true;
+  if (isSettingsSection) {
+    const details = section.tagName.toLowerCase() === "details" ? section : section.closest("details");
+    if (details instanceof HTMLDetailsElement) {
+      details.open = true;
+    }
+    setWorkspaceTab("settings");
+  } else {
+    setWorkspaceTab("product");
   }
-
-  setWorkspaceTab("settings");
 
   section.scrollIntoView({ behavior: "smooth", block: "center" });
   section.classList.add("advanced-focus");
@@ -8672,7 +8826,7 @@ function inferAdvancedSectionFromPath(path) {
     return "advancedLifecycleSection";
   }
   if (path.startsWith("assumptions.cartonization.")) {
-    return "advancedShippingSection";
+    return "shippingDashboardSection";
   }
   if (path.startsWith("assumptions.extraCosts.")) {
     return "advancedOpsSection";
@@ -8691,7 +8845,7 @@ function inferAdvancedSectionFromPath(path) {
     path === "basic.packWidthCm" ||
     path === "basic.packHeightCm"
   ) {
-    return "advancedShippingSection";
+    return "shippingDashboardSection";
   }
   return null;
 }

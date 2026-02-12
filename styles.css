@@ -755,6 +755,102 @@ select:disabled {
   gap: 3px;
 }
 
+.shipping-dashboard {
+  margin-top: 14px;
+  border: 1px solid color-mix(in srgb, var(--line) 60%, white);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbfa 100%);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.shipping-dashboard-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 290px);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.shipping-dashboard-head h4 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.shipping-total-tile {
+  border: 1px solid color-mix(in srgb, var(--line) 62%, white);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 11px;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.shipping-total-tile span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.shipping-total-tile strong {
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  font-size: 1.28rem;
+  line-height: 1.15;
+}
+
+.shipping-total-tile small {
+  color: #2b5e52;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.shipping-subcard {
+  border-color: color-mix(in srgb, var(--line) 60%, white);
+  background: #ffffff;
+}
+
+.shipping-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.shipping-panel {
+  border: 1px solid color-mix(in srgb, var(--line) 62%, white);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.shipping-panel h4 {
+  margin: 0;
+  font-size: 0.82rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.shipping-breakdown-row {
+  align-items: flex-start;
+}
+
+.shipping-breakdown-row > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.shipping-breakdown-row small {
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.hint.warn {
+  color: #9f4a2d;
+}
+
 .stage-impact {
   margin-bottom: 10px;
   border: 1px solid color-mix(in srgb, var(--line) 66%, white);
@@ -912,6 +1008,16 @@ select:disabled {
 .shipping-quick small {
   color: var(--muted);
   font-size: 0.68rem;
+}
+
+@media (max-width: 980px) {
+  .shipping-dashboard-head {
+    grid-template-columns: 1fr;
+  }
+
+  .shipping-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .calc-list {

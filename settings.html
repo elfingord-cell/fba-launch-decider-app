@@ -134,11 +134,12 @@
                 <div class="admin-grid">
                   <label>Hauptlauf variabel (EUR/CBM)<input data-settings-path="shipping12m.modes.rail.rateEurPerCbm" type="number" min="0" step="0.1" /></label>
                   <label>Vorlauf Basis (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.originBaseEurPerShipment" type="number" min="0" step="0.1" /></label>
-                  <label>Vorlauf variabel (EUR/Karton)<input data-settings-path="shipping12m.modes.rail.originPerCartonEur" type="number" min="0" step="0.001" /></label>
+                  <label>Vorlauf variabel (EUR/CBM)<input data-settings-path="shipping12m.modes.rail.originPerCbmEur" type="number" min="0" step="0.01" /></label>
                   <label>Hauptlauf fix (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.mainRunFixedEurPerShipment" type="number" min="0" step="0.1" /></label>
                   <label>Nachlauf Basis (EUR/Shipment)<input data-settings-path="shipping12m.modes.rail.deOncarriageBaseEurPerShipment" type="number" min="0" step="0.1" /></label>
-                  <label>Nachlauf variabel (EUR/Karton)<input data-settings-path="shipping12m.modes.rail.deOncarriagePerCartonEur" type="number" min="0" step="0.001" /></label>
+                  <label>Nachlauf variabel (EUR/CBM)<input data-settings-path="shipping12m.modes.rail.deOncarriagePerCbmEur" type="number" min="0" step="0.01" /></label>
                 </div>
+                <p class="hint">Vorlauf/Nachlauf variabel wird bei Rail auf Shipment-CBM gerechnet, nicht auf Kartonanzahl.</p>
                 <h4>Gemeinsam</h4>
                 <div class="admin-grid">
                   <label class="toggle-row"><input data-settings-path="shipping12m.customsBrokerEnabled" type="checkbox" /><span>Zollabfertigung berücksichtigen</span></label>
@@ -164,8 +165,8 @@
 
               <details id="settingsCartonSection" class="settings-section">
                 <summary>
-                  <span>C) Kartonisierung (Hard-Caps + Supplier-Soft-Caps)</span>
-                  <small>Realistische Umkarton-Schätzung mit konservativer Heuristik</small>
+                  <span>C) Kartonisierung (Hard-Caps + Referenz)</span>
+                  <small>Auto-Kartonisierung über Gewicht/Maße, transparent und stabil</small>
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
                 <h4>Amazon Hard-Caps (Obergrenze)</h4>
@@ -183,24 +184,12 @@
                   <label>Karton max Höhe (cm)<input data-settings-path="cartonRules.maxHeightCm" type="number" min="1" step="0.1" /></label>
                   <label>Karton max Gewicht (kg)<input data-settings-path="cartonRules.maxWeightKg" type="number" min="1" step="0.1" /></label>
                   <label>Packfaktor (Legacy)<input data-settings-path="cartonRules.packFactor" type="number" min="0.5" max="0.99" step="0.01" /></label>
-                </div>
-                <h4>Supplier-Umkarton-Schätzung (Auto)</h4>
-                <div class="admin-grid">
-                  <label>
-                    Schätzmodus
-                    <select data-settings-path="cartonRules.estimationMode">
-                      <option value="conservative">Konservativ</option>
-                      <option value="balanced">Balanced</option>
-                      <option value="maximal">Maximal</option>
-                    </select>
-                  </label>
-                  <label>Supplier Soft-Cap Länge (cm)<input data-settings-path="cartonRules.supplierSoftMaxLengthCm" type="number" min="1" step="0.1" /></label>
-                  <label>Supplier Soft-Cap Breite (cm)<input data-settings-path="cartonRules.supplierSoftMaxWidthCm" type="number" min="1" step="0.1" /></label>
-                  <label>Supplier Soft-Cap Höhe (cm)<input data-settings-path="cartonRules.supplierSoftMaxHeightCm" type="number" min="1" step="0.1" /></label>
-                  <label>Supplier Soft-Cap Bruttogewicht (kg)<input data-settings-path="cartonRules.supplierSoftMaxGrossWeightKg" type="number" min="1" step="0.1" /></label>
                   <label>Outer Buffer je Achse (cm)<input data-settings-path="cartonRules.outerBufferCm" type="number" min="0" step="0.1" /></label>
                   <label>Gewichtsaufschlag netto -> brutto (%)<input data-settings-path="cartonRules.grossWeightUpliftPct" type="number" min="0" step="0.1" /></label>
+                  <label>Äquivalenz-Referenz Auslastung (%)<input data-settings-path="cartonRules.equivalentCartonFillPct" type="number" min="50" max="100" step="1" /></label>
                 </div>
+                <p class="hint">Rail Vor-/Nachlauf variabel rechnet mit Shipment-CBM, nicht mit Kartonanzahl.</p>
+                <p class="hint">3PL-/Carrier-Kosten bleiben physisch je Karton.</p>
               </details>
 
               <details id="settings3plReceivingSection" class="settings-section">

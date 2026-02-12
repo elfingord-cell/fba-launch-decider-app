@@ -237,6 +237,68 @@
                   <strong id="basicShippingUnit">-</strong>
                   <small id="basicShippingMeta">12-Monats-Ø, kein Live-Tarif</small>
                 </div>
+                <section id="shippingDashboardSection" class="shipping-dashboard">
+                  <div class="shipping-dashboard-head">
+                    <div>
+                      <h4>Shipping Dashboard (Bottom-up)</h4>
+                      <p id="shippingMethodText" class="hint"></p>
+                    </div>
+                    <article class="shipping-total-tile">
+                      <span>Shipping total pro PO</span>
+                      <strong id="shippingTotalPo">-</strong>
+                      <small id="shippingTotalUnit">-</small>
+                    </article>
+                  </div>
+                  <p id="shippingOversizeNote" class="hint warn hidden"></p>
+
+                  <section id="packingListOverrideSection" class="card shipping-subcard">
+                    <h4>Reale Packing-List Override</h4>
+                    <p class="hint">Immer sichtbar: Wenn echte Lieferanten-Packing-List vorliegt, kannst du die Auto-Kartonisierung gezielt übersteuern.</p>
+                    <label class="toggle-row">
+                      <input data-path="assumptions.cartonization.manualEnabled" type="checkbox" />
+                      <span>Manuelle Kartonisierung aktivieren</span>
+                    </label>
+                    <div class="admin-grid">
+                      <label>Units je Umkarton (manuell)<input data-path="assumptions.cartonization.unitsPerCarton" type="number" min="1" step="1" /></label>
+                      <label>Umkarton Länge (cm, optional)<input data-path="assumptions.cartonization.cartonLengthCm" type="number" min="0" step="0.1" /></label>
+                      <label>Umkarton Breite (cm, optional)<input data-path="assumptions.cartonization.cartonWidthCm" type="number" min="0" step="0.1" /></label>
+                      <label>Umkarton Höhe (cm, optional)<input data-path="assumptions.cartonization.cartonHeightCm" type="number" min="0" step="0.1" /></label>
+                      <label>Umkarton Bruttogewicht (kg, optional)<input data-path="assumptions.cartonization.cartonGrossWeightKg" type="number" min="0" step="0.01" /></label>
+                    </div>
+                  </section>
+
+                  <div class="shipping-dashboard-grid">
+                    <article class="shipping-panel">
+                      <h4>Kartonisierung</h4>
+                      <ul class="calc-list">
+                        <li><span>Units je Karton nach Gewichtscap</span><strong id="shippingUnitsByWeightCap">-</strong></li>
+                        <li><span>Units je Karton nach Maßcap</span><strong id="shippingUnitsByDimensionCap">-</strong></li>
+                        <li><span>Gewählte Units je Karton</span><strong id="shippingCartonUnits">-</strong></li>
+                        <li><span>Physische Kartons</span><strong id="shippingPhysicalCartons">-</strong></li>
+                        <li><span>Quelle Kartonisierung</span><strong id="shippingCartonSource">-</strong></li>
+                        <li><span>Geschätzte Umkartonmaße (L×B×H)</span><strong id="shippingCartonDims">-</strong></li>
+                        <li><span>Geschätztes Umkarton-Gewicht</span><strong id="shippingCartonWeight">-</strong></li>
+                      </ul>
+                    </article>
+                    <article class="shipping-panel">
+                      <h4>Abrechnungsbasis</h4>
+                      <ul class="calc-list">
+                        <li><span>Shipment-CBM</span><strong id="shippingShipmentCbm">-</strong></li>
+                        <li><span>Shipment-Gewicht</span><strong id="shippingShipmentWeight">-</strong></li>
+                        <li><span>Chargeable-CBM (W/M)</span><strong id="shippingChargeableCbm">-</strong></li>
+                        <li><span>Äquivalenz-Auslastung</span><strong id="shippingEquivalentFillPct">-</strong></li>
+                        <li><span>Äquivalenz-Referenz (CBM)</span><strong id="shippingEquivalentReferenceCbm">-</strong></li>
+                        <li><span>Äquivalenz-Referenz (Gewicht)</span><strong id="shippingEquivalentReferenceWeightKg">-</strong></li>
+                        <li><span>Äquivalenz-Kartons</span><strong id="shippingEquivalentCartons">-</strong></li>
+                      </ul>
+                    </article>
+                    <article class="shipping-panel">
+                      <h4>Kosten je PO und je Unit</h4>
+                      <p class="hint">Rail: Vorlauf/Nachlauf variabel = Basis + (EUR/CBM × Shipment-CBM).</p>
+                      <ul id="shippingDetailList" class="calc-list"></ul>
+                    </article>
+                  </div>
+                </section>
               </section>
 
               <section>
@@ -526,34 +588,6 @@
                   <label>Zertifikate je Produkt (EUR)<input data-path="assumptions.extraCosts.certificatesPerProductEur" type="number" min="0" step="0.1" /></label>
                   <label>Inspection in China (EUR)<input data-path="assumptions.extraCosts.inspectionPerProductEur" type="number" min="0" step="0.1" /></label>
                 </div>
-              </section>
-
-              <section id="advancedShippingSection">
-                <h3>Shipping-Aufschlüsselung (door-to-door)</h3>
-                <section id="packingListOverrideSection" class="card">
-                  <h4>Reale Packing-List Override</h4>
-                  <p class="hint">Nur für Validation/Deep-Dive: Wenn echte Lieferanten-Packing-List vorliegt, kannst du die Auto-Kartonisierung gezielt übersteuern.</p>
-                  <label class="toggle-row">
-                    <input data-path="assumptions.cartonization.manualEnabled" type="checkbox" />
-                    <span>Manuelle Kartonisierung aktivieren</span>
-                  </label>
-                  <div class="admin-grid">
-                    <label>Units je Umkarton (manuell)<input data-path="assumptions.cartonization.unitsPerCarton" type="number" min="1" step="1" /></label>
-                    <label>Umkarton Länge (cm, optional)<input data-path="assumptions.cartonization.cartonLengthCm" type="number" min="0" step="0.1" /></label>
-                    <label>Umkarton Breite (cm, optional)<input data-path="assumptions.cartonization.cartonWidthCm" type="number" min="0" step="0.1" /></label>
-                    <label>Umkarton Höhe (cm, optional)<input data-path="assumptions.cartonization.cartonHeightCm" type="number" min="0" step="0.1" /></label>
-                    <label>Umkarton Bruttogewicht (kg, optional)<input data-path="assumptions.cartonization.cartonGrossWeightKg" type="number" min="0" step="0.01" /></label>
-                  </div>
-                </section>
-                <p id="shippingMethodText" class="hint"></p>
-                <ul class="calc-list">
-                  <li><span>Units/Karton (auto/manuell)</span><strong id="shippingCartonUnits">-</strong></li>
-                  <li><span>Geschätzte Umkartonmaße (L×B×H)</span><strong id="shippingCartonDims">-</strong></li>
-                  <li><span>Geschätztes Umkarton-Gewicht</span><strong id="shippingCartonWeight">-</strong></li>
-                  <li><span>Quelle Kartonisierung</span><strong id="shippingCartonSource">-</strong></li>
-                </ul>
-                <ul id="shippingDetailList" class="calc-list"></ul>
-                <p id="shippingDebugInfo" class="hint"></p>
               </section>
 
               <section id="advancedDeepDiveSection">
