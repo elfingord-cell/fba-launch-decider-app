@@ -144,11 +144,52 @@
                 <p id="stageWarning" class="hint hidden">-</p>
               </div>
             </section>
-            <section id="quickStagePanel" class="card stage-impact">
-              <h3>Quick-Check Fokus</h3>
-              <p class="hint">
-                Nur Pflichtfelder eingeben. In der Lieferkette werden automatisch die Top-10 Kostentreiber angezeigt. Shipping zu 3PL erscheint hier als ein aggregierter Block (ohne Vor-/Haupt-/Nachlauf-Details).
-              </p>
+            <section id="quickStagePanel" class="card stage-impact quick-cost-workflow">
+              <div class="quick-cost-head">
+                <h3>Quick Cost Workflow</h3>
+                <p class="hint">
+                  Lean-Ansicht für 80/20: Klicke auf einen Hauptkostenblock für Details und Treiber. Die fünf Blöcke decken typischerweise 75-90% der Gesamtkosten ab.
+                </p>
+              </div>
+              <div id="quickCostWorkflowGrid" class="quick-cost-grid">
+                <button type="button" class="quick-cost-card" data-quick-block="exw">
+                  <span>EXW / Einkauf</span>
+                  <strong id="quickBlockExwPerUnit">-</strong>
+                  <small id="quickBlockExwMonthly">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="shipping_to_3pl">
+                  <span>Shipping zu 3PL</span>
+                  <strong id="quickBlockShippingTo3plPerUnit">-</strong>
+                  <small id="quickBlockShippingTo3plMonthly">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="threepl">
+                  <span>3PL</span>
+                  <strong id="quickBlockThreePlPerUnit">-</strong>
+                  <small id="quickBlockThreePlMonthly">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="amazon_core">
+                  <span>Amazon (Referral + TACoS + FBA)</span>
+                  <strong id="quickBlockAmazonCorePerUnit">-</strong>
+                  <small id="quickBlockAmazonCoreMonthly">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="launch_core">
+                  <span>Launch (Listing + Budget + Ops)</span>
+                  <strong id="quickBlockLaunchCorePerUnit">-</strong>
+                  <small id="quickBlockLaunchCoreMonthly">-</small>
+                </button>
+              </div>
+              <article id="quickCoverageCard" class="quick-coverage-card">
+                <div>
+                  <span>Kostenabdeckung durch Lean-Quick-Blöcke</span>
+                  <strong id="quickCoreCoveragePct">-</strong>
+                </div>
+                <div class="quick-coverage-values">
+                  <small id="quickCoreCoveredCost">-</small>
+                  <small id="quickCoreResidualCost">-</small>
+                </div>
+                <p id="quickCoverageStatus" class="hint">-</p>
+                <ul id="quickResidualTopList" class="quick-residual-list"></ul>
+              </article>
             </section>
 
             <form id="basicForm" class="form-grid">
@@ -237,7 +278,7 @@
                   <strong id="basicShippingUnit">-</strong>
                   <small id="basicShippingMeta">12-Monats-Ø, kein Live-Tarif</small>
                 </div>
-                <section id="shippingDashboardSection" class="shipping-dashboard">
+                <section id="shippingDashboardSection" class="shipping-dashboard hidden">
                   <div class="shipping-dashboard-head">
                     <div>
                       <h4>Shipping Dashboard (Bottom-up)</h4>
@@ -648,7 +689,7 @@
               </div>
             </div>
 
-            <section class="chain-map">
+            <section id="chainMapSection" class="chain-map">
               <h3>Kosten entlang der Logistikkette</h3>
               <p class="hint">Top-Treiber je Stufe nach Impact (Quick: Top 10, Validation: Top 15, Deep-Dive: alle). Weitere Positionen lassen sich je Stufe einblenden.</p>
               <div class="chain-grid">
@@ -693,7 +734,7 @@
               </div>
             </section>
 
-            <section class="category-map">
+            <section id="categoryMapSection" class="category-map">
               <h3>Kosten nach Kategorie</h3>
               <p class="hint">Alternative Sicht auf dieselben Kostenblöcke wie in der Lieferkette.</p>
               <div class="block-grid">
@@ -704,7 +745,7 @@
               Tipp: Klicke auf eine Kostenzeile. Die wichtigsten Treiber werden markiert (Impact: niedrig/mittel/hoch).
             </p>
 
-            <div class="sensitivity">
+            <div id="sensitivitySection" class="sensitivity">
               <h3>Sensitivität</h3>
               <div class="sensitivity-grid">
                 <article><span>Preis -10%</span><strong id="sensPriceDown">-</strong></article>
