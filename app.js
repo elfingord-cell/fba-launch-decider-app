@@ -10550,10 +10550,14 @@ function createShippingLayout3dElement(metrics) {
   const meta = document.createElement("div");
   meta.className = "shipping-layout-3d-meta";
   const freeVolumePct = clamp(100 - num(metrics.shipping.volumeFillPct, 0), 0, 100);
+  const productDimsText = Array.isArray(metrics.shipping.layoutPreview?.orientation) && metrics.shipping.layoutPreview.orientation.length === 3
+    ? `${formatNumber(metrics.shipping.layoutPreview.orientation[0])} × ${formatNumber(metrics.shipping.layoutPreview.orientation[1])} × ${formatNumber(metrics.shipping.layoutPreview.orientation[2])} cm`
+    : "-";
   meta.innerHTML =
     `<p><strong>Freies Volumen:</strong> ${formatNumber(metrics.shipping.voidVolumeLiters)} L (${formatNumber(metrics.shipping.voidVolumeCbm)} CBM)</p>` +
     `<p><strong>Luftanteil:</strong> ${formatPercent(freeVolumePct)} · <strong>Volumen-Packgrad:</strong> ${formatPercent(metrics.shipping.volumeFillPct)}</p>` +
-    `<p><strong>Umkarton:</strong> ${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm</p>`;
+    `<p><strong>Umkarton:</strong> ${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm</p>` +
+    `<p><strong>Produkt (im Raster):</strong> ${productDimsText}</p>`;
 
   const legend = document.createElement("div");
   legend.className = "shipping-layout-3d-legend";
@@ -11907,8 +11911,9 @@ function renderShippingModuleInline(metrics) {
   const orientationText = Array.isArray(preview.orientation) && preview.orientation.length === 3
     ? `${formatNumber(preview.orientation[0])} × ${formatNumber(preview.orientation[1])} × ${formatNumber(preview.orientation[2])} cm`
     : "-";
+  const cartonText = `${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm`;
   dom.shippingModuleMeta.textContent =
-    `Orientierung: ${orientationText} · Raster: ${formatNumber(preview.nx)} × ${formatNumber(preview.ny)} × ${formatNumber(preview.nz)} · Platzierte Stücke: ${formatNumber(preview.placedUnits)}/${formatNumber(metrics.shipping.unitsPerCartonAuto)}`;
+    `Umkarton: ${cartonText} · Produkt: ${orientationText} · Raster: ${formatNumber(preview.nx)} × ${formatNumber(preview.ny)} × ${formatNumber(preview.nz)} · Stück: ${formatNumber(preview.placedUnits)}/${formatNumber(metrics.shipping.unitsPerCartonAuto)}`;
 
   if (!(window.Packaging3D && typeof window.Packaging3D.buildViewModel === "function" && typeof window.Packaging3D.mount === "function")) {
     ensureShipping3dCleanup("inline");

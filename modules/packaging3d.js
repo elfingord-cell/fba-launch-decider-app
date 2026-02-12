@@ -30,6 +30,11 @@
     return Math.round(num(value, fallback));
   }
 
+  function formatDim(value) {
+    const safe = Math.max(0, num(value, 0));
+    return safe.toFixed(1).replace(/\\.0$/, "");
+  }
+
   function toPositiveDims(input, minimum) {
     if (!Array.isArray(input) || input.length !== 3) {
       return null;
@@ -335,8 +340,136 @@
       ctx.moveTo(projected[edge[0]].x, projected[edge[0]].y);
       ctx.lineTo(projected[edge[1]].x, projected[edge[1]].y);
     });
+    ctx.lineWidth = 1.2;
     ctx.strokeStyle = stroke;
     ctx.stroke();
+  }
+
+  function project3d(point, camera, yaw, pitch) {
+    return projectPoint(rotatePoint(point, yaw, pitch), camera);
+  }
+
+  function drawDimensionLabel(ctx, width, height, start2d, end2d, label, options) {
+    const color = options?.color || "rgba(24, 62, 50, 0.92)";
+    const offsetPx = num(options?.offsetPx, 14);
+    const labelOffsetPx = num(options?.labelOffsetPx, 9);
+    const dx = end2d.x - start2d.x;
+    const dy = end2d.y - start2d.y;
+    const len = Math.hypot(dx, dy);
+    if (!Number.isFinite(len) || len < 8) {
+      return;
+    }
+    const ux = dx / len;
+    const uy = dy / len;
+    const nx = -uy;
+    const ny = ux;
+    const s = { x: start2d.x + nx * offsetPx, y: start2d.y + ny * offsetPx };
+    const e = { x: end2d.x + nx * offsetPx, y: end2d.y + ny * offsetPx };
+
+    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(start2d.x, start2d.y);
+    ctx.lineTo(s.x, s.y);
+    ctx.moveTo(end2d.x, end2d.y);
+    ctx.lineTo(e.x, e.y);
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(e.x, e.y);
+    ctx.stroke();
+
+    const tick = 4;
+    ctx.beginPath();
+    ctx.moveTo(s.x - nx * tick, s.y - ny * tick);
+    ctx.lineTo(s.x + nx * tick, s.y + ny * tick);
+    ctx.moveTo(e.x - nx * tick, e.y - ny * tick);
+    ctx.lineTo(e.x + nx * tick, e.y + ny * tick);
+    ctx.stroke();
+
+    const mid = {
+      x: (s.x + e.x) / 2 + nx * labelOffsetPx,
+      y: (s.y + e.y) / 2 + ny * labelOffsetPx,
+    };
+    ctx.font = "600 11px Manrope, sans-serif";
+    const textWidth = Math.max(18, ctx.measureText(label).width);
+    const boxW = textWidth + 10;
+    const boxH = 16;
+    const boxX = clamp(mid.x - boxW / 2, 3, Math.max(3, width - boxW - 3));
+    const boxY = clamp(mid.y - boxH / 2, 3, Math.max(3, height - boxH - 3));
+    ctx.fillStyle = "rgba(248, 252, 251, 0.95)";
+    ctx.strokeStyle = "rgba(41, 90, 74, 0.45)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.rect(boxX, boxY, boxW, boxH);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(18, 55, 43, 0.95)";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, boxX + 5, boxY + boxH / 2);
+  }
+
+  function drawDimensionAnnotations(ctx, camera, scene, yaw, pitch, width, height) {
+    const carton = scene.cartonBox;
+    const c = scene.cartonDimsCm;
+    drawDimensionLabel(
+      ctx,
+      width,
+      height,
+      project3d({ x: carton.minX, y: carton.minY, z: carton.maxZ }, camera, yaw, pitch),
+      project3d({ x: carton.maxX, y: carton.minY, z: carton.maxZ }, camera, yaw, pitch),
+      `Umkarton L ${formatDim(c[0])} cm`,
+      { offsetPx: 14, labelOffsetPx: 9 },
+    );
+    drawDimensionLabel(
+      ctx,
+      width,
+      height,
+      project3d({ x: carton.maxX, y: carton.minY, z: carton.minZ }, camera, yaw, pitch),
+      project3d({ x: carton.maxX, y: carton.minY, z: carton.maxZ }, camera, yaw, pitch),
+      `Umkarton B ${formatDim(c[1])} cm`,
+      { offsetPx: -14, labelOffsetPx: 8 },
+    );
+    drawDimensionLabel(
+      ctx,
+      width,
+      height,
+      project3d({ x: carton.maxX, y: carton.minY, z: carton.maxZ }, camera, yaw, pitch),
+      project3d({ x: carton.maxX, y: carton.maxY, z: carton.maxZ }, camera, yaw, pitch),
+      `Umkarton H ${formatDim(c[2])} cm`,
+      { offsetPx: 18, labelOffsetPx: 10 },
+    );
+
+    const highlight = scene.highlightBox;
+    if (!highlight) {
+      return;
+    }
+    const p = scene.productDimsCm;
+    drawDimensionLabel(
+      ctx,
+      width,
+      height,
+      project3d({ x: highlight.minX, y: highlight.maxY, z: highlight.maxZ }, camera, yaw, pitch),
+      project3d({ x: highlight.maxX, y: highlight.maxY, z: highlight.maxZ }, camera, yaw, pitch),
+      `Produkt L ${formatDim(p[0])} cm`,
+      { offsetPx: -12, labelOffsetPx: 8, color: "rgba(16, 73, 55, 0.95)" },
+    );
+    drawDimensionLabel(
+      ctx,
+      width,
+      height,
+      project3d({ x: highlight.maxX, y: highlight.maxY, z: highlight.minZ }, camera, yaw, pitch),
+      project3d({ x: highlight.maxX, y: highlight.maxY, z: highlight.maxZ }, camera, yaw, pitch),
+      `Produkt B ${formatDim(p[1])} cm`,
+      { offsetPx: 12, labelOffsetPx: 8, color: "rgba(16, 73, 55, 0.95)" },
+    );
+    drawDimensionLabel(
+      ctx,
+      width,
+      height,
+      project3d({ x: highlight.maxX, y: highlight.minY, z: highlight.maxZ }, camera, yaw, pitch),
+      project3d({ x: highlight.maxX, y: highlight.maxY, z: highlight.maxZ }, camera, yaw, pitch),
+      `Produkt H ${formatDim(p[2])} cm`,
+      { offsetPx: 14, labelOffsetPx: 8, color: "rgba(16, 73, 55, 0.95)" },
+    );
   }
 
   function buildSceneModel(viewModel) {
@@ -392,6 +525,8 @@
 
     boxes.sort((left, right) => left.orderKey - right.orderKey);
 
+    const highlightBox = boxes.find((box) => box.highlight) || null;
+
     return {
       cartonBox: {
         minX: -carton.x / 2,
@@ -402,9 +537,12 @@
         maxZ: carton.z / 2,
       },
       boxes,
+      highlightBox,
       renderedUnits,
       totalUnits: placedUnits,
       maxWorldAxis: Math.max(carton.x, carton.y, carton.z),
+      cartonDimsCm: cartonDimsCm.slice(),
+      productDimsCm: orientationCm.slice(),
     };
   }
 
@@ -439,7 +577,7 @@
     const interaction = {
       yaw: -0.72,
       pitch: 0.56,
-      zoom: 1,
+      zoom: 0.84,
       dragging: false,
       lastX: 0,
       lastY: 0,
@@ -461,32 +599,46 @@
     let rafId = 0;
     let disposed = false;
     let resizeObserver = null;
+    let pixelRatio = 1;
 
     const resize = () => {
       const width = Math.max(280, roundInt(hostElement.clientWidth, 320));
       const height = Math.max(220, roundInt(hostElement.clientHeight, 260));
-      const pixelRatio = Math.min(global.devicePixelRatio || 1, 2);
+      pixelRatio = Math.min(global.devicePixelRatio || 1, 2);
       canvas.width = Math.max(1, Math.floor(width * pixelRatio));
       canvas.height = Math.max(1, Math.floor(height * pixelRatio));
-      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     };
 
     const draw = () => {
       if (disposed) {
         return;
       }
-      const width = canvas.clientWidth || Math.max(280, roundInt(hostElement.clientWidth, 320));
-      const height = canvas.clientHeight || Math.max(220, roundInt(hostElement.clientHeight, 260));
-      ctx.clearRect(0, 0, width, height);
+      const width = Math.max(1, canvas.width / Math.max(1, pixelRatio));
+      const height = Math.max(1, canvas.height / Math.max(1, pixelRatio));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
       const camera = {
         cx: width / 2,
-        cy: height / 2 + scene.maxWorldAxis * 8,
-        distance: Math.max(2.2, scene.maxWorldAxis * 3.2),
-        scale: Math.max(120, Math.min(width, height) * 0.55) * interaction.zoom,
+        cy: height / 2,
+        distance: Math.max(3.6, scene.maxWorldAxis * 4.8),
+        scale: Math.max(80, Math.min(width, height) * 0.34) * interaction.zoom,
       };
 
-      drawWireframeCuboid(ctx, camera, scene.cartonBox, interaction.yaw, interaction.pitch, "rgba(31, 76, 62, 0.75)");
+      drawCuboid(
+        ctx,
+        camera,
+        scene.cartonBox,
+        {
+          top: "rgba(198, 235, 221, 0.12)",
+          right: "rgba(174, 223, 205, 0.1)",
+          front: "rgba(183, 229, 211, 0.11)",
+          stroke: "rgba(64, 116, 97, 0.36)",
+        },
+        interaction.yaw,
+        interaction.pitch,
+      );
       scene.boxes.forEach((box) => {
         drawCuboid(
           ctx,
@@ -497,6 +649,8 @@
           interaction.pitch,
         );
       });
+      drawWireframeCuboid(ctx, camera, scene.cartonBox, interaction.yaw, interaction.pitch, "rgba(24, 71, 57, 0.78)");
+      drawDimensionAnnotations(ctx, camera, scene, interaction.yaw, interaction.pitch, width, height);
 
       rafId = global.requestAnimationFrame(draw);
     };
@@ -530,7 +684,7 @@
     const onWheel = (event) => {
       event.preventDefault();
       const nextZoom = interaction.zoom * (1 - event.deltaY * 0.0012);
-      interaction.zoom = clamp(nextZoom, 0.65, 1.9);
+      interaction.zoom = clamp(nextZoom, 0.22, 2.4);
     };
 
     resize();
