@@ -2203,8 +2203,17 @@ function loadProducts() {
   loadProductsLocal();
 }
 
+function isSharedStoreActive() {
+  return (
+    state.storage.mode === "shared" &&
+    state.storage.adapter?.type === "shared" &&
+    Boolean(state.session.workspaceId) &&
+    Boolean(state.session.userId)
+  );
+}
+
 function scheduleRemoteSettingsSave() {
-  if (state.storage.mode !== "shared" || !state.storage.adapter?.saveSettings) {
+  if (!isSharedStoreActive() || !state.storage.adapter?.saveSettings) {
     return;
   }
   if (state.sync.settingsTimer) {
@@ -2237,7 +2246,7 @@ function scheduleRemoteSettingsSave() {
 }
 
 function scheduleRemoteProductsSave() {
-  if (state.storage.mode !== "shared" || !state.storage.adapter?.saveProducts) {
+  if (!isSharedStoreActive() || !state.storage.adapter?.saveProducts) {
     return;
   }
   if (state.sync.productsTimer) {
@@ -2270,7 +2279,7 @@ function scheduleRemoteProductsSave() {
 }
 
 async function flushRemoteProductsSave() {
-  if (state.storage.mode !== "shared" || !state.storage.adapter?.saveProducts) {
+  if (!isSharedStoreActive() || !state.storage.adapter?.saveProducts) {
     return true;
   }
   if (state.sync.productsTimer) {
@@ -2293,7 +2302,7 @@ async function flushRemoteProductsSave() {
 }
 
 async function flushRemoteSettingsSave() {
-  if (state.storage.mode !== "shared" || !state.storage.adapter?.saveSettings) {
+  if (!isSharedStoreActive() || !state.storage.adapter?.saveSettings) {
     return true;
   }
   if (state.sync.settingsTimer) {
@@ -2318,7 +2327,7 @@ async function flushRemoteSettingsSave() {
 function saveSettings({ flushRemoteNow = false } = {}) {
   saveSettingsLocal();
   scheduleRemoteSettingsSave();
-  if (flushRemoteNow && state.storage.mode === "shared") {
+  if (flushRemoteNow && isSharedStoreActive()) {
     void flushRemoteSettingsSave();
   }
 }
@@ -2377,7 +2386,7 @@ function setAppMode(mode, reason = "") {
 
   const showAuth = mode === "auth_required";
   const showNoAccess = mode === "no_access";
-  const showApp = mode === "ready_shared" || mode === "ready_local" || mode === "loading";
+  const showApp = mode === "ready_shared" || mode === "ready_local";
 
   if (dom.appContent) {
     dom.appContent.classList.toggle("hidden", !showApp);
@@ -2389,7 +2398,7 @@ function setAppMode(mode, reason = "") {
     dom.noAccessPanel.classList.toggle("hidden", !showNoAccess);
   }
   if (dom.authLogoutBtn) {
-    dom.authLogoutBtn.classList.toggle("hidden", !(state.storage.mode === "shared" && state.session.isAuthenticated));
+    dom.authLogoutBtn.classList.toggle("hidden", !(state.session.isAuthenticated && state.session.hasWorkspaceAccess && state.storage.adapter?.type === "shared"));
   }
   if (dom.compareCard) {
     dom.compareCard.classList.toggle("hidden", showAuth || showNoAccess);
@@ -2687,7 +2696,7 @@ async function importLocalDataToRemoteIfNeeded(adapter) {
 
 async function importLocalDataIntoSharedWorkspace() {
   const adapter = state.storage.adapter;
-  if (state.storage.mode !== "shared" || !adapter?.saveProducts || !adapter?.saveSettings) {
+  if (!isSharedStoreActive() || !adapter?.saveProducts || !adapter?.saveSettings) {
     return false;
   }
 
@@ -2765,9 +2774,10 @@ async function activateSharedWorkspace(user) {
       userId: user.id,
       userEmail: user.email ?? "",
     });
-    state.storage.mode = "shared";
+    state.storage.mode = "local";
+    state.storage.adapter = createLocalStoreAdapter();
     setStorageModeLabel();
-    setAppLockedState({ showAuth: false, showNoAccess: true });
+    setAppMode("no_access", "Kein Zugriff auf Workspace.");
     return false;
   }
 
@@ -2838,6 +2848,12 @@ function exposeSyncDebug() {
     get mode() {
       return state.storage.mode;
     },
+    get adapterType() {
+      return state.storage.adapter?.type ?? null;
+    },
+    get appMode() {
+      return state.session.appMode;
+    },
     get workspaceId() {
       return state.session.workspaceId;
     },
@@ -2855,26 +2871,48 @@ function exposeSyncDebug() {
 
 async function bootstrapCollaborationSession() {
   setAppMode("loading", "Session wird geladen ...");
-  await setLocalMode();
+
+  // Lokale Basis nur als Fallback laden, ohne Shared-Modus vorzutäuschen.
+  state.storage.mode = "local";
+  state.storage.adapter = createLocalStoreAdapter();
+  setStorageModeLabel();
   loadSettingsLocal();
   loadProductsLocal();
   selectFirstProductIfNeeded();
 
   const client = await createSupabaseClientFromConfig();
   if (!client) {
+    configureSessionState({
+      requiresAuth: false,
+      isAuthenticated: false,
+      hasWorkspaceAccess: true,
+      pendingLocalImport: false,
+    });
+    setAppMode("ready_local");
     return;
   }
 
   state.supabase.client = client;
-  state.storage.mode = "shared";
-  setStorageModeLabel();
-  configureSessionState({ requiresAuth: true });
+  configureSessionState({
+    requiresAuth: true,
+    isAuthenticated: false,
+    hasWorkspaceAccess: false,
+    pendingLocalImport: false,
+  });
 
   if (!state.supabase.authSubscribed) {
     state.supabase.authSubscribed = true;
-    client.auth.onAuthStateChange(async (_event, session) => {
+    client.auth.onAuthStateChange(async (event, session) => {
+      // Die Initial-Session wird direkt über getSession() behandelt.
+      if (event === "INITIAL_SESSION") {
+        return;
+      }
+
       const user = session?.user ?? null;
       if (!user) {
+        state.storage.mode = "local";
+        state.storage.adapter = createLocalStoreAdapter();
+        setStorageModeLabel();
         configureSessionState({
           requiresAuth: true,
           isAuthenticated: false,
@@ -2884,22 +2922,18 @@ async function bootstrapCollaborationSession() {
         setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
         return;
       }
+
       try {
         const activated = await activateSharedWorkspace(user);
-        if (activated) {
-          renderCategoryDefaultsAdmin();
-          if (APP_PAGE === "settings") {
-            renderSettingsInputs();
-            applyMouseoverHelp();
-          } else {
-            renderFxStatus();
-            renderAll();
-          }
-          setAppMode("ready_shared");
+        if (!activated) {
+          return;
         }
+        setAppMode("ready_shared");
+        renderPageAfterLoad();
       } catch (error) {
         console.error("Supabase auth state change failed", error);
         setAuthStatus("Supabase Session konnte nicht aktualisiert werden.", true);
+        setAppMode("auth_required", "Bitte erneut anmelden oder Workspace-Zugriff prüfen.");
       }
     });
   }
@@ -2908,6 +2942,7 @@ async function bootstrapCollaborationSession() {
   if (error) {
     console.error("Supabase session load failed", error);
   }
+
   const user = data?.session?.user ?? null;
   if (!user) {
     setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
@@ -2919,8 +2954,9 @@ async function bootstrapCollaborationSession() {
     if (!activated) {
       return;
     }
-  } catch (error) {
-    console.error("Supabase workspace activation failed", error);
+    setAppMode("ready_shared");
+  } catch (activateError) {
+    console.error("Supabase workspace activation failed", activateError);
     setAppMode("auth_required", "Supabase-Verbindung fehlgeschlagen. Bitte später erneut versuchen.");
     setAuthStatus("Supabase-Verbindung fehlgeschlagen. Bitte später erneut versuchen.", true);
   }
@@ -2937,47 +2973,18 @@ async function handleAuthLogin() {
     setAuthStatus("Bitte E-Mail und Passwort eingeben.", true);
     return;
   }
+
   setAuthStatus("Anmeldung läuft ...");
-  const { data, error } = await state.supabase.client.auth.signInWithPassword({ email, password });
+
+  const { error } = await state.supabase.client.auth.signInWithPassword({ email, password });
   if (error) {
-    setAuthStatus(`Anmeldung fehlgeschlagen: ${error.message}`, true);
+    setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+    setAuthStatus("Anmeldung fehlgeschlagen: " + error.message, true);
     return;
   }
 
-  const user = data?.user ?? data?.session?.user ?? null;
-  if (!user?.id) {
-    setAuthStatus("Anmeldung erfolgreich, Session wird synchronisiert ...");
-    return;
-  }
-
-  setAppMode("loading", "Workspace wird geladen ...");
-
-  try {
-    const activated = await activateSharedWorkspace(user);
-    if (!activated) {
-      setAuthStatus("Anmeldung erfolgreich, aber kein Workspace-Zugriff gefunden.", true);
-      return;
-    }
-
-    if (APP_PAGE === "settings") {
-      renderCategoryDefaultsAdmin();
-      renderSettingsInputs();
-      applyMouseoverHelp();
-      scrollToHashSectionIfPresent();
-    } else {
-      renderFxStatus();
-      renderAll();
-    }
-
-    setAppMode("ready_shared");
-    renderPageAfterLoad();
-    return;
-  } catch (loginActivationError) {
-    console.error("Login activation failed", loginActivationError);
-    setAuthStatus(`Workspace-Laden fehlgeschlagen: ${loginActivationError?.message || "Unbekannter Fehler"}`, true);
-    setAppMode("auth_required", "Bitte erneut anmelden oder Workspace-Zugriff prüfen.");
-    return;
-  }
+  // Aktivierung läuft über onAuthStateChange; nur Fallback-Status setzen.
+  setAuthStatus("Anmeldung erfolgreich. Workspace wird geladen ...");
 }
 
 async function handleAuthRegister() {
@@ -3009,17 +3016,23 @@ async function handleAuthLogout() {
   if (!state.supabase.client) {
     return;
   }
+
   await state.supabase.client.auth.signOut();
-  state.storage.mode = "shared";
-  state.storage.adapter = null;
-  state.products = [];
-  state.selectedId = null;
+  state.storage.mode = "local";
+  state.storage.adapter = createLocalStoreAdapter();
+  setStorageModeLabel();
+
   configureSessionState({
     requiresAuth: true,
     isAuthenticated: false,
     hasWorkspaceAccess: false,
     pendingLocalImport: false,
+    userId: null,
+    userEmail: "",
+    workspaceId: null,
+    workspaceName: "",
   });
+
   setAuthStatus("Abgemeldet.");
   setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
 }
@@ -9011,7 +9024,7 @@ function renderPageAfterLoad() {
   if (dom.importLocalBtn) {
     const showImport =
       APP_PAGE === "product" &&
-      state.storage.mode === "shared" &&
+      state.storage.adapter?.type === "shared" &&
       state.session.isAuthenticated &&
       state.session.hasWorkspaceAccess &&
       state.session.pendingLocalImport;
