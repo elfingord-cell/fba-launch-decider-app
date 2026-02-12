@@ -8,6 +8,9 @@ const DEFAULT_USD_TO_EUR = 0.92;
 const FX_ENDPOINT = "https://api.frankfurter.app/latest?from=USD&to=EUR";
 const SUPABASE_CONFIG_ENDPOINT = "/api/config";
 const REMOTE_SAVE_DEBOUNCE_MS = 350;
+const SUPABASE_CLIENT_TIMEOUT_MS = 12000;
+const SUPABASE_SESSION_TIMEOUT_MS = 45000;
+const SUPABASE_SIGNIN_TIMEOUT_MS = 45000;
 
 const MARKETPLACE_VAT = {
   DE: 19,
@@ -2907,7 +2910,7 @@ async function bootstrapCollaborationSession() {
 
   let client = null;
   try {
-    client = await withTimeout(createSupabaseClientFromConfig(), 8000, "supabase_client");
+    client = await withTimeout(createSupabaseClientFromConfig(), SUPABASE_CLIENT_TIMEOUT_MS, "supabase_client");
   } catch (clientError) {
     console.error("Supabase client init failed", clientError);
     configureSessionState({
@@ -2985,30 +2988,13 @@ async function bootstrapCollaborationSession() {
     let data = null;
     let error = null;
     try {
-      const result = await withTimeout(client.auth.getSession(), 8000, "supabase_get_session");
+      const result = await withTimeout(client.auth.getSession(), SUPABASE_SESSION_TIMEOUT_MS, "supabase_get_session");
       data = result?.data ?? null;
       error = result?.error ?? null;
     } catch (sessionError) {
-      console.error("Supabase session load timeout", sessionError);
-      try {
-        const userResult = await withTimeout(client.auth.getUser(), 8000, "supabase_get_user");
-        const timeoutUser = userResult?.data?.user ?? null;
-        if (!timeoutUser) {
-          setAuthStatus("Keine aktive Session gefunden. Bitte anmelden.");
-          return;
-        }
-        const activated = await activateSharedWorkspace(timeoutUser);
-        if (!activated) {
-          return;
-        }
-        setAppMode("ready_shared");
-        renderPageAfterLoad();
-        return;
-      } catch (userFallbackError) {
-        console.error("Supabase getUser fallback failed", userFallbackError);
-        setAuthStatus("Session-Check timeout. Bitte manuell anmelden.", true);
-        return;
-      }
+      console.warn("Supabase session load timeout", sessionError);
+      setAuthStatus("Session-Check dauert länger (Supabase Wakeup). Du kannst dich jetzt anmelden.");
+      return;
     }
 
     if (error) {
@@ -3042,7 +3028,7 @@ async function bootstrapCollaborationSession() {
 async function handleAuthLogin() {
   if (!state.supabase.client) {
     try {
-      state.supabase.client = await withTimeout(createSupabaseClientFromConfig(), 8000, "supabase_client_login");
+      state.supabase.client = await withTimeout(createSupabaseClientFromConfig(), SUPABASE_CLIENT_TIMEOUT_MS, "supabase_client_login");
     } catch (clientError) {
       console.error("Supabase client init in login failed", clientError);
       setAuthStatus("Supabase-Verbindung nicht erreichbar. Bitte neu laden.", true);
@@ -3066,14 +3052,24 @@ async function handleAuthLogin() {
   try {
     signInResult = await withTimeout(
       state.supabase.client.auth.signInWithPassword({ email, password }),
-      15000,
+      SUPABASE_SIGNIN_TIMEOUT_MS,
       "supabase_sign_in",
     );
   } catch (signInTimeout) {
-    console.error("Supabase sign in timeout", signInTimeout);
-    setAppMode("auth_required", "Anmeldung timeout. Bitte erneut versuchen.");
-    setAuthStatus("Anmeldung timeout. Bitte erneut versuchen.", true);
-    return;
+    console.warn("Supabase sign in timeout (attempt 1)", signInTimeout);
+    setAuthStatus("Supabase startet gerade (Wakeup). Zweiter Versuch läuft ...");
+    try {
+      signInResult = await withTimeout(
+        state.supabase.client.auth.signInWithPassword({ email, password }),
+        SUPABASE_SIGNIN_TIMEOUT_MS,
+        "supabase_sign_in_retry",
+      );
+    } catch (signInTimeout2) {
+      console.error("Supabase sign in timeout (attempt 2)", signInTimeout2);
+      setAppMode("auth_required", "Anmeldung timeout. Bitte in 30s erneut versuchen.");
+      setAuthStatus("Anmeldung timeout (2x). Prüfe Netzwerk/Supabase-Status und versuche es erneut.", true);
+      return;
+    }
   }
 
   const { data, error } = signInResult ?? {};
