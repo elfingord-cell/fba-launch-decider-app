@@ -2896,6 +2896,15 @@ async function bootstrapCollaborationSession() {
   loadProductsLocal();
   selectFirstProductIfNeeded();
 
+  configureSessionState({
+    requiresAuth: true,
+    isAuthenticated: false,
+    hasWorkspaceAccess: false,
+    pendingLocalImport: false,
+  });
+  setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+  setAuthStatus("Supabase Verbindung wird aufgebaut ...");
+
   let client = null;
   try {
     client = await withTimeout(createSupabaseClientFromConfig(), 8000, "supabase_client");
@@ -2968,63 +2977,81 @@ async function bootstrapCollaborationSession() {
     });
   }
 
-  let data = null;
-  let error = null;
-  try {
-    const result = await withTimeout(client.auth.getSession(), 20000, "supabase_get_session");
-    data = result?.data ?? null;
-    error = result?.error ?? null;
-  } catch (sessionError) {
-    console.error("Supabase session load timeout", sessionError);
-    // Fallback: getUser() kann trotz getSession-Timeout eine valide Session liefern.
+  // UI sofort freigeben: Session-Restore blockiert den Login nicht.
+  setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
+  setAuthStatus("Session wird im Hintergrund geprüft ...");
+
+  void (async () => {
+    let data = null;
+    let error = null;
     try {
-      const userResult = await withTimeout(client.auth.getUser(), 10000, "supabase_get_user");
-      const timeoutUser = userResult?.data?.user ?? null;
-      if (!timeoutUser) {
-        setAppMode("auth_required", "Session-Check timeout. Bitte anmelden.");
-        setAuthStatus("Session-Check timeout. Bitte anmelden.", true);
+      const result = await withTimeout(client.auth.getSession(), 8000, "supabase_get_session");
+      data = result?.data ?? null;
+      error = result?.error ?? null;
+    } catch (sessionError) {
+      console.error("Supabase session load timeout", sessionError);
+      try {
+        const userResult = await withTimeout(client.auth.getUser(), 8000, "supabase_get_user");
+        const timeoutUser = userResult?.data?.user ?? null;
+        if (!timeoutUser) {
+          setAuthStatus("Keine aktive Session gefunden. Bitte anmelden.");
+          return;
+        }
+        const activated = await activateSharedWorkspace(timeoutUser);
+        if (!activated) {
+          return;
+        }
+        setAppMode("ready_shared");
+        renderPageAfterLoad();
+        return;
+      } catch (userFallbackError) {
+        console.error("Supabase getUser fallback failed", userFallbackError);
+        setAuthStatus("Session-Check timeout. Bitte manuell anmelden.", true);
         return;
       }
-      const activated = await activateSharedWorkspace(timeoutUser);
+    }
+
+    if (error) {
+      console.error("Supabase session load failed", error);
+      setAuthStatus("Session-Prüfung fehlgeschlagen. Bitte anmelden.", true);
+      return;
+    }
+
+    const user = data?.session?.user ?? null;
+    if (!user) {
+      setAuthStatus("Keine aktive Session gefunden. Bitte anmelden.");
+      return;
+    }
+
+    try {
+      const activated = await activateSharedWorkspace(user);
       if (!activated) {
         return;
       }
       setAppMode("ready_shared");
-      return;
-    } catch (userFallbackError) {
-      console.error("Supabase getUser fallback failed", userFallbackError);
-      setAppMode("auth_required", "Session-Check timeout. Bitte neu laden und erneut anmelden.");
-      setAuthStatus("Session-Check timeout. Bitte neu laden.", true);
-      return;
+      renderPageAfterLoad();
+    } catch (activateError) {
+      console.error("Supabase workspace activation failed", activateError);
+      setAuthStatus("Session erkannt, aber Workspace konnte nicht geladen werden.", true);
     }
-  }
-  if (error) {
-    console.error("Supabase session load failed", error);
-  }
+  })();
 
-  const user = data?.session?.user ?? null;
-  if (!user) {
-    setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
-    return;
-  }
-
-  try {
-    const activated = await activateSharedWorkspace(user);
-    if (!activated) {
-      return;
-    }
-    setAppMode("ready_shared");
-  } catch (activateError) {
-    console.error("Supabase workspace activation failed", activateError);
-    setAppMode("auth_required", "Supabase-Verbindung fehlgeschlagen. Bitte später erneut versuchen.");
-    setAuthStatus("Supabase-Verbindung fehlgeschlagen. Bitte später erneut versuchen.", true);
-  }
+  return;
 }
 
 async function handleAuthLogin() {
   if (!state.supabase.client) {
-    setAuthStatus("Supabase ist nicht konfiguriert.", true);
-    return;
+    try {
+      state.supabase.client = await withTimeout(createSupabaseClientFromConfig(), 8000, "supabase_client_login");
+    } catch (clientError) {
+      console.error("Supabase client init in login failed", clientError);
+      setAuthStatus("Supabase-Verbindung nicht erreichbar. Bitte neu laden.", true);
+      return;
+    }
+    if (!state.supabase.client) {
+      setAuthStatus("Supabase ist nicht konfiguriert.", true);
+      return;
+    }
   }
   const email = String(dom.authEmail?.value ?? "").trim();
   const password = String(dom.authPassword?.value ?? "");
@@ -3035,7 +3062,21 @@ async function handleAuthLogin() {
 
   setAuthStatus("Anmeldung läuft ...");
 
-  const { data, error } = await state.supabase.client.auth.signInWithPassword({ email, password });
+  let signInResult = null;
+  try {
+    signInResult = await withTimeout(
+      state.supabase.client.auth.signInWithPassword({ email, password }),
+      15000,
+      "supabase_sign_in",
+    );
+  } catch (signInTimeout) {
+    console.error("Supabase sign in timeout", signInTimeout);
+    setAppMode("auth_required", "Anmeldung timeout. Bitte erneut versuchen.");
+    setAuthStatus("Anmeldung timeout. Bitte erneut versuchen.", true);
+    return;
+  }
+
+  const { data, error } = signInResult ?? {};
   if (error) {
     setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
     setAuthStatus("Anmeldung fehlgeschlagen: " + error.message, true);
