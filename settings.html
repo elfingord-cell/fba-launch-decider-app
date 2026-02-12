@@ -370,50 +370,108 @@
                   <label>Lifecycle-Horizont (Monate)<input data-settings-path="lifecycle.defaultMonths" type="number" min="1" step="1" /></label>
                 </div>
 
-                <h4>Listing-Paket: KI</h4>
-                <div class="admin-grid">
-                  <label>Listing-Erstellung (EUR)<input data-settings-path="lifecycle.listingPackages.ai.listingCreationEur" type="number" min="0" step="0.1" /></label>
-                  <label>Bilder & Infografiken (EUR)<input data-settings-path="lifecycle.listingPackages.ai.imagesInfographicsEur" type="number" min="0" step="0.1" /></label>
-                  <label>A+ Content (EUR)<input data-settings-path="lifecycle.listingPackages.ai.aPlusContentEur" type="number" min="0" step="0.1" /></label>
-                </div>
+                <section class="settings-lifecycle-group settings-lifecycle-group-listing">
+                  <h4 class="settings-lifecycle-group-title">Listingpakete</h4>
+                  <p class="hint">Klare Trennung nach Pakettyp (KI, Fotograf, Visual Advantage).</p>
 
-                <h4>Listing-Paket: Fotograf</h4>
-                <div class="admin-grid">
-                  <label>Listing-Erstellung (EUR)<input data-settings-path="lifecycle.listingPackages.photographer.listingCreationEur" type="number" min="0" step="0.1" /></label>
-                  <label>Bilder & Infografiken (EUR)<input data-settings-path="lifecycle.listingPackages.photographer.imagesInfographicsEur" type="number" min="0" step="0.1" /></label>
-                  <label>A+ Content (EUR)<input data-settings-path="lifecycle.listingPackages.photographer.aPlusContentEur" type="number" min="0" step="0.1" /></label>
-                </div>
+                  <div class="settings-lifecycle-subsection">
+                    <h4>Listing-Paket: KI</h4>
+                    <div class="admin-grid">
+                      <label>Listing-Erstellung (EUR)<input data-settings-path="lifecycle.listingPackages.ai.listingCreationEur" type="number" min="0" step="0.1" /></label>
+                      <label>Bilder & Infografiken (EUR)<input data-settings-path="lifecycle.listingPackages.ai.imagesInfographicsEur" type="number" min="0" step="0.1" /></label>
+                      <label>A+ Content (EUR)<input data-settings-path="lifecycle.listingPackages.ai.aPlusContentEur" type="number" min="0" step="0.1" /></label>
+                    </div>
+                  </div>
 
-                <h4>Listing-Paket: Visual Advantage</h4>
-                <div class="admin-grid">
-                  <label>Listing-Erstellung (EUR)<input data-settings-path="lifecycle.listingPackages.visual_advantage.listingCreationEur" type="number" min="0" step="0.1" /></label>
-                  <label>Bilder & Infografiken (EUR)<input data-settings-path="lifecycle.listingPackages.visual_advantage.imagesInfographicsEur" type="number" min="0" step="0.1" /></label>
-                  <label>A+ Content (EUR)<input data-settings-path="lifecycle.listingPackages.visual_advantage.aPlusContentEur" type="number" min="0" step="0.1" /></label>
-                </div>
+                  <div class="settings-lifecycle-subsection">
+                    <h4>Listing-Paket: Fotograf</h4>
+                    <div class="admin-grid">
+                      <label>Listing-Erstellung (EUR)<input data-settings-path="lifecycle.listingPackages.photographer.listingCreationEur" type="number" min="0" step="0.1" /></label>
+                      <label>Bilder & Infografiken (EUR)<input data-settings-path="lifecycle.listingPackages.photographer.imagesInfographicsEur" type="number" min="0" step="0.1" /></label>
+                      <label>A+ Content (EUR)<input data-settings-path="lifecycle.listingPackages.photographer.aPlusContentEur" type="number" min="0" step="0.1" /></label>
+                    </div>
+                  </div>
 
-                <h4>Launch-Profil: Low</h4>
-                <div class="admin-grid">
-                  <label>Wochen<input data-settings-path="lifecycle.launchProfiles.low.weeks" type="number" min="1" step="1" /></label>
-                  <label>TACoS Start-Boost (%)<input data-settings-path="lifecycle.launchProfiles.low.startTacosBoostPct" type="number" min="0" step="0.1" /></label>
-                  <label>TACoS End-Boost (%)<input data-settings-path="lifecycle.launchProfiles.low.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
-                  <label>Preis-Start-Rabatt (%)<input data-settings-path="lifecycle.launchProfiles.low.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
-                </div>
+                  <div class="settings-lifecycle-subsection">
+                    <h4>Listing-Paket: Visual Advantage</h4>
+                    <div class="admin-grid">
+                      <label>Listing-Erstellung (EUR)<input data-settings-path="lifecycle.listingPackages.visual_advantage.listingCreationEur" type="number" min="0" step="0.1" /></label>
+                      <label>Bilder & Infografiken (EUR)<input data-settings-path="lifecycle.listingPackages.visual_advantage.imagesInfographicsEur" type="number" min="0" step="0.1" /></label>
+                      <label>A+ Content (EUR)<input data-settings-path="lifecycle.listingPackages.visual_advantage.aPlusContentEur" type="number" min="0" step="0.1" /></label>
+                    </div>
+                  </div>
+                </section>
 
-                <h4>Launch-Profil: Medium</h4>
-                <div class="admin-grid">
-                  <label>Wochen<input data-settings-path="lifecycle.launchProfiles.medium.weeks" type="number" min="1" step="1" /></label>
-                  <label>TACoS Start-Boost (%)<input data-settings-path="lifecycle.launchProfiles.medium.startTacosBoostPct" type="number" min="0" step="0.1" /></label>
-                  <label>TACoS End-Boost (%)<input data-settings-path="lifecycle.launchProfiles.medium.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
-                  <label>Preis-Start-Rabatt (%)<input data-settings-path="lifecycle.launchProfiles.medium.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
-                </div>
+                <section class="settings-lifecycle-group settings-lifecycle-group-launch">
+                  <h4 class="settings-lifecycle-group-title">Launch-Profile</h4>
+                  <p class="hint">Linearer Verlauf: Preis-Start-Rabatt wird bis Launch-Ende auf 0 reduziert, TACoS läuft linear von Startwert zu Endwert.</p>
 
-                <h4>Launch-Profil: High</h4>
-                <div class="admin-grid">
-                  <label>Wochen<input data-settings-path="lifecycle.launchProfiles.high.weeks" type="number" min="1" step="1" /></label>
-                  <label>TACoS Start-Boost (%)<input data-settings-path="lifecycle.launchProfiles.high.startTacosBoostPct" type="number" min="0" step="0.1" /></label>
-                  <label>TACoS End-Boost (%)<input data-settings-path="lifecycle.launchProfiles.high.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
-                  <label>Preis-Start-Rabatt (%)<input data-settings-path="lifecycle.launchProfiles.high.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
-                </div>
+                  <div class="settings-lifecycle-subsection">
+                    <h4>Launch-Profil: Low</h4>
+                    <div class="admin-grid">
+                      <label>Launch-Dauer (Wochen)<input data-settings-path="lifecycle.launchProfiles.low.weeks" type="number" min="1" step="1" /></label>
+                      <label>TACoS Start-Modus
+                        <select data-settings-path="lifecycle.launchProfiles.low.startTacosMode">
+                          <option value="delta_pp_from_base">Standard-TACoS + x pp</option>
+                          <option value="absolute_pct">Absoluter TACoS-Wert (%)</option>
+                        </select>
+                      </label>
+                      <label>TACoS Start-Wert (% oder +pp)<input data-settings-path="lifecycle.launchProfiles.low.startTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                      <label>TACoS End-Modus
+                        <select data-settings-path="lifecycle.launchProfiles.low.endTacosMode">
+                          <option value="delta_pp_from_base">Standard-TACoS + x pp</option>
+                          <option value="absolute_pct">Absoluter TACoS-Wert (%)</option>
+                        </select>
+                      </label>
+                      <label>TACoS End-Wert (% oder +pp)<input data-settings-path="lifecycle.launchProfiles.low.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                      <label>Preis-Start-Rabatt (% unter Zielpreis)<input data-settings-path="lifecycle.launchProfiles.low.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
+                    </div>
+                  </div>
+
+                  <div class="settings-lifecycle-subsection">
+                    <h4>Launch-Profil: Medium</h4>
+                    <div class="admin-grid">
+                      <label>Launch-Dauer (Wochen)<input data-settings-path="lifecycle.launchProfiles.medium.weeks" type="number" min="1" step="1" /></label>
+                      <label>TACoS Start-Modus
+                        <select data-settings-path="lifecycle.launchProfiles.medium.startTacosMode">
+                          <option value="delta_pp_from_base">Standard-TACoS + x pp</option>
+                          <option value="absolute_pct">Absoluter TACoS-Wert (%)</option>
+                        </select>
+                      </label>
+                      <label>TACoS Start-Wert (% oder +pp)<input data-settings-path="lifecycle.launchProfiles.medium.startTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                      <label>TACoS End-Modus
+                        <select data-settings-path="lifecycle.launchProfiles.medium.endTacosMode">
+                          <option value="delta_pp_from_base">Standard-TACoS + x pp</option>
+                          <option value="absolute_pct">Absoluter TACoS-Wert (%)</option>
+                        </select>
+                      </label>
+                      <label>TACoS End-Wert (% oder +pp)<input data-settings-path="lifecycle.launchProfiles.medium.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                      <label>Preis-Start-Rabatt (% unter Zielpreis)<input data-settings-path="lifecycle.launchProfiles.medium.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
+                    </div>
+                  </div>
+
+                  <div class="settings-lifecycle-subsection">
+                    <h4>Launch-Profil: High</h4>
+                    <div class="admin-grid">
+                      <label>Launch-Dauer (Wochen)<input data-settings-path="lifecycle.launchProfiles.high.weeks" type="number" min="1" step="1" /></label>
+                      <label>TACoS Start-Modus
+                        <select data-settings-path="lifecycle.launchProfiles.high.startTacosMode">
+                          <option value="delta_pp_from_base">Standard-TACoS + x pp</option>
+                          <option value="absolute_pct">Absoluter TACoS-Wert (%)</option>
+                        </select>
+                      </label>
+                      <label>TACoS Start-Wert (% oder +pp)<input data-settings-path="lifecycle.launchProfiles.high.startTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                      <label>TACoS End-Modus
+                        <select data-settings-path="lifecycle.launchProfiles.high.endTacosMode">
+                          <option value="delta_pp_from_base">Standard-TACoS + x pp</option>
+                          <option value="absolute_pct">Absoluter TACoS-Wert (%)</option>
+                        </select>
+                      </label>
+                      <label>TACoS End-Wert (% oder +pp)<input data-settings-path="lifecycle.launchProfiles.high.endTacosBoostPct" type="number" min="0" step="0.1" /></label>
+                      <label>Preis-Start-Rabatt (% unter Zielpreis)<input data-settings-path="lifecycle.launchProfiles.high.startPriceDiscountPct" type="number" min="0" step="0.1" /></label>
+                    </div>
+                  </div>
+                </section>
               </details>
 
               <details id="settingsProductDefaultsSection" class="settings-section">

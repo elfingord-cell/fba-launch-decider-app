@@ -192,13 +192,14 @@ const BASE_CATEGORY_DEFAULTS = {
 };
 
 const GLOBAL_DEFAULTS = {
-  launchAdsMultiplier: 1.5,
+  launchAdsMultiplier: 1,
   launchBoostMonths: 3,
   leakageRatePct: 3,
   returnHandlingCost: 1.1,
   importCustomsDutyRate: 6.5,
   importVatRate: 19,
 };
+const WEEKS_PER_MONTH_EQUIVALENT = 4.345;
 
 function deriveSellableSharePct(rawSellableShare, rawUnsellableShare, rawResaleRate, fallbackPct = 42) {
   if (Number.isFinite(num(rawSellableShare, NaN))) {
@@ -340,19 +341,25 @@ const DEFAULT_SETTINGS = {
     launchProfiles: {
       low: {
         weeks: 6,
+        startTacosMode: "delta_pp_from_base",
         startTacosBoostPct: 20,
+        endTacosMode: "delta_pp_from_base",
         endTacosBoostPct: 4,
         startPriceDiscountPct: 8,
       },
       medium: {
         weeks: 6,
+        startTacosMode: "delta_pp_from_base",
         startTacosBoostPct: 40,
+        endTacosMode: "delta_pp_from_base",
         endTacosBoostPct: 8,
         startPriceDiscountPct: 12,
       },
       high: {
         weeks: 6,
+        startTacosMode: "delta_pp_from_base",
         startTacosBoostPct: 70,
+        endTacosMode: "delta_pp_from_base",
         endTacosBoostPct: 12,
         startPriceDiscountPct: 18,
       },
@@ -731,17 +738,23 @@ const SETTINGS_HELP = {
   "lifecycle.listingPackages.visual_advantage.imagesInfographicsEur": "Kosten für Bilder/Infografiken im Paket Visual Advantage (EUR).",
   "lifecycle.listingPackages.visual_advantage.aPlusContentEur": "Kosten für A+ Content im Paket Visual Advantage (EUR).",
   "lifecycle.launchProfiles.low.weeks": "Launch-Dauer in Wochen für Low-Competition Profil.",
-  "lifecycle.launchProfiles.low.startTacosBoostPct": "Start-Boost auf TACoS in % für Low-Competition.",
-  "lifecycle.launchProfiles.low.endTacosBoostPct": "End-Boost auf TACoS in % für Low-Competition.",
-  "lifecycle.launchProfiles.low.startPriceDiscountPct": "Start-Rabatt auf Zielpreis in % für Low-Competition.",
+  "lifecycle.launchProfiles.low.startTacosMode": "Modus für TACoS am Launch-Start: absoluter TACoS-Wert oder Standard-TACoS + x Prozentpunkte.",
+  "lifecycle.launchProfiles.low.startTacosBoostPct": "Startwert für TACoS (je nach Modus absolut % oder +x Prozentpunkte auf Standard-TACoS).",
+  "lifecycle.launchProfiles.low.endTacosMode": "Modus für TACoS am Launch-Ende: absoluter TACoS-Wert oder Standard-TACoS + x Prozentpunkte.",
+  "lifecycle.launchProfiles.low.endTacosBoostPct": "Endwert für TACoS (je nach Modus absolut % oder +x Prozentpunkte auf Standard-TACoS).",
+  "lifecycle.launchProfiles.low.startPriceDiscountPct": "Start-Rabatt in % unter Zielpreis. Wird über die Launch-Dauer linear auf 0 geführt.",
   "lifecycle.launchProfiles.medium.weeks": "Launch-Dauer in Wochen für Medium-Competition Profil.",
-  "lifecycle.launchProfiles.medium.startTacosBoostPct": "Start-Boost auf TACoS in % für Medium-Competition.",
-  "lifecycle.launchProfiles.medium.endTacosBoostPct": "End-Boost auf TACoS in % für Medium-Competition.",
-  "lifecycle.launchProfiles.medium.startPriceDiscountPct": "Start-Rabatt auf Zielpreis in % für Medium-Competition.",
+  "lifecycle.launchProfiles.medium.startTacosMode": "Modus für TACoS am Launch-Start: absoluter TACoS-Wert oder Standard-TACoS + x Prozentpunkte.",
+  "lifecycle.launchProfiles.medium.startTacosBoostPct": "Startwert für TACoS (je nach Modus absolut % oder +x Prozentpunkte auf Standard-TACoS).",
+  "lifecycle.launchProfiles.medium.endTacosMode": "Modus für TACoS am Launch-Ende: absoluter TACoS-Wert oder Standard-TACoS + x Prozentpunkte.",
+  "lifecycle.launchProfiles.medium.endTacosBoostPct": "Endwert für TACoS (je nach Modus absolut % oder +x Prozentpunkte auf Standard-TACoS).",
+  "lifecycle.launchProfiles.medium.startPriceDiscountPct": "Start-Rabatt in % unter Zielpreis. Wird über die Launch-Dauer linear auf 0 geführt.",
   "lifecycle.launchProfiles.high.weeks": "Launch-Dauer in Wochen für High-Competition Profil.",
-  "lifecycle.launchProfiles.high.startTacosBoostPct": "Start-Boost auf TACoS in % für High-Competition.",
-  "lifecycle.launchProfiles.high.endTacosBoostPct": "End-Boost auf TACoS in % für High-Competition.",
-  "lifecycle.launchProfiles.high.startPriceDiscountPct": "Start-Rabatt auf Zielpreis in % für High-Competition.",
+  "lifecycle.launchProfiles.high.startTacosMode": "Modus für TACoS am Launch-Start: absoluter TACoS-Wert oder Standard-TACoS + x Prozentpunkte.",
+  "lifecycle.launchProfiles.high.startTacosBoostPct": "Startwert für TACoS (je nach Modus absolut % oder +x Prozentpunkte auf Standard-TACoS).",
+  "lifecycle.launchProfiles.high.endTacosMode": "Modus für TACoS am Launch-Ende: absoluter TACoS-Wert oder Standard-TACoS + x Prozentpunkte.",
+  "lifecycle.launchProfiles.high.endTacosBoostPct": "Endwert für TACoS (je nach Modus absolut % oder +x Prozentpunkte auf Standard-TACoS).",
+  "lifecycle.launchProfiles.high.startPriceDiscountPct": "Start-Rabatt in % unter Zielpreis. Wird über die Launch-Dauer linear auf 0 geführt.",
   "costDefaults.packagingPerUnitEur": "Globaler Default für zusätzliche Verpackungskosten pro Stück (EUR).",
   "costDefaults.otherUnitCostEur": "Globaler Default für weitere variable Zusatzkosten pro Stück (EUR).",
   "costDefaults.docsPerOrderEur": "Globaler Default für Dokumentation je Order (EUR).",
@@ -867,6 +880,25 @@ const PATH_LABEL_OVERRIDES = {
   "settings.threePl.insertsPerCartonDefault": "Beilagen je Karton (Default)",
   "settings.threePl.labelsPerCartonDefault": "Labels je Karton (Default)",
   "settings.threePl.carrierCostPerCartonEur": "Carrier 3PL -> Amazon (EUR/Karton)",
+  "settings.lifecycle.defaultMonths": "Lifecycle-Horizont (Monate)",
+  "settings.lifecycle.launchProfiles.low.weeks": "Launch-Dauer (Wochen) · Low",
+  "settings.lifecycle.launchProfiles.low.startTacosMode": "TACoS Start-Modus · Low",
+  "settings.lifecycle.launchProfiles.low.startTacosBoostPct": "TACoS Start-Wert (% oder +pp) · Low",
+  "settings.lifecycle.launchProfiles.low.endTacosMode": "TACoS End-Modus · Low",
+  "settings.lifecycle.launchProfiles.low.endTacosBoostPct": "TACoS End-Wert (% oder +pp) · Low",
+  "settings.lifecycle.launchProfiles.low.startPriceDiscountPct": "Preis-Start-Rabatt (% unter Zielpreis) · Low",
+  "settings.lifecycle.launchProfiles.medium.weeks": "Launch-Dauer (Wochen) · Medium",
+  "settings.lifecycle.launchProfiles.medium.startTacosMode": "TACoS Start-Modus · Medium",
+  "settings.lifecycle.launchProfiles.medium.startTacosBoostPct": "TACoS Start-Wert (% oder +pp) · Medium",
+  "settings.lifecycle.launchProfiles.medium.endTacosMode": "TACoS End-Modus · Medium",
+  "settings.lifecycle.launchProfiles.medium.endTacosBoostPct": "TACoS End-Wert (% oder +pp) · Medium",
+  "settings.lifecycle.launchProfiles.medium.startPriceDiscountPct": "Preis-Start-Rabatt (% unter Zielpreis) · Medium",
+  "settings.lifecycle.launchProfiles.high.weeks": "Launch-Dauer (Wochen) · High",
+  "settings.lifecycle.launchProfiles.high.startTacosMode": "TACoS Start-Modus · High",
+  "settings.lifecycle.launchProfiles.high.startTacosBoostPct": "TACoS Start-Wert (% oder +pp) · High",
+  "settings.lifecycle.launchProfiles.high.endTacosMode": "TACoS End-Modus · High",
+  "settings.lifecycle.launchProfiles.high.endTacosBoostPct": "TACoS End-Wert (% oder +pp) · High",
+  "settings.lifecycle.launchProfiles.high.startPriceDiscountPct": "Preis-Start-Rabatt (% unter Zielpreis) · High",
   "settings.costDefaults.packagingPerUnitEur": "Packaging pro Unit (EUR)",
   "settings.costDefaults.otherUnitCostEur": "Weitere Stückkosten pro Unit (EUR)",
   "settings.costDefaults.docsPerOrderEur": "Dokumentation pro Order (EUR)",
@@ -1452,6 +1484,12 @@ const SETTINGS_STRING_PATHS = new Set([
   "shipping12m.insurance.basis",
   "amazonFba.de.rateCardVersion",
   "amazonFba.de.sourceUrl",
+  "lifecycle.launchProfiles.low.startTacosMode",
+  "lifecycle.launchProfiles.low.endTacosMode",
+  "lifecycle.launchProfiles.medium.startTacosMode",
+  "lifecycle.launchProfiles.medium.endTacosMode",
+  "lifecycle.launchProfiles.high.startTacosMode",
+  "lifecycle.launchProfiles.high.endTacosMode",
 ]);
 
 const OVERRIDE_CONTROL_MAP = [
@@ -2083,7 +2121,7 @@ function defaultProduct(index = 1) {
         overrideTacos: true,
         tacosRate: 10,
         overrideLaunchMultiplier: false,
-        launchMultiplier: 1.5,
+        launchMultiplier: 1,
         overrideLaunchMonths: false,
         launchMonths: 3,
       },
@@ -2636,8 +2674,18 @@ function sanitizeSettings(settings) {
   Object.keys(settings.lifecycle.launchProfiles).forEach((key) => {
     const profile = settings.lifecycle.launchProfiles[key];
     profile.weeks = clamp(num(profile.weeks, 6), 1, 24);
-    profile.startTacosBoostPct = clamp(num(profile.startTacosBoostPct, 0), 0, 300);
-    profile.endTacosBoostPct = clamp(num(profile.endTacosBoostPct, 0), 0, 300);
+    profile.startTacosMode = profile.startTacosMode === "absolute_pct" ? "absolute_pct" : "delta_pp_from_base";
+    profile.endTacosMode = profile.endTacosMode === "absolute_pct" ? "absolute_pct" : "delta_pp_from_base";
+    profile.startTacosBoostPct = clamp(
+      num(profile.startTacosBoostPct, 0),
+      0,
+      profile.startTacosMode === "absolute_pct" ? 100 : 300,
+    );
+    profile.endTacosBoostPct = clamp(
+      num(profile.endTacosBoostPct, 0),
+      0,
+      profile.endTacosMode === "absolute_pct" ? 100 : 300,
+    );
     profile.startPriceDiscountPct = clamp(num(profile.startPriceDiscountPct, 0), 0, 60);
   });
 
@@ -4446,6 +4494,25 @@ function renderSettingsInputs() {
   if (surchargeField) {
     surchargeField.disabled = !Boolean(state.settings.shipping12m.manualSurchargeEnabled);
   }
+
+  ["low", "medium", "high"].forEach((profileKey) => {
+    ["start", "end"].forEach((boundary) => {
+      const modePath = `lifecycle.launchProfiles.${profileKey}.${boundary}TacosMode`;
+      const valuePath = `lifecycle.launchProfiles.${profileKey}.${boundary}TacosBoostPct`;
+      const modeValue = getByPath(state.settings, modePath);
+      const valueField = document.querySelector(`[data-settings-path="${valuePath}"]`);
+      if (!(valueField instanceof HTMLInputElement)) {
+        return;
+      }
+      if (modeValue === "absolute_pct") {
+        valueField.max = "100";
+        valueField.placeholder = "z. B. 28 (TACoS %)";
+      } else {
+        valueField.removeAttribute("max");
+        valueField.placeholder = "z. B. 8 (+8 pp)";
+      }
+    });
+  });
   applySoftLocksToUI();
 }
 
@@ -5700,12 +5767,13 @@ function resolveAssumptions(product, settings = state.settings) {
   const launchProfile = launchProfiles[launchProfileKey] ?? launchProfiles.medium;
 
   const defaultTacos = clamp(category.tacosRate, 0, 100);
+  const launchWeeksFromProfileDefault = clamp(num(launchProfile.weeks, 6), 1, 24);
   const defaultLaunchMultiplier = GLOBAL_DEFAULTS.launchAdsMultiplier;
   const defaultLaunchMonths = Math.max(
-    1,
+    0.25,
     Math.min(
       roundInt(basic.horizonMonths, 1),
-      Math.max(GLOBAL_DEFAULTS.launchBoostMonths, Math.ceil(clamp(num(launchProfile.weeks, 6), 1, 24) / 4.345)),
+      launchWeeksFromProfileDefault / WEEKS_PER_MONTH_EQUIVALENT,
     ),
   );
 
@@ -5948,7 +6016,7 @@ function resolveAssumptions(product, settings = state.settings) {
       isOverrideActive(assumptions.ads.overrideLaunchMonths),
       assumptions.ads.launchMonths,
       defaultLaunchMonths,
-      1,
+      0.25,
       Math.max(1, roundInt(basic.horizonMonths, 1)),
     ),
 
@@ -6027,12 +6095,18 @@ function resolveAssumptions(product, settings = state.settings) {
     listingPackageTotal: Math.max(0, defaultListingPackageTotal),
     lifecycleMonths: defaultLifecycleMonths,
     launchProfileKey,
-    launchProfile: {
-      weeks: clamp(num(launchProfile.weeks, 6), 1, 24),
-      startTacosBoostPct: clamp(num(launchProfile.startTacosBoostPct, 0), 0, 300),
-      endTacosBoostPct: clamp(num(launchProfile.endTacosBoostPct, 0), 0, 300),
-      startPriceDiscountPct: clamp(num(launchProfile.startPriceDiscountPct, 0), 0, 60),
-    },
+    launchProfile: (() => {
+      const startTacosMode = launchProfile.startTacosMode === "absolute_pct" ? "absolute_pct" : "delta_pp_from_base";
+      const endTacosMode = launchProfile.endTacosMode === "absolute_pct" ? "absolute_pct" : "delta_pp_from_base";
+      return {
+        weeks: clamp(num(launchProfile.weeks, 6), 1, 24),
+        startTacosMode,
+        startTacosBoostPct: clamp(num(launchProfile.startTacosBoostPct, 0), 0, startTacosMode === "absolute_pct" ? 100 : 300),
+        endTacosMode,
+        endTacosBoostPct: clamp(num(launchProfile.endTacosBoostPct, 0), 0, endTacosMode === "absolute_pct" ? 100 : 300),
+        startPriceDiscountPct: clamp(num(launchProfile.startPriceDiscountPct, 0), 0, 60),
+      };
+    })(),
     extraCosts: {
       packagingPerUnitEur,
       otherUnitCostEur,
@@ -6512,34 +6586,54 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   );
 
   const launchProfileWeeks = clamp(num(resolved.launchProfile.weeks, 6), 1, 24);
-  const launchMonthsFromProfile = Math.min(horizonMonths, Math.max(launchProfileWeeks / 4.345, 0.25));
+  const launchMonthsFromProfile = Math.min(horizonMonths, Math.max(launchProfileWeeks / WEEKS_PER_MONTH_EQUIVALENT, 0.25));
   const launchBoostMonths = Math.min(
     horizonMonths,
-    Math.max(launchMonthsFromProfile, Math.max(1, roundInt(resolved.launchBoostMonths, 1))),
+    Math.max(launchMonthsFromProfile, clamp(num(resolved.launchBoostMonths, launchMonthsFromProfile), 0.25, horizonMonths)),
   );
-  const averageLaunchPriceDiscountPct = resolved.launchProfile.startPriceDiscountPct / 2;
+  const horizonWeeks = Math.max(1, horizonMonths * WEEKS_PER_MONTH_EQUIVALENT);
+  const launchDurationWeeks = Math.min(horizonWeeks, Math.max(0, launchBoostMonths * WEEKS_PER_MONTH_EQUIVALENT));
+  const launchWeekShare = launchDurationWeeks / horizonWeeks;
+  const startPriceDiscountPct = clamp(num(resolved.launchProfile.startPriceDiscountPct, 0), 0, 60);
+  const averageLaunchPriceDiscountPct = launchDurationWeeks > 0 ? startPriceDiscountPct / 2 : 0;
   const launchPriceFactor = Math.max(0.55, 1 - averageLaunchPriceDiscountPct / 100);
-  const launchPriceWeightFactor =
-    (launchBoostMonths * launchPriceFactor + (horizonMonths - launchBoostMonths)) / horizonMonths;
-
+  const launchPriceWeightFactor = launchWeekShare * launchPriceFactor + (1 - launchWeekShare);
   const priceGross = priceGrossTarget * launchPriceWeightFactor;
   const priceNet = vatFactor > 0 ? priceGross / vatFactor : priceGross;
   const referralFeeUnit = Math.max(priceGross * (resolved.referralRate / 100), MIN_REFERRAL_FEE);
-
-  const averageLaunchTacosBoostPct =
-    (resolved.launchProfile.startTacosBoostPct + resolved.launchProfile.endTacosBoostPct) / 2;
-  const profileLaunchMultiplier = 1 + averageLaunchTacosBoostPct / 100;
-  const launchAdsMultiplierEffective = resolved.launchAdsMultiplier * profileLaunchMultiplier;
-  const launchWeightFactor =
-    (launchBoostMonths * launchAdsMultiplierEffective + (horizonMonths - launchBoostMonths)) /
-    horizonMonths;
 
   const baseTacosRate =
     scenario.forceTacosRate !== undefined
       ? num(scenario.forceTacosRate)
       : resolved.tacosRate + num(scenario.tacosDelta);
   const tacosRate = clamp(baseTacosRate, 0, 100);
-  const effectiveTacosRate = tacosRate * launchWeightFactor;
+  const resolveLaunchTacosRate = (mode, value) => {
+    if (mode === "absolute_pct") {
+      return clamp(num(value, tacosRate), 0, 100);
+    }
+    return clamp(tacosRate + num(value, 0), 0, 100);
+  };
+  const profileLaunchMultiplier = clamp(num(resolved.launchAdsMultiplier, 1), 0.2, 5);
+  const launchTacosStartRate = clamp(
+    resolveLaunchTacosRate(resolved.launchProfile.startTacosMode, resolved.launchProfile.startTacosBoostPct) * profileLaunchMultiplier,
+    0,
+    100,
+  );
+  const launchTacosEndRate = clamp(
+    resolveLaunchTacosRate(resolved.launchProfile.endTacosMode, resolved.launchProfile.endTacosBoostPct) * profileLaunchMultiplier,
+    0,
+    100,
+  );
+  const launchTacosAverageRate = launchDurationWeeks > 0
+    ? (launchTacosStartRate + launchTacosEndRate) / 2
+    : tacosRate;
+  const launchAdsMultiplierEffective = tacosRate > 0 ? launchTacosAverageRate / tacosRate : 1;
+  const averageLaunchTacosBoostPct = launchTacosAverageRate - tacosRate;
+  const effectiveTacosRate = clamp(
+    tacosRate * (1 - launchWeekShare) + launchTacosAverageRate * launchWeekShare,
+    0,
+    100,
+  );
 
   const adsUnit = priceGross * (effectiveTacosRate / 100);
 
@@ -6647,8 +6741,13 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     launchProfileWeeks,
     launchMonthsFromProfile,
     launchBoostMonths,
+    launchDurationWeeks,
+    launchWeekShare,
     averageLaunchPriceDiscountPct,
     launchPriceWeightFactor,
+    launchTacosStartRate,
+    launchTacosEndRate,
+    launchTacosAverageRate,
     averageLaunchTacosBoostPct,
     launchAdsMultiplierEffective,
     fxUsdToEur,
@@ -7042,7 +7141,7 @@ function buildDefaultDiagnostics(product, metrics) {
       override: overrideOn(assumptions.ads.overrideLaunchMonths),
       activeValue: resolved.launchBoostMonths,
       formatType: "number",
-      source: `Default = min(Zeitraum, ${formatNumber(GLOBAL_DEFAULTS.launchBoostMonths)} Monate).`,
+      source: `Default aus Launch-Profil (${formatNumber(defaults.defaultLaunchMonths)} Monate aus Wochenprofil).`,
       impactMonthly: metrics.launchAdsIncrementMonthly,
       costNote: "Bestimmt die Dauer des erhöhten TACoS-Fensters.",
     }),
@@ -8120,6 +8219,30 @@ function cloneControlForModal(sourceControl, { path = "", settingsPath = "" } = 
       ["mixed", "mixed"],
     ],
     "shipping12m.insurance.basis": [["goods_value_eur", "Nur Warenwert (EUR)"]],
+    "settings.lifecycle.launchProfiles.low.startTacosMode": [
+      ["delta_pp_from_base", "Standard-TACoS + x pp"],
+      ["absolute_pct", "Absoluter TACoS-Wert (%)"],
+    ],
+    "settings.lifecycle.launchProfiles.low.endTacosMode": [
+      ["delta_pp_from_base", "Standard-TACoS + x pp"],
+      ["absolute_pct", "Absoluter TACoS-Wert (%)"],
+    ],
+    "settings.lifecycle.launchProfiles.medium.startTacosMode": [
+      ["delta_pp_from_base", "Standard-TACoS + x pp"],
+      ["absolute_pct", "Absoluter TACoS-Wert (%)"],
+    ],
+    "settings.lifecycle.launchProfiles.medium.endTacosMode": [
+      ["delta_pp_from_base", "Standard-TACoS + x pp"],
+      ["absolute_pct", "Absoluter TACoS-Wert (%)"],
+    ],
+    "settings.lifecycle.launchProfiles.high.startTacosMode": [
+      ["delta_pp_from_base", "Standard-TACoS + x pp"],
+      ["absolute_pct", "Absoluter TACoS-Wert (%)"],
+    ],
+    "settings.lifecycle.launchProfiles.high.endTacosMode": [
+      ["delta_pp_from_base", "Standard-TACoS + x pp"],
+      ["absolute_pct", "Absoluter TACoS-Wert (%)"],
+    ],
     "cartonRules.estimationMode": [
       ["conservative", "Konservativ"],
       ["balanced", "Balanced"],
@@ -8223,7 +8346,23 @@ function settingsValueText(path, value) {
     if (path === "shipping12m.insurance.basis") {
       return value === "goods_value_eur" ? "Nur Warenwert (EUR)" : String(value ?? "-");
     }
+    if (path.endsWith("startTacosMode") || path.endsWith("endTacosMode")) {
+      if (value === "absolute_pct") {
+        return "Absoluter TACoS-Wert (%)";
+      }
+      return "Standard-TACoS + x pp";
+    }
     return String(value ?? "-");
+  }
+  if (path.endsWith("startTacosBoostPct") || path.endsWith("endTacosBoostPct")) {
+    const modePath = path
+      .replace("startTacosBoostPct", "startTacosMode")
+      .replace("endTacosBoostPct", "endTacosMode");
+    const modeValue = getByPath(state.settings, modePath);
+    if (modeValue === "absolute_pct") {
+      return `${formatPercent(num(value, 0))} TACoS`;
+    }
+    return `+${formatNumber(num(value, 0))} pp`;
   }
   if (
     path.endsWith("Pct") ||
@@ -10713,6 +10852,7 @@ function createShippingLayoutPreviewElement(metrics) {
 
 function createShippingDashboardModalContent(metrics) {
   const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.transportMode);
+  const toCurrencyCents = (value) => roundInt(num(value, 0) * 100, 0);
   const unitsPerPo = Math.max(1, num(metrics.shipping.unitsPerOrder, 1));
   const shippingD2dPerUnit = Math.max(0, num(metrics.shipping.shippingPerUnit, 0));
   const customsPerUnit = Math.max(0, num(metrics.customsUnit, 0));
@@ -10725,8 +10865,16 @@ function createShippingDashboardModalContent(metrics) {
   const shippingD2dTotalPo = Math.max(0, num(metrics.shipping.shippingTotal, shippingD2dPerUnit * unitsPerPo));
   const importSurchargesTotalPo = importSurchargesPerUnit * unitsPerPo;
   const shippingTo3plTotalPo = shippingD2dTotalPo + importSurchargesTotalPo;
-  const equationDiff = Math.abs(shippingD2dPerUnit + importSurchargesPerUnit - shippingTo3plPerUnit);
-  const equationMatches = equationDiff <= 0.0005;
+  const rawExpectedPerUnit = shippingD2dPerUnit + customsPerUnit + orderFixedPerUnit;
+  const rawEquationDiff = Math.abs(rawExpectedPerUnit - shippingTo3plPerUnit);
+  const d2dCents = toCurrencyCents(shippingD2dPerUnit);
+  const customsCents = toCurrencyCents(customsPerUnit);
+  const orderFixedCents = toCurrencyCents(orderFixedPerUnit);
+  const totalCents = toCurrencyCents(shippingTo3plPerUnit);
+  const roundedEquationDiffCents = Math.abs((d2dCents + customsCents + orderFixedCents) - totalCents);
+  const equationMatchesRaw = rawEquationDiff <= 0.0005;
+  const equationMatchesRounded = roundedEquationDiffCents === 0;
+  const equationMatches = equationMatchesRaw && equationMatchesRounded;
 
   const section = document.createElement("section");
   section.className = "shipping-dashboard shipping-modal-dashboard";
@@ -10754,6 +10902,9 @@ function createShippingDashboardModalContent(metrics) {
 
   const bridge = document.createElement("section");
   bridge.className = "shipping-bridge";
+  bridge.dataset.shippingBridgeCheck = equationMatches ? "pass" : "fail";
+  bridge.dataset.shippingBridgeRawDiff = String(rawEquationDiff);
+  bridge.dataset.shippingBridgeRoundedDiffCents = String(roundedEquationDiffCents);
 
   const bridgeGrid = document.createElement("div");
   bridgeGrid.className = "shipping-bridge-grid";
@@ -10781,6 +10932,21 @@ function createShippingDashboardModalContent(metrics) {
   addBridgeCard("Shipping zu 3PL / Unit", shippingTo3plPerUnit, "(Gesamt)", "tone-total");
   bridge.appendChild(bridgeGrid);
 
+  const checkLine = document.createElement("div");
+  checkLine.className = `shipping-bridge-check ${equationMatches ? "is-pass" : "is-warn"}`;
+  const roundedDeltaText = roundedEquationDiffCents === 0
+    ? "0,00 €"
+    : formatCurrency(roundedEquationDiffCents / 100);
+  checkLine.innerHTML = `
+    <span class="shipping-bridge-badge ${equationMatches ? "pass" : "warn"}">${equationMatches ? "PASS" : "WARN"}</span>
+    <strong>Konsistenzcheck</strong>
+    <small>${formatCurrency(shippingD2dPerUnit)} + ${formatCurrency(customsPerUnit)} + ${formatCurrency(orderFixedPerUnit)} = ${formatCurrency(shippingTo3plPerUnit)} · Δ(gerundet): ${roundedDeltaText}</small>
+  `;
+  checkLine.title = equationMatches
+    ? "Prüfung ok: Rohwerte und gerundete Anzeige sind konsistent."
+    : `Prüfung auffällig: Roh-Differenz ${formatCurrency(rawEquationDiff)}, gerundet ${roundedDeltaText}.`;
+  bridge.appendChild(checkLine);
+
   const equationLine = document.createElement("p");
   equationLine.className = `shipping-bridge-formula ${equationMatches ? "is-consistent" : "is-warning"}`;
   equationLine.innerHTML =
@@ -10796,6 +10962,16 @@ function createShippingDashboardModalContent(metrics) {
     `<strong>${formatCurrency(importSurchargesTotalPo)}</strong> (Import-Aufschläge) = ` +
     `<strong>${formatCurrency(shippingTo3plTotalPo)}</strong> (Shipping zu 3PL)`;
   bridge.appendChild(poLine);
+  if (!equationMatches) {
+    console.warn("Shipping bridge consistency check failed", {
+      shippingD2dPerUnit,
+      customsPerUnit,
+      orderFixedPerUnit,
+      shippingTo3plPerUnit,
+      rawEquationDiff,
+      roundedEquationDiffCents,
+    });
+  }
   section.appendChild(bridge);
 
   if (metrics.shipping.oversizeFlag) {
