@@ -29,6 +29,11 @@ const STAGE_LABELS = {
   validation: "Validation",
   deep_dive: "Deep-Dive",
 };
+const STAGE_NEXT_STEP_TEXT = {
+  quick: "Nächster Schritt: 5 Kostenblöcke prüfen, dann Validation aktivieren.",
+  validation: "Nächster Schritt: Offene Restkosten schließen, bis die Zielabdeckung erreicht ist.",
+  deep_dive: "Nächster Schritt: Kritische Treiber im Detail absichern.",
+};
 const STAGE_VISIBILITY = {
   quick: { topN: 10 },
   validation: { topN: 20 },
@@ -1029,6 +1034,31 @@ const COST_METRIC_TOOLTIPS = {
   "returns.return_cost_per_return": "Gesamtkosten pro Retoure = Warenwertverlust pro Retoure + Handling je Retoure.",
 };
 
+const UI_HELP_TEXT = {
+  "ui.decision_bar":
+    "Decision-Bar: Kompakter KPI-Block für die schnelle Go/Watch/No-Go Entscheidung. Details bleiben optional.",
+  "ui.basic_flow":
+    "Basic-Flow: QuickCheck für den Erstcheck, danach Validation für die strukturierte Restkostenprüfung.",
+  "ui.quick_workflow":
+    "QuickCheck fokussiert auf 5 Kernkostenblöcke. Ziel: schnell erkennen, ob die Idee grundsätzlich tragfähig ist.",
+  "ui.validation_workflow":
+    "Validation schließt die größten Restkostenblöcke bis zur Zielabdeckung (Standard 95%).",
+  "ui.market_absatz":
+    "Markt & Absatz legt den Nachfrage- und Preisrahmen fest und bestimmt direkt Umsatz, Marge und ROI.",
+  "ui.product_shipping":
+    "Produkt- und Versandparameter steuern Kartonisierung, Shipping und 3PL-Anteile je Unit.",
+  "ui.purchase_launch":
+    "Einkauf, Amazon und Launch definieren EXW, Gebühren sowie Budgeteffekte auf Gewinn und Payback.",
+};
+
+const QUICK_BLOCK_SUMMARY = {
+  exw: "enthält: Einkauf + FX-Umrechnung.",
+  shipping_to_3pl: "enthält: D2D-Shipping + Zoll + Orderfixkosten.",
+  threepl: "enthält: Receiving, Lagerung, Outbound.",
+  amazon_core: "enthält: Referral, TACoS, FBA Fee.",
+  launch_core: "enthält: Listing, Launch-Budget, Ops.",
+};
+
 const DERIVED_DRIVER_MAP = {
   "derived.shipping.unitsPerOrder": {
     label: "PO-Menge (Stück pro Order)",
@@ -1569,6 +1599,7 @@ const dom = {
   stageValidationBtn: document.getElementById("stageValidationBtn"),
   stageDeepBtn: document.getElementById("stageDeepBtn"),
   stageHint: document.getElementById("stageHint"),
+  stageNextStep: document.getElementById("stageNextStep"),
   stageGateStatus: document.getElementById("stageGateStatus"),
   stageWarning: document.getElementById("stageWarning"),
   quickStagePanel: document.getElementById("quickStagePanel"),
@@ -7044,6 +7075,81 @@ function setTooltip(node, key, fallback = "") {
   }
 }
 
+function helpTextByKey(key) {
+  if (!key) {
+    return "";
+  }
+  if (UI_HELP_TEXT[key]) {
+    return UI_HELP_TEXT[key];
+  }
+  if (COST_METRIC_TOOLTIPS[key]) {
+    return COST_METRIC_TOOLTIPS[key];
+  }
+  if (KPI_HELP[key]) {
+    return KPI_HELP[key];
+  }
+  if (FIELD_HELP[key]) {
+    return FIELD_HELP[key];
+  }
+  if (SETTINGS_HELP[key]) {
+    return SETTINGS_HELP[key];
+  }
+  return "";
+}
+
+function closeInlineHelpNotes(keepTrigger = null) {
+  document.querySelectorAll(".inline-help-note").forEach((node) => {
+    if (!(node instanceof HTMLElement)) {
+      return;
+    }
+    if (keepTrigger && node.dataset.helpOwner && node.dataset.helpOwner === keepTrigger.dataset.helpOwner) {
+      return;
+    }
+    node.remove();
+  });
+  document.querySelectorAll(".info-trigger[aria-expanded='true']").forEach((node) => {
+    if (!(node instanceof HTMLElement)) {
+      return;
+    }
+    if (keepTrigger && node === keepTrigger) {
+      return;
+    }
+    node.setAttribute("aria-expanded", "false");
+  });
+}
+
+function toggleInlineHelpNote(trigger) {
+  if (!(trigger instanceof HTMLElement)) {
+    return;
+  }
+  const key = trigger.dataset.helpKey ?? "";
+  const text = helpTextByKey(key);
+  if (!text) {
+    return;
+  }
+  const host = trigger.closest(".help-context");
+  if (!(host instanceof HTMLElement)) {
+    return;
+  }
+  if (!trigger.dataset.helpOwner) {
+    trigger.dataset.helpOwner = uid();
+  }
+  const owner = trigger.dataset.helpOwner;
+  const existing = host.querySelector(`.inline-help-note[data-help-owner="${owner}"]`);
+  if (existing instanceof HTMLElement) {
+    existing.remove();
+    trigger.setAttribute("aria-expanded", "false");
+    return;
+  }
+  closeInlineHelpNotes(trigger);
+  const note = document.createElement("p");
+  note.className = "inline-help-note";
+  note.dataset.helpOwner = owner;
+  note.textContent = text;
+  host.appendChild(note);
+  trigger.setAttribute("aria-expanded", "true");
+}
+
 function classifyImpact(impactMonthly, totalCostMonthly) {
   const impact = Math.max(0, num(impactMonthly, 0));
   const base = Math.max(0.0001, num(totalCostMonthly, 0));
@@ -11034,12 +11140,24 @@ function renderQuickCostWorkflow(metrics) {
       perUnitNode.textContent = `${formatCurrency(perUnitValue)} / Unit`;
     }
   };
+  const setQuickSubline = (blockKey) => {
+    const node = document.querySelector(`[data-quick-subline="${blockKey}"]`);
+    if (!(node instanceof HTMLElement)) {
+      return;
+    }
+    node.textContent = QUICK_BLOCK_SUMMARY[blockKey] ?? "";
+  };
 
   setQuickBlock(dom.quickBlockExwPerUnit, metrics.quickBlockExwPerUnit);
   setQuickBlock(dom.quickBlockShippingTo3plPerUnit, metrics.quickBlockShippingTo3plPerUnit);
   setQuickBlock(dom.quickBlockThreePlPerUnit, metrics.quickBlockThreePlPerUnit);
   setQuickBlock(dom.quickBlockAmazonCorePerUnit, metrics.quickBlockAmazonCorePerUnit);
   setQuickBlock(dom.quickBlockLaunchCorePerUnit, metrics.quickBlockLaunchCorePerUnit);
+  setQuickSubline("exw");
+  setQuickSubline("shipping_to_3pl");
+  setQuickSubline("threepl");
+  setQuickSubline("amazon_core");
+  setQuickSubline("launch_core");
 
   setTooltip(document.querySelector('[data-quick-block="exw"]'), "quick.exw");
   setTooltip(document.querySelector('[data-quick-block="shipping_to_3pl"]'), "quick.shipping_to_3pl");
@@ -11934,6 +12052,13 @@ function renderStagePanel(product, metrics) {
     dom.stageHint.textContent = stageState.hint;
   }
 
+  if (dom.stageNextStep) {
+    const stepText = STAGE_NEXT_STEP_TEXT[stageState.stage] ?? STAGE_NEXT_STEP_TEXT.quick;
+    dom.stageNextStep.textContent = stepText;
+    dom.stageNextStep.classList.toggle("validation", stageState.stage === "validation");
+    dom.stageNextStep.classList.toggle("quick", stageState.stage !== "validation");
+  }
+
   if (dom.stageGateStatus) {
     dom.stageGateStatus.classList.remove("pass", "warn", "fail");
     dom.stageGateStatus.classList.add(stageState.statusClass);
@@ -12746,6 +12871,17 @@ function applyMouseoverHelp() {
     dom.cartonPresetSelect.title = "Wählt ein Amazon-Kartonprofil als Basis für die Auto-Kartonisierung.";
   }
 
+  document.querySelectorAll("[data-help-key]").forEach((trigger) => {
+    if (!(trigger instanceof HTMLElement)) {
+      return;
+    }
+    const text = helpTextByKey(trigger.dataset.helpKey ?? "");
+    if (!text) {
+      return;
+    }
+    trigger.title = text;
+  });
+
   const inputs = document.querySelectorAll("[data-path]");
   inputs.forEach((input) => {
     const path = input.dataset.path;
@@ -12886,6 +13022,23 @@ function bindEvents() {
       void trackPresenceField(activeFieldKey);
       maybeApplyDeferredRemotePull();
     }, 0);
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const helpTrigger = target.closest(".info-trigger[data-help-key]");
+    if (helpTrigger instanceof HTMLElement) {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleInlineHelpNote(helpTrigger);
+      return;
+    }
+    if (!target.closest(".help-context")) {
+      closeInlineHelpNotes();
+    }
   });
 
   document.addEventListener("input", (event) => {
@@ -13199,7 +13352,11 @@ function bindEvents() {
     });
   }
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && state.ui.driverModal) {
+    if (event.key !== "Escape") {
+      return;
+    }
+    closeInlineHelpNotes();
+    if (state.ui.driverModal) {
       closeDriverModal();
     }
   });
