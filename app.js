@@ -9866,6 +9866,16 @@ function updateValidationCheckedBlock(product, blockId, checked) {
 }
 
 function renderValidationWorkflow(metrics, product) {
+  const isValidation = getProductStage(product) === "validation";
+  if (dom.validationStagePanel) {
+    dom.validationStagePanel.classList.toggle("hidden", !isValidation);
+  }
+  if (!isValidation) {
+    if (dom.validationBlockGrid) {
+      dom.validationBlockGrid.innerHTML = "";
+    }
+    return;
+  }
   if (!dom.validationBlockGrid) {
     return;
   }
@@ -10062,11 +10072,28 @@ function renderValidationSandboxCompare(baselineMetrics, sandboxMetrics) {
   dom.validationCompareGrid.innerHTML = "";
   const rows = [
     {
+      label: "Sellerboard-Marge",
+      base: baselineMetrics.sellerboardMarginPct,
+      next: sandboxMetrics.sellerboardMarginPct,
+      format: "percent",
+      suffix: "",
+      deltaPositiveIsGood: true,
+    },
+    {
+      label: "Deckungsbeitrag pro Stück",
+      base: baselineMetrics.db1Unit,
+      next: sandboxMetrics.db1Unit,
+      format: "currency",
+      suffix: "/ Unit",
+      deltaPositiveIsGood: true,
+    },
+    {
       label: "Gesamtkosten",
       base: baselineMetrics.totalCostPerUnit,
       next: sandboxMetrics.totalCostPerUnit,
       format: "currency",
       suffix: "/ Unit",
+      deltaPositiveIsGood: false,
     },
     {
       label: "Shipping D2D",
@@ -10074,6 +10101,7 @@ function renderValidationSandboxCompare(baselineMetrics, sandboxMetrics) {
       next: sandboxMetrics.shippingUnit,
       format: "currency",
       suffix: "/ Unit",
+      deltaPositiveIsGood: false,
     },
     {
       label: "Amazon Core",
@@ -10081,6 +10109,7 @@ function renderValidationSandboxCompare(baselineMetrics, sandboxMetrics) {
       next: sandboxMetrics.quickBlockAmazonCorePerUnit,
       format: "currency",
       suffix: "/ Unit",
+      deltaPositiveIsGood: false,
     },
     {
       label: "Gewinn netto",
@@ -10088,20 +10117,14 @@ function renderValidationSandboxCompare(baselineMetrics, sandboxMetrics) {
       next: sandboxMetrics.profitMonthly,
       format: "currency",
       suffix: "/ Monat",
-    },
-    {
-      label: "Validation-Abdeckung",
-      base: baselineMetrics.validationCoveragePct,
-      next: sandboxMetrics.validationCoveragePct,
-      format: "percent",
-      suffix: "",
+      deltaPositiveIsGood: true,
     },
   ];
   rows.forEach((row) => {
     const card = document.createElement("article");
     card.className = "validation-compare-card";
     const delta = num(row.next, 0) - num(row.base, 0);
-    const deltaPositiveIsGood = row.label !== "Gesamtkosten" && row.label !== "Shipping D2D" && row.label !== "Amazon Core";
+    const deltaPositiveIsGood = row.deltaPositiveIsGood !== false;
     const tone = Math.abs(delta) < 0.0001
       ? "neutral"
       : (deltaPositiveIsGood ? (delta > 0 ? "up-good" : "down-bad") : (delta < 0 ? "up-good" : "down-bad"));
@@ -10541,7 +10564,11 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
   setKpi(dom.kpiPayback, metrics.paybackMonths, "months");
 
   renderQuickCostWorkflow(metrics);
-  renderValidationWorkflow(metrics, product);
+  if (stage === "validation") {
+    renderValidationWorkflow(metrics, product);
+  } else if (dom.validationStagePanel) {
+    dom.validationStagePanel.classList.add("hidden");
+  }
   if (dom.kpiNetMargin) {
     dom.kpiNetMargin.classList.remove("margin-good", "margin-mid", "margin-low");
     if (metrics.netMarginPct > 20) {
@@ -10666,14 +10693,14 @@ function renderDecisionBar(stage) {
   if (isQuick) {
     state.ui.quickShowAllKpis = false;
   }
-  const showSecondary = !isQuick;
+  const showSecondary = !isQuick && Boolean(state.ui.quickShowAllKpis);
   if (dom.decisionSecondaryWrap) {
     dom.decisionSecondaryWrap.classList.toggle("hidden", !showSecondary);
   }
   if (dom.toggleAllKpisBtn) {
-    dom.toggleAllKpisBtn.classList.add("hidden");
-    dom.toggleAllKpisBtn.textContent = "Alle KPIs anzeigen";
-    dom.toggleAllKpisBtn.setAttribute("aria-expanded", "false");
+    dom.toggleAllKpisBtn.classList.toggle("hidden", isQuick);
+    dom.toggleAllKpisBtn.textContent = showSecondary ? "Weitere KPIs einklappen" : "Weitere KPIs ausklappen";
+    dom.toggleAllKpisBtn.setAttribute("aria-expanded", showSecondary ? "true" : "false");
   }
 }
 
@@ -11418,7 +11445,11 @@ function applyMouseoverHelp() {
     dom.stageDeepBtn.title = "Deep-Dive ist aktuell deaktiviert.";
   }
   if (dom.toggleAllKpisBtn) {
-    dom.toggleAllKpisBtn.title = "Im QuickCheck ausgeblendet.";
+    const selected = getSelectedProduct();
+    const isValidation = selected ? getProductStage(selected) === "validation" : false;
+    dom.toggleAllKpisBtn.title = isValidation
+      ? "Zeigt zusätzliche KPIs in der Decision-Bar."
+      : "Im QuickCheck ausgeblendet.";
   }
   if (dom.compareSort) {
     dom.compareSort.title = "Sortiert die Vergleichstabelle nach dem gewählten KPI.";
