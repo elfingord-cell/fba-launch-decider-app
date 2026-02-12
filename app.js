@@ -1475,6 +1475,9 @@ const VALUE_TO_OVERRIDE_MAP = new Map(
   OVERRIDE_CONTROL_MAP.map(([overridePath, valuePath]) => [valuePath, overridePath]),
 );
 
+const AMAZON_FBA_MANUAL_OVERRIDE_PATH = "assumptions.amazon.useManualFbaFee";
+const AMAZON_FBA_MANUAL_FEE_PATH = "assumptions.amazon.manualFbaFee";
+
 const EXTRA_COST_TO_SETTING_PATH = {
   "assumptions.extraCosts.packagingPerUnitEur": "settings.costDefaults.packagingPerUnitEur",
   "assumptions.extraCosts.otherUnitCostEur": "settings.costDefaults.otherUnitCostEur",
@@ -1676,6 +1679,8 @@ const dom = {
   fbaInfoFeeUnit: document.getElementById("fbaInfoFeeUnit"),
   fbaInfoProfile: document.getElementById("fbaInfoProfile"),
   fbaInfoTier: document.getElementById("fbaInfoTier"),
+  fbaInfoTableFee: document.getElementById("fbaInfoTableFee"),
+  fbaInfoTableFeeMeta: document.getElementById("fbaInfoTableFeeMeta"),
   fbaInfoShippingWeight: document.getElementById("fbaInfoShippingWeight"),
   fbaInfoWeightBreakdown: document.getElementById("fbaInfoWeightBreakdown"),
   fbaInfoSource: document.getElementById("fbaInfoSource"),
@@ -6413,6 +6418,11 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const landedUnit = landedBeforeDuty + customsUnit;
 
   const fba = estimateFbaFee(product, resolved, effectiveSettings);
+  const fbaRateCardReference = estimateFbaFee(
+    product,
+    { ...resolved, useManualFbaFee: false },
+    effectiveSettings,
+  );
 
   const launchProfileWeeks = clamp(num(resolved.launchProfile.weeks, 6), 1, 24);
   const launchMonthsFromProfile = Math.min(horizonMonths, Math.max(launchProfileWeeks / 4.345, 0.25));
@@ -6588,6 +6598,10 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     fbaTierKey: fba.tierKey,
     fbaTierLabel: fba.tierLabel,
     fbaFeeSource: fba.source,
+    fbaRateCardFeeUnit: fbaRateCardReference.source === "auto" ? fbaRateCardReference.fee : null,
+    fbaRateCardTierLabel: fbaRateCardReference.source === "auto" ? fbaRateCardReference.tierLabel : "",
+    fbaRateCardSource: fbaRateCardReference.source,
+    fbaRateCardFallbackReason: fbaRateCardReference.fallbackReason,
     fbaRateCardVersion: fba.rateCardVersion,
     fbaRateCardUrl: fba.rateCardUrl,
     fbaProfile: fba.profile,
@@ -8422,6 +8436,117 @@ function appendModalBadges(container, badgeItems) {
   }
 }
 
+function mergeModalBadgeItems(...badgeLists) {
+  const merged = new Map();
+  badgeLists.flat().forEach((item) => {
+    if (!item || !item.label) {
+      return;
+    }
+    const key = `${item.tone}|${item.label}`;
+    if (!merged.has(key)) {
+      merged.set(key, item);
+    }
+  });
+  return [...merged.values()];
+}
+
+function buildAmazonFbaOverrideModalField(selected, metrics, diagnostics) {
+  if (!selected) {
+    return null;
+  }
+
+  const manualEnabled = Boolean(getByPath(selected, AMAZON_FBA_MANUAL_OVERRIDE_PATH));
+  const manualValue = num(getByPath(selected, AMAZON_FBA_MANUAL_FEE_PATH), 0);
+  const rateCardReference = fbaRateCardReferenceSnapshot(metrics);
+
+  const field = document.createElement("article");
+  field.className = "modal-field modal-field-wide";
+
+  const head = document.createElement("div");
+  head.className = "modal-field-head";
+  const strong = document.createElement("strong");
+  strong.textContent = "FBA Fee Override (statt Auto-Tier)";
+  head.appendChild(strong);
+  field.appendChild(head);
+
+  appendModalBadges(
+    field,
+    mergeModalBadgeItems(
+      buildDriverFieldBadges(AMAZON_FBA_MANUAL_OVERRIDE_PATH, selected, diagnostics, metrics),
+      buildDriverFieldBadges(AMAZON_FBA_MANUAL_FEE_PATH, selected, diagnostics, metrics),
+    ),
+  );
+
+  const baseInfo = document.createElement("small");
+  baseInfo.textContent = `Berechneter Tabellenpreis (DE Ratecard): ${rateCardReference.detailText}.`;
+  field.appendChild(baseInfo);
+
+  if (!rateCardReference.available && rateCardReference.metaText) {
+    const baseMeta = document.createElement("small");
+    baseMeta.textContent = rateCardReference.metaText;
+    field.appendChild(baseMeta);
+  }
+
+  const toggleWrap = document.createElement("label");
+  toggleWrap.className = "toggle-row";
+  const toggle = document.createElement("input");
+  toggle.type = "checkbox";
+  toggle.checked = manualEnabled;
+  toggle.addEventListener("change", () => {
+    updateSelectedField(AMAZON_FBA_MANUAL_OVERRIDE_PATH, toggle.checked);
+    markReviewOverriddenFromModal(selected);
+    refreshAfterModalInput();
+  });
+  const toggleText = document.createElement("span");
+  toggleText.textContent = "Override aktivieren (manueller FBA-Wert)";
+  toggleWrap.append(toggle, toggleText);
+  field.appendChild(toggleWrap);
+
+  const sourceControl = getFieldControl(AMAZON_FBA_MANUAL_FEE_PATH);
+  let manualInput = cloneControlForModal(sourceControl, { path: AMAZON_FBA_MANUAL_FEE_PATH });
+  if (!(manualInput instanceof HTMLInputElement)) {
+    manualInput = document.createElement("input");
+    manualInput.type = "number";
+  }
+  manualInput.type = "number";
+  if (!manualInput.min) {
+    manualInput.min = "0";
+  }
+  if (!manualInput.step) {
+    manualInput.step = "0.01";
+  }
+  manualInput.value = getByPath(selected, AMAZON_FBA_MANUAL_FEE_PATH) ?? "";
+  manualInput.disabled = !manualEnabled;
+  manualInput.addEventListener("change", () => {
+    updateSelectedField(AMAZON_FBA_MANUAL_FEE_PATH, manualInput.value);
+    markReviewOverriddenFromModal(selected);
+    refreshAfterModalInput();
+  });
+
+  const manualFeeWrap = document.createElement("label");
+  manualFeeWrap.textContent = "Manuelle FBA Fee / Einheit (EUR)";
+  manualFeeWrap.appendChild(manualInput);
+  field.appendChild(manualFeeWrap);
+
+  const status = document.createElement("small");
+  if (manualEnabled) {
+    status.textContent = rateCardReference.available
+      ? `Aktiv: Override ${formatCurrency(manualValue)} (Auto-Tier wäre ${rateCardReference.detailText}).`
+      : `Aktiv: Override ${formatCurrency(manualValue)}.`;
+  } else {
+    status.textContent = rateCardReference.available
+      ? `Aktiv: Auto-Tier ${formatCurrency(metrics.fbaFeeUnit)} (Tabellenpreis).`
+      : `Aktiv: ${formatCurrency(metrics.fbaFeeUnit)}.`;
+  }
+  field.appendChild(status);
+
+  const help = document.createElement("small");
+  help.textContent = "Standard ist Auto-Tier aus der DE-Ratecard. Mit Override nutzt die Kalkulation den manuellen FBA-Wert.";
+  field.appendChild(help);
+
+  return field;
+}
+
 function renderDriverModal() {
   if (!dom.driverModal || !dom.driverModalFields || !dom.driverModalTitle || !dom.driverModalSubtitle) {
     return;
@@ -8596,6 +8721,7 @@ function renderDriverModal() {
     shippingSettings.sort((a, b) => shippingDefaultPathOrderRank(a) - shippingDefaultPathOrderRank(b));
     orderedPaths = [...nonShippingSettings, ...shippingSettings];
   }
+  let amazonFbaOverrideRendered = false;
   orderedPaths.forEach((path) => {
     const baseGroupKey = modalGroupForPath(path);
     const groupFields = ensureGroupFields(baseGroupKey);
@@ -8608,6 +8734,20 @@ function renderDriverModal() {
       if (subgroupKey && shippingDefaultGroupNodes.has(subgroupKey)) {
         targetFields = shippingDefaultGroupNodes.get(subgroupKey).fields;
       }
+    }
+
+    const isAmazonFbaManualPath =
+      path === AMAZON_FBA_MANUAL_OVERRIDE_PATH || path === AMAZON_FBA_MANUAL_FEE_PATH;
+    if (isAmazonFbaManualPath) {
+      if (amazonFbaOverrideRendered) {
+        return;
+      }
+      const fbaField = buildAmazonFbaOverrideModalField(selected, modalMetrics, modalDiagnostics);
+      if (fbaField) {
+        targetFields.appendChild(fbaField);
+      }
+      amazonFbaOverrideRendered = true;
+      return;
     }
 
     if (path.startsWith("derived.")) {
@@ -9721,10 +9861,47 @@ function fbaFeeSourceLabel(source) {
   }
 }
 
+function fbaRateCardReferenceSnapshot(metrics) {
+  const fee = num(metrics?.fbaRateCardFeeUnit, NaN);
+  const tierLabel = String(metrics?.fbaRateCardTierLabel ?? "").trim();
+  if (Number.isFinite(fee) && fee >= 0) {
+    const value = formatCurrency(fee);
+    return {
+      available: true,
+      valueText: value,
+      detailText: tierLabel ? `${value} (${tierLabel})` : value,
+      metaText: tierLabel ? `Auto-Tier: ${tierLabel}` : "Auto-Tier (DE Ratecard)",
+    };
+  }
+  if (metrics?.fbaRateCardSource === "fallback_non_de") {
+    return {
+      available: false,
+      valueText: "n/a",
+      detailText: "n/a (nur Amazon.de)",
+      metaText: "Für Nicht-DE aktuell ohne Tabellenpreis.",
+    };
+  }
+  if (metrics?.fbaRateCardSource === "fallback_no_tier") {
+    return {
+      available: false,
+      valueText: "n/a",
+      detailText: "n/a (kein Tier-Match)",
+      metaText: metrics?.fbaRateCardFallbackReason || "Kein passendes DE-Tier für Maße/Gewicht.",
+    };
+  }
+  return {
+    available: false,
+    valueText: "-",
+    detailText: "-",
+    metaText: "",
+  };
+}
+
 function renderFbaDetails(metrics) {
   if (!dom.fbaInfoCard) {
     return;
   }
+  const rateCardReference = fbaRateCardReferenceSnapshot(metrics);
   if (dom.fbaInfoFeeUnit) {
     dom.fbaInfoFeeUnit.textContent = formatCurrency(metrics.fbaFeeUnit);
     setTooltip(dom.fbaInfoFeeUnit, "amazon.fba_unit");
@@ -9736,6 +9913,15 @@ function renderFbaDetails(metrics) {
   if (dom.fbaInfoTier) {
     dom.fbaInfoTier.textContent = metrics.fbaTierLabel || "-";
     setTooltip(dom.fbaInfoTier, "amazon.fba_tier");
+  }
+  if (dom.fbaInfoTableFee) {
+    dom.fbaInfoTableFee.textContent = rateCardReference.valueText;
+    setTooltip(dom.fbaInfoTableFee, "amazon.fba_unit");
+  }
+  if (dom.fbaInfoTableFeeMeta) {
+    dom.fbaInfoTableFeeMeta.textContent = rateCardReference.metaText || "";
+    dom.fbaInfoTableFeeMeta.classList.toggle("hidden", !rateCardReference.metaText);
+    setTooltip(dom.fbaInfoTableFeeMeta, "amazon.fba_source");
   }
   if (dom.fbaInfoShippingWeight) {
     dom.fbaInfoShippingWeight.textContent = `${formatNumber(metrics.fbaShippingWeightG)} g`;
@@ -9793,6 +9979,7 @@ function renderFbaDetails(metrics) {
 function createAmazonCoreModalContent(metrics) {
   const section = document.createElement("section");
   section.className = "amazon-core-modal";
+  const rateCardReference = fbaRateCardReferenceSnapshot(metrics);
 
   const head = document.createElement("div");
   head.className = "shipping-dashboard-head";
@@ -9832,7 +10019,7 @@ function createAmazonCoreModalContent(metrics) {
   };
   addCard("Referral", metrics.referralFeeUnit, "Brutto-Preis × Referral-%", "referral", "amazon.referral_unit");
   addCard("TACoS", metrics.adsUnit, "Brutto-Preis × TACoS-%", "ads", "amazon.tacos_unit");
-  addCard("FBA Fulfillment", metrics.fbaFeeUnit, "Auto-Tier oder manueller Fallback", "fba", "amazon.fba_unit");
+  addCard("FBA Fulfillment", metrics.fbaFeeUnit, "Auto-Tier (DE Ratecard) oder manueller Override/Fallback", "fba", "amazon.fba_unit");
   section.appendChild(cards);
 
   const fbaPanel = document.createElement("article");
@@ -9850,6 +10037,7 @@ function createAmazonCoreModalContent(metrics) {
   const detailRows = [
     { label: "Profil", value: metrics.fbaProfileLabel ?? fbaProfileLabel(metrics.fbaProfile), tooltipKey: "amazon.fba_profile" },
     { label: "Tier", value: metrics.fbaTierLabel || "-", tooltipKey: "amazon.fba_tier" },
+    { label: "Preis laut Tabelle", value: rateCardReference.detailText, tooltipKey: "amazon.fba_unit" },
     { label: "Versandgewicht", value: `${formatNumber(metrics.fbaShippingWeightG)} g`, tooltipKey: "amazon.fba_shipping_weight" },
     {
       label: "Gewichtslogik",
@@ -9884,7 +10072,9 @@ function createAmazonCoreModalContent(metrics) {
   } else if (metrics.fbaFeeSource === "manual") {
     const manual = document.createElement("p");
     manual.className = "hint";
-    manual.textContent = "Manueller FBA-Override ist aktiv.";
+    manual.textContent = rateCardReference.available
+      ? `Manueller FBA-Override ist aktiv (${formatCurrency(metrics.fbaFeeUnit)} statt Tabellenpreis ${rateCardReference.detailText}).`
+      : `Manueller FBA-Override ist aktiv (${formatCurrency(metrics.fbaFeeUnit)}).`;
     fbaPanel.appendChild(manual);
   }
 

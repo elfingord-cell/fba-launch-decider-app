@@ -2833,6 +2833,10 @@ tbody tr:hover {
   gap: 6px;
 }
 
+.modal-field-wide {
+  grid-column: 1 / -1;
+}
+
 .modal-field-head {
   display: flex;
   justify-content: space-between;
