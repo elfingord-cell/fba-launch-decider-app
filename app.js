@@ -23,6 +23,7 @@ const MARKETPLACE_VAT = {
 };
 
 const WORKFLOW_STAGES = ["quick", "validation", "deep_dive"];
+const WORKFLOW_VISIBLE_STAGES = ["quick", "validation"];
 const STAGE_LABELS = {
   quick: "QuickCheck",
   validation: "Validation",
@@ -33,6 +34,17 @@ const STAGE_VISIBILITY = {
   validation: { topN: 20 },
   deep_dive: { topN: Number.POSITIVE_INFINITY },
 };
+const VALIDATION_COVERAGE_TARGET_DEFAULT = 95;
+const VALIDATION_PLAYGROUND_PATHS = [
+  "basic.netWeightG",
+  "basic.packLengthCm",
+  "basic.packWidthCm",
+  "basic.packHeightCm",
+  "assumptions.ads.tacosRate",
+  "assumptions.returns.returnRate",
+  "basic.horizonMonths",
+  "basic.listingPackage",
+];
 
 const CHAIN_STAGE_ORDER = [
   "supplier",
@@ -1085,6 +1097,30 @@ const DERIVED_DRIVER_MAP = {
     format: "currency",
     read: (metrics) => metrics.quickResidualTop3PerUnit,
   },
+  "derived.validation.coveragePct": {
+    label: "Validation-Abdeckung (%)",
+    help: "Abdeckungsgrad der validierten Blöcke an den Gesamtkosten je Unit.",
+    format: "percent",
+    read: (metrics) => metrics.validationCoveragePct,
+  },
+  "derived.validation.coveredPerUnit": {
+    label: "Validation abgedeckt (EUR/Unit)",
+    help: "Summe der in Validation abgedeckten Kosten je Unit.",
+    format: "currency",
+    read: (metrics) => metrics.validationCoveredPerUnit,
+  },
+  "derived.validation.residualPerUnit": {
+    label: "Validation offen (EUR/Unit)",
+    help: "Noch nicht validierte Restkosten je Unit.",
+    format: "currency",
+    read: (metrics) => metrics.validationResidualPerUnit,
+  },
+  "derived.validation.targetPct": {
+    label: "Validation Zielabdeckung (%)",
+    help: "Konfiguriertes Ziel für die Validation-Abdeckung.",
+    format: "percent",
+    read: (metrics) => metrics.validationCoverageTargetPct,
+  },
   "derived.threepl.palletsCount": {
     label: "Anzahl Paletten",
     help: "Paletten = ceil(PO Units / units_per_pallet).",
@@ -1312,6 +1348,11 @@ const state = {
     driverModal: null,
     costCategoryExpanded: {},
     chainExpanded: {},
+    validationSandboxDraft: null,
+    validationSandboxActive: false,
+    validationSandboxProductId: null,
+    validationBaselineMetrics: null,
+    validationSandboxMetrics: null,
   },
 };
 
@@ -1329,7 +1370,10 @@ const dom = {
   stageGateStatus: document.getElementById("stageGateStatus"),
   stageWarning: document.getElementById("stageWarning"),
   quickStagePanel: document.getElementById("quickStagePanel"),
+  validationStagePanel: document.getElementById("validationStagePanel"),
+  validationPlaygroundPanel: document.getElementById("validationPlaygroundPanel"),
   quickCostWorkflowGrid: document.getElementById("quickCostWorkflowGrid"),
+  validationBlockGrid: document.getElementById("validationBlockGrid"),
   quickBlockExwPerUnit: document.getElementById("quickBlockExwPerUnit"),
   quickBlockShippingTo3plPerUnit: document.getElementById("quickBlockShippingTo3plPerUnit"),
   quickBlockThreePlPerUnit: document.getElementById("quickBlockThreePlPerUnit"),
@@ -1342,12 +1386,17 @@ const dom = {
   quickCoreResidualCost: document.getElementById("quickCoreResidualCost"),
   quickCoverageStatus: document.getElementById("quickCoverageStatus"),
   quickResidualTopList: document.getElementById("quickResidualTopList"),
-  validationReviewPanel: document.getElementById("validationReviewPanel"),
-  validationReviewStatus: document.getElementById("validationReviewStatus"),
-  validationReviewList: document.getElementById("validationReviewList"),
-  deepDiveReviewPanel: document.getElementById("deepDiveReviewPanel"),
-  deepDiveReviewStatus: document.getElementById("deepDiveReviewStatus"),
-  deepDiveReviewList: document.getElementById("deepDiveReviewList"),
+  validationCoverageCard: document.getElementById("validationCoverageCard"),
+  validationCoveragePct: document.getElementById("validationCoveragePct"),
+  validationCoverageTarget: document.getElementById("validationCoverageTarget"),
+  validationCoveredCost: document.getElementById("validationCoveredCost"),
+  validationResidualCost: document.getElementById("validationResidualCost"),
+  validationCoverageStatus: document.getElementById("validationCoverageStatus"),
+  validationOpenTopList: document.getElementById("validationOpenTopList"),
+  validationCompareGrid: document.getElementById("validationCompareGrid"),
+  validationApplyBtn: document.getElementById("validationApplyBtn"),
+  validationDiscardBtn: document.getElementById("validationDiscardBtn"),
+  validationResetBtn: document.getElementById("validationResetBtn"),
   toggleAllKpisBtn: document.getElementById("toggleAllKpisBtn"),
   decisionSecondaryWrap: document.getElementById("decisionSecondaryWrap"),
   advancedToggleWrap: document.getElementById("advancedToggleWrap"),
@@ -1748,6 +1797,11 @@ function defaultProduct(index = 1) {
     name: `Produkt ${index}`,
     workflow: {
       stage: "quick",
+      validation: {
+        checkedBlockIds: [],
+        coverageTargetPct: VALIDATION_COVERAGE_TARGET_DEFAULT,
+        lastAppliedAt: null,
+      },
       review: {
         validation: {},
         deep_dive: {},
@@ -2378,6 +2432,10 @@ function migrateProduct(raw, index) {
     workflow: {
       ...base.workflow,
       ...(raw.workflow ?? {}),
+      validation: {
+        ...(base.workflow.validation ?? {}),
+        ...(raw.workflow?.validation ?? {}),
+      },
       review: {
         ...(base.workflow.review ?? {}),
         ...(raw.workflow?.review ?? {}),
@@ -2463,8 +2521,29 @@ function migrateProduct(raw, index) {
   merged.basic.horizonMonths = clamp(roundInt(merged.basic.horizonMonths, base.basic.horizonMonths), 1, 36);
   merged.basic.unitsPerOrder = Math.max(1, roundInt(merged.basic.unitsPerOrder, base.basic.unitsPerOrder));
   merged.basic.netWeightG = Math.max(0, num(merged.basic.netWeightG, base.basic.netWeightG));
+  if (!merged.workflow.validation || typeof merged.workflow.validation !== "object") {
+    merged.workflow.validation = { ...base.workflow.validation };
+  }
+  if (!Array.isArray(merged.workflow.validation.checkedBlockIds)) {
+    merged.workflow.validation.checkedBlockIds = [];
+  }
+  merged.workflow.validation.checkedBlockIds = [...new Set(
+    merged.workflow.validation.checkedBlockIds
+      .map((entry) => String(entry ?? "").trim())
+      .filter(Boolean),
+  )];
+  merged.workflow.validation.coverageTargetPct = clamp(
+    num(merged.workflow.validation.coverageTargetPct, VALIDATION_COVERAGE_TARGET_DEFAULT),
+    80,
+    99,
+  );
+  merged.workflow.validation.lastAppliedAt =
+    merged.workflow.validation.lastAppliedAt ? String(merged.workflow.validation.lastAppliedAt) : null;
   if (!WORKFLOW_STAGES.includes(merged.workflow.stage)) {
     merged.workflow.stage = "quick";
+  }
+  if (merged.workflow.stage === "deep_dive") {
+    merged.workflow.stage = "validation";
   }
   if (!merged.workflow.review || typeof merged.workflow.review !== "object") {
     merged.workflow.review = { validation: {}, deep_dive: {} };
@@ -5534,7 +5613,10 @@ function unitsMonthlyFromBasic(basic) {
 
 function getProductStage(product) {
   const stage = product?.workflow?.stage;
-  if (WORKFLOW_STAGES.includes(stage)) {
+  if (stage === "deep_dive") {
+    return "validation";
+  }
+  if (WORKFLOW_VISIBLE_STAGES.includes(stage)) {
     return stage;
   }
   return "quick";
@@ -5733,31 +5815,24 @@ function markReviewOverriddenFromModal(product) {
 
 function buildStageState(product, metrics) {
   const stage = getProductStage(product);
-  const deepDive = product.workflow?.deepDive ?? {};
-  const validationReview = getReviewProgress(product, metrics, "validation");
-  const deepDiveReview = getReviewProgress(product, metrics, "deep_dive");
-  const deepChecklistPass =
-    Boolean(deepDive.supplierValidated) &&
-    Boolean(deepDive.complianceChecked) &&
-    Boolean(deepDive.sampleDecisionReady);
-
   const quickReady = metrics.priceGrossTarget > 0 && metrics.monthlyUnits > 0;
-  const validationReady = validationReview.isReady;
-  const deepReady = deepDiveReview.isReady;
+  const validationReady = Boolean(metrics.validationReady);
+  const coveragePct = num(metrics.validationCoveragePct, 0);
+  const coverageTargetPct = clamp(num(metrics.validationCoverageTargetPct, VALIDATION_COVERAGE_TARGET_DEFAULT), 80, 99);
 
   const readinessByStage = {
     quick: quickReady,
     validation: validationReady,
-    deep_dive: deepReady,
+    deep_dive: false,
   };
 
   const hintByStage = {
     quick:
       "QuickCheck: leaner 80/20-Workflow mit fünf Hauptkostenblöcken und transparenter Abdeckungsanzeige.",
     validation:
-      "Validation: Top-20 Treiber prüfen oder überschreiben. Fokus auf die größten Kostentreiber je Lieferkettenstufe.",
+      "Validation: Größte Kostenblöcke bis 95% Abdeckung validieren und Kernannahmen über Sandbox testen.",
     deep_dive:
-      "Deep-Dive: Vollprüfung aller editierbaren kostenrelevanten Treiber.",
+      "Deep-Dive ist aktuell deaktiviert.",
   };
 
   const statusClass = readinessByStage[stage] ? "pass" : (stage === "quick" ? "fail" : "warn");
@@ -5766,20 +5841,15 @@ function buildStageState(product, metrics) {
     statusText = readinessByStage.quick ? "Status: QuickCheck bereit" : "Status: QuickCheck unvollständig";
   } else if (stage === "validation") {
     statusText = validationReady
-      ? `Status: Validation bereit (${validationReview.completed}/${validationReview.total})`
-      : `Status: Validation ${validationReview.completed}/${validationReview.total} erledigt`;
+      ? `Status: Validation bereit (${formatPercent(coveragePct)} von ${formatPercent(coverageTargetPct)})`
+      : `Status: Validation offen (${formatPercent(coveragePct)} von ${formatPercent(coverageTargetPct)})`;
   } else if (stage === "deep_dive") {
-    statusText = deepReady
-      ? `Status: Deep-Dive bereit (${deepDiveReview.completed}/${deepDiveReview.total})`
-      : `Status: Deep-Dive ${deepDiveReview.completed}/${deepDiveReview.total} erledigt`;
+    statusText = "Status: Deep-Dive deaktiviert";
   }
 
   const blockers = [];
   if (stage === "validation" && !validationReady) {
-    blockers.push(`Validation offen: ${validationReview.completed}/${validationReview.total} Top-Treiber erledigt.`);
-  }
-  if (stage === "deep_dive" && !deepReady) {
-    blockers.push(`Deep-Dive offen: ${deepDiveReview.completed}/${deepDiveReview.total} Treiber erledigt.`);
+    blockers.push(`Validation offen: ${formatPercent(coveragePct)} von ${formatPercent(coverageTargetPct)} abgedeckt.`);
   }
 
   const kpiWarnings = [];
@@ -5797,16 +5867,16 @@ function buildStageState(product, metrics) {
     stage,
     quickPass: quickReady,
     validationPass: validationReady,
-    deepPass: deepReady,
-    deepChecklistPass,
+    deepPass: false,
+    deepChecklistPass: false,
     readinessByStage,
     hint: hintByStage[stage],
     statusClass,
     statusText,
     blockers,
     kpiWarnings,
-    validationReview,
-    deepDiveReview,
+    validationReview: { total: 0, completed: 0, isReady: validationReady, items: [] },
+    deepDiveReview: { total: 0, completed: 0, isReady: false, items: [] },
   };
 }
 
@@ -6117,6 +6187,15 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     quickResidualTop1PerUnit: 0,
     quickResidualTop2PerUnit: 0,
     quickResidualTop3PerUnit: 0,
+    validationCoverageTargetPct: getValidationCoverageTargetPct(product),
+    validationCoveredPerUnit: 0,
+    validationResidualPerUnit: totalCostPerUnit,
+    validationCoveragePct: 0,
+    validationReady: false,
+    validationBlockItems: [],
+    validationSuggestedResidualItems: [],
+    validationOpenTopResidualItems: [],
+    validationCheckedBlockIds: [],
 
     db1Unit,
     db1MarginPct,
@@ -6151,6 +6230,16 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   result.quickResidualTop1PerUnit = num(result.quickResidualTopItems[0]?.perUnit, 0);
   result.quickResidualTop2PerUnit = num(result.quickResidualTopItems[1]?.perUnit, 0);
   result.quickResidualTop3PerUnit = num(result.quickResidualTopItems[2]?.perUnit, 0);
+  const validationData = buildValidationWorkflowData(result, product);
+  result.validationCoverageTargetPct = validationData.coverageTargetPct;
+  result.validationCoveredPerUnit = validationData.coveredPerUnit;
+  result.validationResidualPerUnit = validationData.residualPerUnit;
+  result.validationCoveragePct = validationData.coveragePct;
+  result.validationReady = validationData.ready;
+  result.validationBlockItems = validationData.blockItems;
+  result.validationSuggestedResidualItems = validationData.suggestedResidualItems;
+  result.validationOpenTopResidualItems = validationData.openTopResidualItems;
+  result.validationCheckedBlockIds = validationData.checkedResidualIds;
   result.sensitivity = buildSensitivity(product, result.targetMarginPct);
 
   return result;
@@ -9136,6 +9225,140 @@ const QUICK_CORE_COST_LINE_IDS = new Set([
   "quick_core.launch.ops",
 ]);
 
+function getValidationCoverageTargetPct(product) {
+  return clamp(
+    num(product?.workflow?.validation?.coverageTargetPct, VALIDATION_COVERAGE_TARGET_DEFAULT),
+    80,
+    99,
+  );
+}
+
+function getValidationCheckedBlockIds(product) {
+  const raw = product?.workflow?.validation?.checkedBlockIds;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return [...new Set(raw.map((entry) => String(entry ?? "").trim()).filter(Boolean))];
+}
+
+function buildValidationWorkflowData(metrics, product, prebuiltCategories = null) {
+  const categories = prebuiltCategories ?? buildCostCategoryData(metrics);
+  const totalCostPerUnit = Math.max(0, num(metrics.totalCostPerUnit, 0));
+  const coverageTargetPct = getValidationCoverageTargetPct(product);
+  const checkedResidualIds = new Set(getValidationCheckedBlockIds(product));
+
+  const coreItems = [
+    { id: "core.exw", blockKey: "exw", label: "EXW / Einkauf", perUnit: num(metrics.quickBlockExwPerUnit, 0) },
+    { id: "core.shipping_to_3pl", blockKey: "shipping_to_3pl", label: "Shipping zu 3PL", perUnit: num(metrics.quickBlockShippingTo3plPerUnit, 0) },
+    { id: "core.threepl", blockKey: "threepl", label: "3PL", perUnit: num(metrics.quickBlockThreePlPerUnit, 0) },
+    { id: "core.amazon_core", blockKey: "amazon_core", label: "Amazon (Referral + TACoS + FBA)", perUnit: num(metrics.quickBlockAmazonCorePerUnit, 0) },
+    { id: "core.launch_core", blockKey: "launch_core", label: "Launch (Listing + Budget + Ops)", perUnit: num(metrics.quickBlockLaunchCorePerUnit, 0) },
+  ].map((item) => ({
+    ...item,
+    sharePct: totalCostPerUnit > 0 ? (item.perUnit / totalCostPerUnit) * 100 : 0,
+    isCore: true,
+    isChecked: true,
+    isSuggested: false,
+    detailType: "core",
+  }));
+
+  const residualItems = [];
+  categories.forEach((category) => {
+    category.lines.forEach((lineItem) => {
+      if (lineItem.isSummary || lineItem.excludeFromCategoryTotal) {
+        return;
+      }
+      if (QUICK_CORE_COST_LINE_IDS.has(lineItem.id)) {
+        return;
+      }
+      const perUnit = num(lineItem.valueRaw, 0);
+      if (perUnit <= 0.0001) {
+        return;
+      }
+      const id = String(lineItem.id ?? `${category.key}:${lineItem.label}`);
+      residualItems.push({
+        id,
+        label: lineItem.label,
+        perUnit,
+        sharePct: totalCostPerUnit > 0 ? (perUnit / totalCostPerUnit) * 100 : 0,
+        isCore: false,
+        isChecked: checkedResidualIds.has(id),
+        isSuggested: false,
+        detailType: "residual",
+        explain: lineItem.explain ?? "",
+        formula: lineItem.formula ?? "",
+        source: lineItem.source ?? "",
+        robustness: lineItem.robustness ?? "Mittel",
+        driverPaths: Array.isArray(lineItem.driverPaths) ? lineItem.driverPaths : [],
+      });
+    });
+  });
+  residualItems.sort((a, b) => b.perUnit - a.perUnit);
+
+  const coveredByCore = coreItems.reduce((sum, item) => sum + item.perUnit, 0);
+  const coveredByCheckedResidual = residualItems.reduce(
+    (sum, item) => (item.isChecked ? sum + item.perUnit : sum),
+    0,
+  );
+  const coveredPerUnit = coveredByCore + coveredByCheckedResidual;
+  const coveragePct = totalCostPerUnit > 0 ? (coveredPerUnit / totalCostPerUnit) * 100 : 0;
+  const residualPerUnit = Math.max(0, totalCostPerUnit - coveredPerUnit);
+
+  const suggestedResidualItems = [];
+  let runningCovered = coveredPerUnit;
+  residualItems.forEach((item) => {
+    if (runningCovered / Math.max(totalCostPerUnit, 0.0001) * 100 >= coverageTargetPct) {
+      return;
+    }
+    if (item.isChecked) {
+      return;
+    }
+    item.isSuggested = true;
+    suggestedResidualItems.push(item);
+    runningCovered += item.perUnit;
+  });
+
+  const openTopResidualItems = residualItems.filter((item) => !item.isChecked).slice(0, 3);
+
+  return {
+    coverageTargetPct,
+    coveredPerUnit,
+    residualPerUnit,
+    coveragePct,
+    ready: coveragePct >= coverageTargetPct,
+    blockItems: [...coreItems, ...residualItems],
+    suggestedResidualItems,
+    openTopResidualItems,
+    checkedResidualIds: [...checkedResidualIds],
+  };
+}
+
+function ensureValidationWorkflowState(product) {
+  if (!product.workflow || typeof product.workflow !== "object") {
+    product.workflow = {};
+  }
+  if (!product.workflow.validation || typeof product.workflow.validation !== "object") {
+    product.workflow.validation = {
+      checkedBlockIds: [],
+      coverageTargetPct: VALIDATION_COVERAGE_TARGET_DEFAULT,
+      lastAppliedAt: null,
+    };
+  }
+  if (!Array.isArray(product.workflow.validation.checkedBlockIds)) {
+    product.workflow.validation.checkedBlockIds = [];
+  }
+  product.workflow.validation.checkedBlockIds = [...new Set(
+    product.workflow.validation.checkedBlockIds
+      .map((entry) => String(entry ?? "").trim())
+      .filter(Boolean),
+  )];
+  product.workflow.validation.coverageTargetPct = getValidationCoverageTargetPct(product);
+  product.workflow.validation.lastAppliedAt = product.workflow.validation.lastAppliedAt
+    ? String(product.workflow.validation.lastAppliedAt)
+    : null;
+  return product.workflow.validation;
+}
+
 function buildQuickResidualItems(metrics, prebuiltCategories = null) {
   const categories = prebuiltCategories ?? buildCostCategoryData(metrics);
   const monthlyUnits = Math.max(0, num(metrics.monthlyUnits, 0));
@@ -9176,7 +9399,7 @@ function buildQuickResidualItems(metrics, prebuiltCategories = null) {
     .slice(0, 3);
 }
 
-function buildQuickBlockModalPayload(metrics, blockKey) {
+function buildCostBlockModalPayload(metrics, blockKey, contextStage = "quick") {
   const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.modeKey);
   const listingPackageKey = metrics.resolved?.listingPackageKey ?? "ai";
   const listingPackagePrefix = `settings.lifecycle.listingPackages.${listingPackageKey}`;
@@ -9398,17 +9621,357 @@ function renderQuickCostWorkflow(metrics) {
   }
 }
 
-function openQuickCostBlockModal(blockKey) {
+function validationCoverageMeta(coveragePct, targetPct) {
+  if (coveragePct >= targetPct) {
+    return {
+      tone: "ok",
+      text: "Validation erfüllt: Zielabdeckung erreicht.",
+    };
+  }
+  if (coveragePct >= targetPct - 10) {
+    return {
+      tone: "warn",
+      text: "Fast am Ziel: Prüfe empfohlene Restkostenblöcke.",
+    };
+  }
+  return {
+    tone: "critical",
+    text: "Validation offen: Zu wenig Kostenabdeckung, bitte weitere Restkosten validieren.",
+  };
+}
+
+function updateValidationCheckedBlock(product, blockId, checked) {
+  if (!product || !blockId) {
+    return;
+  }
+  const workflowValidation = ensureValidationWorkflowState(product);
+  const next = new Set(workflowValidation.checkedBlockIds);
+  if (checked) {
+    next.add(blockId);
+  } else {
+    next.delete(blockId);
+  }
+  workflowValidation.checkedBlockIds = [...next];
+  saveProducts();
+  renderComputedViews();
+}
+
+function renderValidationWorkflow(metrics, product) {
+  if (!dom.validationBlockGrid) {
+    return;
+  }
+  const coveragePct = clamp(num(metrics.validationCoveragePct, 0), 0, 200);
+  const targetPct = clamp(num(metrics.validationCoverageTargetPct, VALIDATION_COVERAGE_TARGET_DEFAULT), 80, 99);
+  const coveredPerUnit = num(metrics.validationCoveredPerUnit, 0);
+  const residualPerUnit = Math.max(0, num(metrics.validationResidualPerUnit, 0));
+  const blockItems = Array.isArray(metrics.validationBlockItems) ? metrics.validationBlockItems : [];
+  const openTopResidualItems = Array.isArray(metrics.validationOpenTopResidualItems)
+    ? metrics.validationOpenTopResidualItems
+    : [];
+  const meta = validationCoverageMeta(coveragePct, targetPct);
+
+  if (dom.validationCoveragePct) {
+    dom.validationCoveragePct.textContent = formatPercent(coveragePct);
+  }
+  if (dom.validationCoverageTarget) {
+    dom.validationCoverageTarget.textContent = `Ziel: ${formatPercent(targetPct)} Abdeckung`;
+  }
+  if (dom.validationCoveredCost) {
+    dom.validationCoveredCost.textContent = `Abgedeckt: ${formatCurrency(coveredPerUnit)} / Unit`;
+  }
+  if (dom.validationResidualCost) {
+    dom.validationResidualCost.textContent = `Offen: ${formatCurrency(residualPerUnit)} / Unit`;
+  }
+  if (dom.validationCoverageStatus) {
+    dom.validationCoverageStatus.textContent = meta.text;
+  }
+  if (dom.validationCoverageCard) {
+    dom.validationCoverageCard.classList.remove("coverage-ok", "coverage-warn", "coverage-critical");
+    dom.validationCoverageCard.classList.add(`coverage-${meta.tone}`);
+  }
+  if (dom.validationOpenTopList) {
+    dom.validationOpenTopList.innerHTML = "";
+    if (openTopResidualItems.length === 0) {
+      const li = document.createElement("li");
+      li.textContent = "Keine wesentlichen offenen Restkosten mehr.";
+      dom.validationOpenTopList.appendChild(li);
+    } else {
+      openTopResidualItems.forEach((item) => {
+        const li = document.createElement("li");
+        li.innerHTML =
+          `<div><span>${item.label}</span><small>${formatPercent(item.sharePct)} Anteil</small></div>` +
+          `<strong>${formatCurrency(item.perUnit)} / Unit</strong>`;
+        dom.validationOpenTopList.appendChild(li);
+      });
+    }
+  }
+
+  dom.validationBlockGrid.innerHTML = "";
+  blockItems.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "validation-block-card";
+    if (item.isCore) {
+      card.classList.add("core");
+    }
+    if (item.isSuggested) {
+      card.classList.add("suggested");
+    }
+    if (item.isChecked) {
+      card.classList.add("checked");
+    }
+
+    const head = document.createElement("div");
+    head.className = "validation-block-head";
+    const title = document.createElement("strong");
+    title.textContent = item.label;
+    head.appendChild(title);
+    const badgeWrap = document.createElement("div");
+    badgeWrap.className = "validation-block-badges";
+    const makeBadge = (text, tone) => {
+      const badge = document.createElement("span");
+      badge.className = `validation-chip ${tone}`;
+      badge.textContent = text;
+      return badge;
+    };
+    if (item.isCore) {
+      badgeWrap.appendChild(makeBadge("Core", "core"));
+      badgeWrap.appendChild(makeBadge("Validiert", "checked"));
+    } else {
+      badgeWrap.appendChild(makeBadge(item.isChecked ? "Validiert" : "Offen", item.isChecked ? "checked" : "open"));
+      if (item.isSuggested) {
+        badgeWrap.appendChild(makeBadge("Empfohlen für 95%", "suggested"));
+      }
+    }
+    head.appendChild(badgeWrap);
+    card.appendChild(head);
+
+    const values = document.createElement("p");
+    values.className = "validation-block-values";
+    values.textContent = `${formatCurrency(item.perUnit)} / Unit · Anteil ${formatPercent(item.sharePct)}`;
+    card.appendChild(values);
+
+    const actions = document.createElement("div");
+    actions.className = "validation-block-actions";
+    const detailBtn = document.createElement("button");
+    detailBtn.type = "button";
+    detailBtn.className = "btn btn-ghost";
+    detailBtn.textContent = "Details";
+    detailBtn.addEventListener("click", () => {
+      if (item.detailType === "core" && item.blockKey) {
+        openCostBlockModal(item.blockKey, "validation");
+        return;
+      }
+      openValidationResidualModal(item);
+    });
+    if (item.detailType !== "core" && (!Array.isArray(item.driverPaths) || item.driverPaths.length === 0)) {
+      detailBtn.disabled = true;
+    }
+    actions.appendChild(detailBtn);
+
+    if (!item.isCore) {
+      const toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.className = item.isChecked ? "btn btn-ghost" : "btn btn-primary";
+      toggleBtn.textContent = item.isChecked ? "Validierung zurücknehmen" : "Als validiert markieren";
+      toggleBtn.addEventListener("click", () => {
+        updateValidationCheckedBlock(product, item.id, !item.isChecked);
+      });
+      actions.appendChild(toggleBtn);
+    }
+
+    card.appendChild(actions);
+    dom.validationBlockGrid.appendChild(card);
+  });
+}
+
+function createValidationSandboxDraftFromProduct(product) {
+  const draft = {};
+  VALIDATION_PLAYGROUND_PATHS.forEach((path) => {
+    draft[path] = getByPath(product, path);
+  });
+  return draft;
+}
+
+function normalizeValidationDraftValue(path, rawValue) {
+  if (STRING_PATHS.has(path)) {
+    return String(rawValue ?? "");
+  }
+  if (path === "basic.horizonMonths") {
+    return Math.max(1, roundInt(rawValue, 1));
+  }
+  return Math.max(0, num(rawValue, 0));
+}
+
+function syncValidationDraftControls(draft) {
+  const controls = document.querySelectorAll("[data-validation-draft-path]");
+  controls.forEach((control) => {
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement)) {
+      return;
+    }
+    const path = control.dataset.validationDraftPath;
+    if (!path) {
+      return;
+    }
+    const value = draft[path];
+    if (control instanceof HTMLInputElement) {
+      control.value = value ?? "";
+    } else {
+      control.value = String(value ?? "");
+    }
+  });
+}
+
+function buildSandboxProduct(product, draft) {
+  const clone = deepClone(product);
+  Object.entries(draft).forEach(([path, value]) => {
+    setByPath(clone, path, value);
+  });
+  return clone;
+}
+
+function isValidationDraftDifferentFromProduct(product, draft) {
+  return VALIDATION_PLAYGROUND_PATHS.some((path) => {
+    const original = getByPath(product, path);
+    const next = draft[path];
+    if (STRING_PATHS.has(path)) {
+      return String(original ?? "") !== String(next ?? "");
+    }
+    return Math.abs(num(original, 0) - num(next, 0)) > 0.0001;
+  });
+}
+
+function renderValidationSandboxCompare(baselineMetrics, sandboxMetrics) {
+  if (!dom.validationCompareGrid) {
+    return;
+  }
+  dom.validationCompareGrid.innerHTML = "";
+  const rows = [
+    {
+      label: "Gesamtkosten",
+      base: baselineMetrics.totalCostPerUnit,
+      next: sandboxMetrics.totalCostPerUnit,
+      format: "currency",
+      suffix: "/ Unit",
+    },
+    {
+      label: "Shipping D2D",
+      base: baselineMetrics.shippingUnit,
+      next: sandboxMetrics.shippingUnit,
+      format: "currency",
+      suffix: "/ Unit",
+    },
+    {
+      label: "Amazon Core",
+      base: baselineMetrics.quickBlockAmazonCorePerUnit,
+      next: sandboxMetrics.quickBlockAmazonCorePerUnit,
+      format: "currency",
+      suffix: "/ Unit",
+    },
+    {
+      label: "Gewinn netto",
+      base: baselineMetrics.profitMonthly,
+      next: sandboxMetrics.profitMonthly,
+      format: "currency",
+      suffix: "/ Monat",
+    },
+    {
+      label: "Validation-Abdeckung",
+      base: baselineMetrics.validationCoveragePct,
+      next: sandboxMetrics.validationCoveragePct,
+      format: "percent",
+      suffix: "",
+    },
+  ];
+  rows.forEach((row) => {
+    const card = document.createElement("article");
+    card.className = "validation-compare-card";
+    const delta = num(row.next, 0) - num(row.base, 0);
+    const deltaPositiveIsGood = row.label !== "Gesamtkosten" && row.label !== "Shipping D2D" && row.label !== "Amazon Core";
+    const tone = Math.abs(delta) < 0.0001
+      ? "neutral"
+      : (deltaPositiveIsGood ? (delta > 0 ? "up-good" : "down-bad") : (delta < 0 ? "up-good" : "down-bad"));
+    card.classList.add(tone);
+
+    const formatValue = (value) => {
+      if (row.format === "percent") {
+        return `${formatPercent(value)}${row.suffix}`;
+      }
+      return `${formatCurrency(value)} ${row.suffix}`.trim();
+    };
+
+    card.innerHTML =
+      `<span>${row.label}</span>` +
+      `<strong>${formatValue(row.base)} -> ${formatValue(row.next)}</strong>` +
+      `<small>Delta: ${row.format === "percent" ? formatPercent(delta) : `${formatCurrency(delta)}${row.suffix ? ` ${row.suffix}` : ""}`}</small>`;
+    dom.validationCompareGrid.appendChild(card);
+  });
+}
+
+function renderValidationPlayground(product, baselineMetrics) {
+  if (!dom.validationPlaygroundPanel) {
+    return;
+  }
+  const isValidation = getProductStage(product) === "validation";
+  dom.validationPlaygroundPanel.classList.toggle("hidden", !isValidation);
+  if (!isValidation) {
+    return;
+  }
+
+  const productChanged = state.ui.validationSandboxProductId !== product.id;
+  if (productChanged || !state.ui.validationSandboxDraft) {
+    state.ui.validationSandboxDraft = createValidationSandboxDraftFromProduct(product);
+    state.ui.validationSandboxProductId = product.id;
+  }
+  const draft = state.ui.validationSandboxDraft;
+  syncValidationDraftControls(draft);
+
+  const sandboxProduct = buildSandboxProduct(product, draft);
+  const sandboxMetrics = calculateProduct(sandboxProduct);
+  const sandboxActive = isValidationDraftDifferentFromProduct(product, draft);
+
+  state.ui.validationSandboxActive = sandboxActive;
+  state.ui.validationBaselineMetrics = baselineMetrics;
+  state.ui.validationSandboxMetrics = sandboxMetrics;
+
+  if (dom.validationApplyBtn) {
+    dom.validationApplyBtn.disabled = !sandboxActive;
+  }
+  if (dom.validationDiscardBtn) {
+    dom.validationDiscardBtn.disabled = !sandboxActive;
+  }
+  if (dom.validationResetBtn) {
+    dom.validationResetBtn.disabled = !sandboxActive;
+  }
+
+  renderValidationSandboxCompare(baselineMetrics, sandboxMetrics);
+}
+
+function openCostBlockModal(blockKey, contextStage = "quick") {
   const selected = getSelectedProduct();
   if (!selected || !blockKey) {
     return;
   }
   const metrics = calculateProduct(selected);
-  const payload = buildQuickBlockModalPayload(metrics, blockKey);
+  const payload = buildCostBlockModalPayload(metrics, blockKey, contextStage);
   if (!payload) {
     return;
   }
   openDriverModal(payload);
+}
+
+function openValidationResidualModal(item) {
+  if (!item || !Array.isArray(item.driverPaths) || item.driverPaths.length === 0) {
+    return;
+  }
+  openDriverModal({
+    title: `${item.label} (Validation-Restkosten)`,
+    value: `${formatCurrency(item.perUnit)} / Unit`,
+    explain: item.explain || "Kostenposition außerhalb des QuickCheck-Core-Workflows.",
+    formula: item.formula || "",
+    source: item.source || "",
+    robustness: item.robustness || "Mittel",
+    driverPaths: item.driverPaths,
+  });
 }
 
 function renderShippingDetails(metrics) {
@@ -9736,7 +10299,7 @@ function renderLogisticsChain(metrics, stage = "quick", prebuiltCategories = nul
   }
 }
 
-function renderSelectedOutputs(metrics, stage = "quick") {
+function renderSelectedOutputs(product, metrics, stage = "quick") {
   setKpi(dom.kpiRevenueGross, metrics.grossRevenueMonthly, "currency");
   setKpi(dom.kpiRevenueNet, metrics.netRevenueMonthly, "currency");
   setKpi(dom.kpiSellerboardMargin, metrics.sellerboardMarginPct, "percent");
@@ -9763,6 +10326,7 @@ function renderSelectedOutputs(metrics, stage = "quick") {
   setKpi(dom.kpiPayback, metrics.paybackMonths, "months");
 
   renderQuickCostWorkflow(metrics);
+  renderValidationWorkflow(metrics, product);
   if (dom.kpiNetMargin) {
     dom.kpiNetMargin.classList.remove("margin-good", "margin-mid", "margin-low");
     if (metrics.netMarginPct > 20) {
@@ -9870,7 +10434,7 @@ function renderStagePanel(product, metrics) {
     deep_dive: dom.stageDeepBtn,
   };
 
-  WORKFLOW_STAGES.forEach((stageKey) => {
+  WORKFLOW_VISIBLE_STAGES.forEach((stageKey) => {
     const btn = stageButtonMap[stageKey];
     if (!btn) {
       return;
@@ -9994,34 +10558,11 @@ function renderReviewItemsGrouped(container, items, stage) {
   });
 }
 
-function renderValidationReviewPanel(product, stageState) {
-  if (!dom.validationReviewList || !dom.validationReviewStatus) {
-    return;
-  }
-  const review = stageState.validationReview;
-  const totalLabel = review.total > 0 ? review.total : getStageTopN("validation");
-  dom.validationReviewStatus.textContent = `${review.completed}/${totalLabel} geprüft`;
-  dom.validationReviewStatus.classList.remove("pass", "warn", "fail");
-  dom.validationReviewStatus.classList.add(review.isReady ? "pass" : "warn");
-  renderReviewItemsGrouped(dom.validationReviewList, review.items, "validation");
-}
-
-function renderDeepDiveReviewPanel(product, stageState) {
-  if (!dom.deepDiveReviewList || !dom.deepDiveReviewStatus) {
-    return;
-  }
-  const review = stageState.deepDiveReview;
-  dom.deepDiveReviewStatus.textContent = `${review.completed}/${review.total} geprüft`;
-  dom.deepDiveReviewStatus.classList.remove("pass", "warn", "fail");
-  dom.deepDiveReviewStatus.classList.add(review.isReady ? "pass" : "warn");
-  renderReviewItemsGrouped(dom.deepDiveReviewList, review.items, "deep_dive");
-}
-
 function applyStageVisibility(product, stageState) {
   const stage = stageState.stage;
-  const isDeep = stage === "deep_dive";
   const isValidation = stage === "validation";
   const isQuick = stage === "quick";
+  const isLeanStage = isQuick || isValidation;
 
   if (dom.advancedToggleWrap) {
     dom.advancedToggleWrap.classList.add("hidden");
@@ -10040,40 +10581,35 @@ function applyStageVisibility(product, stageState) {
   if (dom.quickStagePanel) {
     dom.quickStagePanel.classList.toggle("hidden", !isQuick);
   }
+  if (dom.validationStagePanel) {
+    dom.validationStagePanel.classList.toggle("hidden", !isValidation);
+  }
+  if (dom.validationPlaygroundPanel) {
+    dom.validationPlaygroundPanel.classList.toggle("hidden", !isValidation);
+  }
   if (dom.shippingQuickCard) {
-    dom.shippingQuickCard.classList.toggle("hidden", isQuick);
+    dom.shippingQuickCard.classList.toggle("hidden", isLeanStage);
   }
   if (dom.fbaInfoCard) {
-    dom.fbaInfoCard.classList.toggle("hidden", isQuick);
+    dom.fbaInfoCard.classList.toggle("hidden", isLeanStage);
   }
   if (dom.outputsCard) {
-    dom.outputsCard.classList.toggle("hidden", isQuick);
+    dom.outputsCard.classList.toggle("hidden", isLeanStage);
   }
   if (dom.compareCard) {
-    dom.compareCard.classList.toggle("hidden", isQuick);
+    dom.compareCard.classList.toggle("hidden", isLeanStage);
   }
   if (dom.chainMapSection) {
-    dom.chainMapSection.classList.toggle("hidden", isQuick);
+    dom.chainMapSection.classList.toggle("hidden", isLeanStage);
   }
   if (dom.categoryMapSection) {
-    dom.categoryMapSection.classList.toggle("hidden", isQuick);
+    dom.categoryMapSection.classList.toggle("hidden", isLeanStage);
   }
   if (dom.sensitivitySection) {
-    dom.sensitivitySection.classList.toggle("hidden", isQuick);
+    dom.sensitivitySection.classList.toggle("hidden", isLeanStage);
   }
   if (dom.driverFocusHint) {
-    dom.driverFocusHint.classList.toggle("hidden", isQuick);
-  }
-  if (dom.validationReviewPanel) {
-    dom.validationReviewPanel.classList.toggle("hidden", !isValidation);
-  }
-  if (dom.deepDiveReviewPanel) {
-    dom.deepDiveReviewPanel.classList.toggle("hidden", !isDeep);
-  }
-
-  const deepDiveSection = document.getElementById("advancedDeepDiveSection");
-  if (deepDiveSection) {
-    deepDiveSection.classList.add("hidden");
+    dom.driverFocusHint.classList.toggle("hidden", isLeanStage);
   }
 
   const deepDiveCheckboxes = document.querySelectorAll('[data-path^="workflow.deepDive."]');
@@ -10176,6 +10712,9 @@ function inferAdvancedSectionFromPath(path) {
   if (!path) {
     return null;
   }
+  const selected = getSelectedProduct();
+  const stage = selected ? getProductStage(selected) : "quick";
+  const stageWorkflowSection = stage === "validation" ? "validationStagePanel" : "quickStagePanel";
 
   if (path.startsWith("assumptions.ads.")) {
     return "advancedAdsSection";
@@ -10193,7 +10732,7 @@ function inferAdvancedSectionFromPath(path) {
     return "advancedLifecycleSection";
   }
   if (path.startsWith("assumptions.cartonization.")) {
-    return "quickStagePanel";
+    return stageWorkflowSection;
   }
   if (path.startsWith("assumptions.extraCosts.")) {
     return "advancedOpsSection";
@@ -10202,7 +10741,7 @@ function inferAdvancedSectionFromPath(path) {
     return settingsSectionIdFromPath(path.slice("settings.".length));
   }
   if (path.startsWith("workflow.deepDive.")) {
-    return "advancedDeepDiveSection";
+    return stageWorkflowSection;
   }
   if (
     path === "basic.unitsPerOrder" ||
@@ -10212,7 +10751,7 @@ function inferAdvancedSectionFromPath(path) {
     path === "basic.packWidthCm" ||
     path === "basic.packHeightCm"
   ) {
-    return "quickStagePanel";
+    return stageWorkflowSection;
   }
   return null;
 }
@@ -10408,10 +10947,8 @@ function renderSelectedProductPanels(metricsById = new Map()) {
   const stageState = renderStagePanel(product, metrics);
   applyStageVisibility(product, stageState);
   renderDecisionBar(stageState.stage);
-  renderValidationReviewPanel(product, stageState);
-  renderDeepDiveReviewPanel(product, stageState);
-
-  renderSelectedOutputs(metrics, stageState.stage);
+  renderSelectedOutputs(product, metrics, stageState.stage);
+  renderValidationPlayground(product, metrics);
   renderAssumedLabels(resolved.assumedLabels, diagnostics);
   renderLaunchHint(product, resolved);
   syncControlStates(product);
@@ -10575,12 +11112,16 @@ function deleteProduct() {
 
 function setSelectedStage(stage) {
   const selected = getSelectedProduct();
-  if (!selected || !WORKFLOW_STAGES.includes(stage)) {
+  if (!selected) {
+    return;
+  }
+  const normalizedStage = stage === "deep_dive" ? "validation" : stage;
+  if (!WORKFLOW_VISIBLE_STAGES.includes(normalizedStage)) {
     return;
   }
 
-  selected.workflow.stage = stage;
-  if (stage === "quick") {
+  selected.workflow.stage = normalizedStage;
+  if (normalizedStage === "quick") {
     state.ui.advancedVisible = false;
     state.ui.costCategoryExpanded = {};
   }
@@ -10656,10 +11197,10 @@ function applyMouseoverHelp() {
     dom.stageQuickBtn.title = "QuickCheck: leaner 80/20-Workflow mit fünf Hauptkostenblöcken.";
   }
   if (dom.stageValidationBtn) {
-    dom.stageValidationBtn.title = "Validation: Top-20 Kostentreiber prüfen oder überschreiben.";
+    dom.stageValidationBtn.title = "Validation: Kostenabdeckung bis 95% und Kernannahmen im Sandbox-Playground prüfen.";
   }
   if (dom.stageDeepBtn) {
-    dom.stageDeepBtn.title = "Deep-Dive: Vollprüfung aller editierbaren kostentrelevanten Treiber.";
+    dom.stageDeepBtn.title = "Deep-Dive ist aktuell deaktiviert.";
   }
   if (dom.toggleAllKpisBtn) {
     dom.toggleAllKpisBtn.title = "Im QuickCheck ausgeblendet.";
@@ -10896,9 +11437,6 @@ function bindEvents() {
   if (dom.stageValidationBtn) {
     dom.stageValidationBtn.addEventListener("click", () => setSelectedStage("validation"));
   }
-  if (dom.stageDeepBtn) {
-    dom.stageDeepBtn.addEventListener("click", () => setSelectedStage("deep_dive"));
-  }
 
   if (dom.quickCostWorkflowGrid) {
     dom.quickCostWorkflowGrid.addEventListener("click", (event) => {
@@ -10914,7 +11452,68 @@ function bindEvents() {
       if (!blockKey) {
         return;
       }
-      openQuickCostBlockModal(blockKey);
+      openCostBlockModal(blockKey, "quick");
+    });
+  }
+
+  const validationDraftControls = document.querySelectorAll("[data-validation-draft-path]");
+  validationDraftControls.forEach((control) => {
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement)) {
+      return;
+    }
+    control.addEventListener("change", () => {
+      const selected = getSelectedProduct();
+      if (!selected || getProductStage(selected) !== "validation") {
+        return;
+      }
+      const path = control.dataset.validationDraftPath;
+      if (!path) {
+        return;
+      }
+      if (!state.ui.validationSandboxDraft) {
+        state.ui.validationSandboxDraft = createValidationSandboxDraftFromProduct(selected);
+      }
+      state.ui.validationSandboxDraft[path] = normalizeValidationDraftValue(path, control.value);
+      renderComputedViews();
+    });
+  });
+
+  if (dom.validationApplyBtn) {
+    dom.validationApplyBtn.addEventListener("click", () => {
+      const selected = getSelectedProduct();
+      if (!selected || !state.ui.validationSandboxDraft) {
+        return;
+      }
+      const draft = state.ui.validationSandboxDraft;
+      VALIDATION_PLAYGROUND_PATHS.forEach((path) => {
+        setByPath(selected, path, draft[path]);
+      });
+      ensureValidationWorkflowState(selected).lastAppliedAt = new Date().toISOString();
+      state.ui.validationSandboxDraft = createValidationSandboxDraftFromProduct(selected);
+      saveProducts();
+      renderAll();
+    });
+  }
+
+  if (dom.validationDiscardBtn) {
+    dom.validationDiscardBtn.addEventListener("click", () => {
+      const selected = getSelectedProduct();
+      if (!selected) {
+        return;
+      }
+      state.ui.validationSandboxDraft = createValidationSandboxDraftFromProduct(selected);
+      renderComputedViews();
+    });
+  }
+
+  if (dom.validationResetBtn) {
+    dom.validationResetBtn.addEventListener("click", () => {
+      const selected = getSelectedProduct();
+      if (!selected) {
+        return;
+      }
+      state.ui.validationSandboxDraft = createValidationSandboxDraftFromProduct(selected);
+      renderComputedViews();
     });
   }
 
@@ -11049,63 +11648,6 @@ function bindEvents() {
         driverPaths,
       });
     });
-  }
-
-  const handleReviewClick = (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-    const btn = target.closest("button[data-review-action]");
-    if (!(btn instanceof HTMLElement)) {
-      return;
-    }
-
-    const action = btn.dataset.reviewAction;
-    const stage = btn.dataset.reviewStage;
-    const targetId = btn.dataset.reviewTargetId;
-    const selected = getSelectedProduct();
-    if (!selected || !stage || !targetId) {
-      return;
-    }
-
-    const reviewTarget = findReviewTarget(selected, stage, targetId);
-    if (!reviewTarget) {
-      return;
-    }
-
-    if (action === "check") {
-      markReviewChecked(selected, stage, targetId, reviewTarget.valueRaw);
-      renderAll();
-      return;
-    }
-
-    if (action === "uncheck" || action === "reset") {
-      markReviewPending(selected, stage, targetId);
-      renderAll();
-      return;
-    }
-
-    if (action === "override") {
-      openDriverModal({
-        title: reviewTarget.label,
-        value: reviewTarget.value,
-        explain: reviewTarget.explain,
-        formula: reviewTarget.formula,
-        source: reviewTarget.source,
-        robustness: reviewTarget.robustness,
-        driverPaths: reviewTarget.driverPaths,
-        reviewStage: stage,
-        reviewTargetId: targetId,
-      });
-    }
-  };
-
-  if (dom.validationReviewList) {
-    dom.validationReviewList.addEventListener("click", handleReviewClick);
-  }
-  if (dom.deepDiveReviewList) {
-    dom.deepDiveReviewList.addEventListener("click", handleReviewClick);
   }
 
   if (dom.addProductBtn) {
