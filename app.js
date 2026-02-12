@@ -531,6 +531,15 @@ const FBA_RATECARD_DE_2026 = {
   ],
 };
 
+const FBA_OPTIMIZATION_LIMITS = {
+  maxWeightReductionPct: 8,
+  maxWeightReductionGCap: 250,
+  maxDimReductionPctPerSide: 8,
+  maxDimReductionPctTotal: 12,
+  maxDimReductionCmPerSideCap: 2,
+  maxDimReductionCmTotalCap: 4,
+};
+
 const FIELD_HELP = {
   name: "Interner Produktname zur Vergleichbarkeit in der Multi-Produkt-Ansicht.",
   "basic.priceGross": "Brutto-Verkaufspreis in EUR (inkl. USt.). Netto = Brutto / (1 + USt).",
@@ -1325,6 +1334,7 @@ const dom = {
   fbaInfoSource: document.getElementById("fbaInfoSource"),
   fbaInfoSourceLink: document.getElementById("fbaInfoSourceLink"),
   fbaInfoFallback: document.getElementById("fbaInfoFallback"),
+  fbaInfoHints: document.getElementById("fbaInfoHints"),
   chainSupplierChips: document.getElementById("chainSupplierChips"),
   chainImportChips: document.getElementById("chainImportChips"),
   chainThreePlChips: document.getElementById("chainThreePlChips"),
@@ -4093,6 +4103,183 @@ function findFbaTierDe2026(profile, sortedDims, shippingWeightG) {
   return null;
 }
 
+function findCheaperTargetForTier(tier, shippingWeightG, currentFee) {
+  if (!tier || !tier.pricing) {
+    return null;
+  }
+  const pricing = tier.pricing;
+  if (pricing.type === "bands") {
+    const bands = Array.isArray(pricing.bands) ? pricing.bands : [];
+    const options = bands
+      .filter((band) => num(band.feeEur, Number.POSITIVE_INFINITY) < currentFee)
+      .map((band) => {
+        const targetWeightMaxG = Math.max(1, roundInt(band.maxWeightG, 1));
+        const weightReductionNeededG = Math.max(0, Math.ceil(shippingWeightG - targetWeightMaxG));
+        return {
+          targetFeeEur: round2(num(band.feeEur, 0)),
+          targetWeightMaxG,
+          weightReductionNeededG,
+        };
+      });
+    if (options.length === 0) {
+      return null;
+    }
+    options.sort((a, b) => a.weightReductionNeededG - b.weightReductionNeededG || b.targetFeeEur - a.targetFeeEur);
+    return options[0];
+  }
+
+  if (pricing.type === "base_plus_step") {
+    const baseWeightG = Math.max(1, roundInt(pricing.baseWeightG, 100));
+    const baseFeeEur = Math.max(0, num(pricing.baseFeeEur, 0));
+    const stepWeightG = Math.max(1, roundInt(pricing.stepWeightG, 100));
+    const stepFeeEur = Math.max(0.000001, num(pricing.stepFeeEur, 0.01));
+    const tierMaxWeight = Math.max(1, roundInt(num(tier.maxShippingWeightG, Number.POSITIVE_INFINITY), 1));
+    const feasibleUpper = Math.min(shippingWeightG, tierMaxWeight);
+    if (!Number.isFinite(feasibleUpper) || feasibleUpper <= 0) {
+      return null;
+    }
+
+    const maxFeeAllowed = currentFee - 0.0001;
+    if (maxFeeAllowed < baseFeeEur) {
+      return null;
+    }
+    const maxAllowedSteps = Math.floor((maxFeeAllowed - baseFeeEur) / stepFeeEur);
+    if (maxAllowedSteps < 0) {
+      return null;
+    }
+    const targetWeightMaxG = Math.max(baseWeightG, Math.min(tierMaxWeight, baseWeightG + maxAllowedSteps * stepWeightG));
+    const weightReductionNeededG = Math.max(0, Math.ceil(shippingWeightG - targetWeightMaxG));
+    const targetFeeEur = resolveFbaTierFee(tier, targetWeightMaxG);
+    if (targetFeeEur === null || targetFeeEur >= currentFee) {
+      return null;
+    }
+    return {
+      targetFeeEur: round2(targetFeeEur),
+      targetWeightMaxG,
+      weightReductionNeededG,
+    };
+  }
+
+  return null;
+}
+
+function computeFbaDimensionReductionNeed(sortedDims, maxDimsCm) {
+  const sortedMax = [...maxDimsCm].sort((a, b) => b - a);
+  const reductions = sortedDims.map((value, index) => Math.max(0, value - sortedMax[index]));
+  const total = reductions.reduce((sum, value) => sum + value, 0);
+  const pctByAxis = reductions.map((value, index) => {
+    const base = Math.max(0.000001, num(sortedDims[index], 0));
+    return (value / base) * 100;
+  });
+  const totalBase = sortedDims.reduce((sum, value) => sum + Math.max(0, num(value, 0)), 0);
+  const totalPct = totalBase > 0 ? (total / totalBase) * 100 : 0;
+  return {
+    byAxis: reductions,
+    total,
+    perSideMax: Math.max(...reductions),
+    pctByAxis,
+    totalPct,
+  };
+}
+
+function formatFbaDimReductionText(reductionByAxis, reductionPctByAxis = []) {
+  const axisLabels = ["lange Seite", "mittlere Seite", "kurze Seite"];
+  const parts = [];
+  reductionByAxis.forEach((value, index) => {
+    if (value > 0) {
+      const pct = num(reductionPctByAxis[index], 0);
+      parts.push(`${axisLabels[index]} -${formatNumber(round2(value))} cm (-${formatPercent(pct)})`);
+    }
+  });
+  return parts.join(", ");
+}
+
+function buildFbaOptimizationHints(profile, sortedDims, shippingWeightG, matchedTier, currentFee) {
+  const weightByPct = Math.max(1, Math.ceil(shippingWeightG * (FBA_OPTIMIZATION_LIMITS.maxWeightReductionPct / 100)));
+  const maxWeightReductionAllowedG = Math.max(
+    1,
+    Math.min(weightByPct, Math.max(1, roundInt(FBA_OPTIMIZATION_LIMITS.maxWeightReductionGCap, 250))),
+  );
+  const maxDimReductionAllowedByAxis = sortedDims.map((value) => {
+    const byPct = Math.max(0, value * (FBA_OPTIMIZATION_LIMITS.maxDimReductionPctPerSide / 100));
+    return Math.min(byPct, FBA_OPTIMIZATION_LIMITS.maxDimReductionCmPerSideCap);
+  });
+  const sumDims = sortedDims.reduce((sum, value) => sum + Math.max(0, value), 0);
+  const maxDimReductionAllowedTotal = Math.min(
+    Math.max(0, sumDims * (FBA_OPTIMIZATION_LIMITS.maxDimReductionPctTotal / 100)),
+    FBA_OPTIMIZATION_LIMITS.maxDimReductionCmTotalCap,
+  );
+  const hints = [];
+
+  const sameTierTarget = findCheaperTargetForTier(matchedTier, shippingWeightG, currentFee);
+  if (sameTierTarget && sameTierTarget.weightReductionNeededG > 0 && sameTierTarget.weightReductionNeededG <= maxWeightReductionAllowedG) {
+    const savings = round2(currentFee - sameTierTarget.targetFeeEur);
+    if (savings > 0) {
+      const reductionPct = shippingWeightG > 0 ? (sameTierTarget.weightReductionNeededG / shippingWeightG) * 100 : 0;
+      hints.push({
+        id: "same_tier_weight",
+        type: "weight_band",
+        savingsEur: savings,
+        text: `Mit ca. ${formatNumber(sameTierTarget.weightReductionNeededG)} g (-${formatPercent(reductionPct)}) weniger Versandgewicht könntest du auf ${formatCurrency(sameTierTarget.targetFeeEur)} fallen (${formatCurrency(savings)} weniger, z. B. durch weniger Verpackungsmaterial).`,
+      });
+    }
+  }
+
+  const tiers = FBA_RATECARD_DE_2026[profile] ?? FBA_RATECARD_DE_2026.standard;
+  const crossTierOptions = [];
+  tiers.forEach((tier) => {
+    if (tier.key === matchedTier.key) {
+      return;
+    }
+    const target = findCheaperTargetForTier(tier, shippingWeightG, currentFee);
+    if (!target) {
+      return;
+    }
+    const dimNeed = computeFbaDimensionReductionNeed(sortedDims, tier.maxDimsCm);
+    const exceedsAxisThreshold = dimNeed.byAxis.some((value, index) => value > maxDimReductionAllowedByAxis[index]);
+    if (
+      exceedsAxisThreshold ||
+      dimNeed.total > maxDimReductionAllowedTotal ||
+      target.weightReductionNeededG > maxWeightReductionAllowedG
+    ) {
+      return;
+    }
+    const savings = round2(currentFee - target.targetFeeEur);
+    if (savings <= 0) {
+      return;
+    }
+    if (dimNeed.total <= 0 && target.weightReductionNeededG <= 0) {
+      return;
+    }
+    const changes = [];
+    if (target.weightReductionNeededG > 0) {
+      const reductionPct = shippingWeightG > 0 ? (target.weightReductionNeededG / shippingWeightG) * 100 : 0;
+      changes.push(`Gewicht -${formatNumber(target.weightReductionNeededG)} g (-${formatPercent(reductionPct)})`);
+    }
+    const dimText = formatFbaDimReductionText(dimNeed.byAxis, dimNeed.pctByAxis);
+    if (dimText) {
+      changes.push(dimText);
+    }
+    crossTierOptions.push({
+      savingsEur: savings,
+      effortScore: target.weightReductionNeededG + dimNeed.total * 120,
+      text: `Potenzial zur günstigeren Kategorie "${tier.label}": ${changes.join(" · ")} -> ${formatCurrency(target.targetFeeEur)} (${formatCurrency(savings)} weniger, sofern realistisch umsetzbar).`,
+    });
+  });
+  crossTierOptions.sort((a, b) => b.savingsEur - a.savingsEur || a.effortScore - b.effortScore);
+  const bestCrossTier = crossTierOptions[0];
+  if (bestCrossTier) {
+    hints.push({
+      id: "cross_tier",
+      type: "tier_drop",
+      savingsEur: bestCrossTier.savingsEur,
+      text: bestCrossTier.text,
+    });
+  }
+
+  return hints.slice(0, 2);
+}
+
 function estimateFbaFee(product, resolved, settings = state.settings) {
   const marketplace = String(product?.basic?.marketplace ?? "").toUpperCase();
   const rateCardVersion = settings?.amazonFba?.de?.rateCardVersion ?? AMAZON_FBA_DE_RATECARD_VERSION;
@@ -4120,6 +4307,7 @@ function estimateFbaFee(product, resolved, settings = state.settings) {
       shippingWeightG: weights.shippingWeightG,
       fallbackReason: "",
       volumetricDivisor: weights.volumetricDivisor,
+      optimizationHints: [],
     };
   }
 
@@ -4138,6 +4326,7 @@ function estimateFbaFee(product, resolved, settings = state.settings) {
       shippingWeightG: weights.shippingWeightG,
       fallbackReason: "Auto-Berechnung ist aktuell nur für Amazon.de aktiv.",
       volumetricDivisor: weights.volumetricDivisor,
+      optimizationHints: [],
     };
   }
 
@@ -4157,6 +4346,7 @@ function estimateFbaFee(product, resolved, settings = state.settings) {
       shippingWeightG: weights.shippingWeightG,
       fallbackReason: "",
       volumetricDivisor: weights.volumetricDivisor,
+      optimizationHints: buildFbaOptimizationHints(profile, dims, weights.shippingWeightG, matched.tier, matched.fee),
     };
   }
 
@@ -4174,6 +4364,7 @@ function estimateFbaFee(product, resolved, settings = state.settings) {
     shippingWeightG: weights.shippingWeightG,
     fallbackReason: "Produktmaße/-gewicht liegen außerhalb der modellierten DE-Ratecard-Tiers.",
     volumetricDivisor: weights.volumetricDivisor,
+    optimizationHints: [],
   };
 }
 
@@ -5785,6 +5976,7 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     fbaShippingWeightG: fba.shippingWeightG,
     fbaFallbackReason: fba.fallbackReason,
     fbaVolumetricDivisor: fba.volumetricDivisor,
+    fbaOptimizationHints: Array.isArray(fba.optimizationHints) ? fba.optimizationHints : [],
     customsMonthly,
     importVatCostMonthly,
 
@@ -8487,6 +8679,20 @@ function renderFbaDetails(metrics) {
     } else {
       dom.fbaInfoFallback.textContent = "";
       dom.fbaInfoFallback.classList.add("hidden");
+    }
+  }
+  if (dom.fbaInfoHints) {
+    dom.fbaInfoHints.innerHTML = "";
+    const hints = Array.isArray(metrics.fbaOptimizationHints) ? metrics.fbaOptimizationHints : [];
+    if (metrics.fbaFeeSource === "auto" && hints.length > 0) {
+      hints.slice(0, 2).forEach((hint) => {
+        const li = document.createElement("li");
+        li.textContent = hint.text;
+        dom.fbaInfoHints.appendChild(li);
+      });
+      dom.fbaInfoHints.classList.remove("hidden");
+    } else {
+      dom.fbaInfoHints.classList.add("hidden");
     }
   }
 }

@@ -1078,6 +1078,24 @@ select:disabled {
   font-weight: 700;
 }
 
+.fba-hints {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.fba-hints li {
+  border: 1px solid color-mix(in srgb, #efd7a0 56%, white);
+  border-radius: 9px;
+  background: #fff9eb;
+  padding: 7px 8px;
+  font-size: 0.7rem;
+  color: #7b5600;
+  font-weight: 700;
+}
+
 @media (max-width: 980px) {
   .shipping-dashboard-head {
     grid-template-columns: 1fr;
