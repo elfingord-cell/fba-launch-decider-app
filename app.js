@@ -2512,9 +2512,13 @@ async function createSupabaseClientFromConfig() {
   if (!config || !window.supabase?.createClient) {
     return null;
   }
-  return window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true },
-  });
+  try {
+    return window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
+      auth: { persistSession: true, autoRefreshToken: true },
+    });
+  } catch (_error) {
+    return null;
+  }
 }
 
 async function fetchWorkspaceMembership(client, userId) {
@@ -2883,12 +2887,12 @@ async function bootstrapCollaborationSession() {
   const client = await createSupabaseClientFromConfig();
   if (!client) {
     configureSessionState({
-      requiresAuth: false,
+      requiresAuth: true,
       isAuthenticated: false,
-      hasWorkspaceAccess: true,
+      hasWorkspaceAccess: false,
       pendingLocalImport: false,
     });
-    setAppMode("ready_local");
+    setAppMode("auth_required", "Supabase ist aktuell nicht erreichbar. Bitte Seite neu laden.");
     return;
   }
 
@@ -2976,15 +2980,31 @@ async function handleAuthLogin() {
 
   setAuthStatus("Anmeldung läuft ...");
 
-  const { error } = await state.supabase.client.auth.signInWithPassword({ email, password });
+  const { data, error } = await state.supabase.client.auth.signInWithPassword({ email, password });
   if (error) {
     setAppMode("auth_required", "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.");
     setAuthStatus("Anmeldung fehlgeschlagen: " + error.message, true);
     return;
   }
 
-  // Aktivierung läuft über onAuthStateChange; nur Fallback-Status setzen.
   setAuthStatus("Anmeldung erfolgreich. Workspace wird geladen ...");
+
+  // Primär wird über onAuthStateChange aktiviert. Falls der Event ausbleibt, hier direkter Fallback.
+  const user = data?.user ?? data?.session?.user ?? null;
+  if (!user) {
+    return;
+  }
+  try {
+    const activated = await activateSharedWorkspace(user);
+    if (activated) {
+      setAppMode("ready_shared");
+      renderPageAfterLoad();
+    }
+  } catch (activateError) {
+    console.error("Workspace activation after login failed", activateError);
+    setAuthStatus("Workspace konnte nach Login nicht geladen werden.", true);
+    setAppMode("auth_required", "Bitte erneut anmelden oder Workspace-Zugriff prüfen.");
+  }
 }
 
 async function handleAuthRegister() {
