@@ -129,27 +129,37 @@
             <div class="section-head">
               <div>
                 <h2>Basic View</h2>
-                <p>3-Stufen Workflow ohne Unlock: Quick-Check, Validation oder Deep-Dive frei wählbar.</p>
+                <p>3-Stufen Workflow ohne Unlock: QuickCheck, Validation oder Deep-Dive frei wählbar.</p>
               </div>
             </div>
             <section class="stage-panel">
               <div class="stage-switch">
-                <button id="stageQuickBtn" class="stage-btn" type="button">Quick-Check</button>
+                <button id="stageQuickBtn" class="stage-btn" type="button">QuickCheck</button>
                 <button id="stageValidationBtn" class="stage-btn" type="button">Validation</button>
                 <button id="stageDeepBtn" class="stage-btn" type="button">Deep-Dive</button>
               </div>
               <div class="stage-gate">
-                <p id="stageHint" class="hint">Quick-Check: Ballpark-Marge prüfen.</p>
+                <p id="stageHint" class="hint">QuickCheck: Ballpark-Marge prüfen.</p>
                 <p id="stageGateStatus" class="stage-status">Status: -</p>
                 <p id="stageWarning" class="hint hidden">-</p>
               </div>
             </section>
             <section id="quickStagePanel" class="card stage-impact quick-cost-workflow">
               <div class="quick-cost-head">
-                <h3>Quick Cost Workflow</h3>
+                <h3>QuickCheck Workflow</h3>
                 <p class="hint">
-                  Lean-Ansicht für 80/20: Klicke auf einen Hauptkostenblock für Details und Treiber. Die fünf Blöcke decken typischerweise 75-90% der Gesamtkosten ab.
+                  Lean-Ansicht für 80/20: Klicke auf einen Hauptkostenblock für Details und Treiber. EUR/Unit bedeutet Kosten pro verkaufter Einheit.
                 </p>
+              </div>
+              <div class="quick-preview-bar" id="quickPreviewBar">
+                <article>
+                  <span>Shipping D2D</span>
+                  <strong id="quickPreviewShippingUnit">-</strong>
+                </article>
+                <article>
+                  <span>Amazon Core (Referral + TACoS + FBA)</span>
+                  <strong id="quickPreviewAmazonCoreUnit">-</strong>
+                </article>
               </div>
               <div id="quickCostWorkflowGrid" class="quick-cost-grid">
                 <button type="button" class="quick-cost-card" data-quick-block="exw">
@@ -180,14 +190,18 @@
               </div>
               <article id="quickCoverageCard" class="quick-coverage-card">
                 <div>
-                  <span>Kostenabdeckung durch Lean-Quick-Blöcke</span>
+                  <span>Abdeckung des QuickCheck-Workflows</span>
                   <strong id="quickCoreCoveragePct">-</strong>
                 </div>
                 <div class="quick-coverage-values">
                   <small id="quickCoreCoveredCost">-</small>
                   <small id="quickCoreResidualCost">-</small>
                 </div>
+                <p class="hint">Werte in EUR/Unit sowie ergänzend in EUR/Monat.</p>
                 <p id="quickCoverageStatus" class="hint">-</p>
+                <p class="hint quick-residual-caption">
+                  Größte Restkosten außerhalb des QuickCheck-Workflows (inkl. Anteil an Gesamtkosten):
+                </p>
                 <ul id="quickResidualTopList" class="quick-residual-list"></ul>
               </article>
             </section>
@@ -231,11 +245,11 @@
                     <input data-path="basic.horizonMonths" type="number" min="1" step="1" />
                   </label>
                   <label>
-                    TACoS (Quick-Check, %)
+                    TACoS (QuickCheck, %)
                     <input data-path="assumptions.ads.tacosRate" type="number" min="0" max="100" step="0.1" />
                   </label>
                   <label>
-                    Retourenquote (Quick-Check, %)
+                    Retourenquote (QuickCheck, %)
                     <input data-path="assumptions.returns.returnRate" type="number" min="0" max="100" step="0.1" />
                   </label>
                 </div>
@@ -681,7 +695,7 @@
             </div>
           </section>
 
-          <section class="card outputs-card">
+          <section id="outputsCard" class="card outputs-card">
             <div class="section-head">
               <div>
                 <h2>Kostenblöcke & Treiber</h2>

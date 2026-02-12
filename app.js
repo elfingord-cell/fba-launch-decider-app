@@ -24,7 +24,7 @@ const MARKETPLACE_VAT = {
 
 const WORKFLOW_STAGES = ["quick", "validation", "deep_dive"];
 const STAGE_LABELS = {
-  quick: "Quick-Check",
+  quick: "QuickCheck",
   validation: "Validation",
   deep_dive: "Deep-Dive",
 };
@@ -1039,13 +1039,13 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.quick.coreCoveragePct": {
     label: "Quick-Kostenabdeckung (%)",
-    help: "Abdeckungsgrad der fünf Lean-Quick-Hauptkostenblöcke an den Gesamtkosten je Unit.",
+    help: "Abdeckungsgrad der fünf QuickCheck-Hauptkostenblöcke an den Gesamtkosten je Unit.",
     format: "percent",
     read: (metrics) => metrics.quickCoreCoveragePct,
   },
   "derived.quick.coreResidualPerUnit": {
     label: "Quick-Restkosten (EUR/Unit)",
-    help: "Nicht durch die fünf Lean-Quick-Hauptblöcke abgedeckte Restkosten je Unit.",
+    help: "Nicht durch die fünf QuickCheck-Hauptblöcke abgedeckte Restkosten je Unit.",
     format: "currency",
     read: (metrics) => metrics.quickCoreResidualPerUnit,
   },
@@ -1066,6 +1066,24 @@ const DERIVED_DRIVER_MAP = {
     help: "Quick-Hauptblock Launch Core aus Listing, Launch-Budget und Launch-Ops je Unit.",
     format: "currency",
     read: (metrics) => metrics.quickBlockLaunchCorePerUnit,
+  },
+  "derived.quick.residualTop1PerUnit": {
+    label: "Quick-Restkosten Top 1 (EUR/Unit)",
+    help: "Größter Nicht-Core-Kostenblock außerhalb des QuickCheck-Workflows.",
+    format: "currency",
+    read: (metrics) => metrics.quickResidualTop1PerUnit,
+  },
+  "derived.quick.residualTop2PerUnit": {
+    label: "Quick-Restkosten Top 2 (EUR/Unit)",
+    help: "Zweitgrößter Nicht-Core-Kostenblock außerhalb des QuickCheck-Workflows.",
+    format: "currency",
+    read: (metrics) => metrics.quickResidualTop2PerUnit,
+  },
+  "derived.quick.residualTop3PerUnit": {
+    label: "Quick-Restkosten Top 3 (EUR/Unit)",
+    help: "Drittgrößter Nicht-Core-Kostenblock außerhalb des QuickCheck-Workflows.",
+    format: "currency",
+    read: (metrics) => metrics.quickResidualTop3PerUnit,
   },
   "derived.threepl.palletsCount": {
     label: "Anzahl Paletten",
@@ -1311,6 +1329,9 @@ const dom = {
   stageGateStatus: document.getElementById("stageGateStatus"),
   stageWarning: document.getElementById("stageWarning"),
   quickStagePanel: document.getElementById("quickStagePanel"),
+  quickPreviewBar: document.getElementById("quickPreviewBar"),
+  quickPreviewShippingUnit: document.getElementById("quickPreviewShippingUnit"),
+  quickPreviewAmazonCoreUnit: document.getElementById("quickPreviewAmazonCoreUnit"),
   quickCostWorkflowGrid: document.getElementById("quickCostWorkflowGrid"),
   quickBlockExwPerUnit: document.getElementById("quickBlockExwPerUnit"),
   quickBlockExwMonthly: document.getElementById("quickBlockExwMonthly"),
@@ -1349,6 +1370,8 @@ const dom = {
   comparisonBody: document.getElementById("comparisonBody"),
   trafficLight: document.getElementById("trafficLight"),
   driverFocusHint: document.getElementById("driverFocusHint"),
+  outputsCard: document.getElementById("outputsCard"),
+  shippingQuickCard: document.getElementById("shippingQuickCard"),
   cartonPresetSelect: document.getElementById("cartonPresetSelect"),
   categoryDefaultsAdmin: document.getElementById("categoryDefaultsAdmin"),
   shippingMethodText: document.getElementById("shippingMethodText"),
@@ -5737,7 +5760,7 @@ function buildStageState(product, metrics) {
 
   const hintByStage = {
     quick:
-      "Quick-Check: leaner 80/20-Workflow mit fünf Hauptkostenblöcken und transparenter Abdeckungsanzeige.",
+      "QuickCheck: leaner 80/20-Workflow mit fünf Hauptkostenblöcken und transparenter Abdeckungsanzeige.",
     validation:
       "Validation: Top-20 Treiber prüfen oder überschreiben. Fokus auf die größten Kostentreiber je Lieferkettenstufe.",
     deep_dive:
@@ -5747,7 +5770,7 @@ function buildStageState(product, metrics) {
   const statusClass = readinessByStage[stage] ? "pass" : (stage === "quick" ? "fail" : "warn");
   let statusText = "Status: in Prüfung";
   if (stage === "quick") {
-    statusText = readinessByStage.quick ? "Status: Quick-Check bereit" : "Status: Quick-Check unvollständig";
+    statusText = readinessByStage.quick ? "Status: QuickCheck bereit" : "Status: QuickCheck unvollständig";
   } else if (stage === "validation") {
     statusText = validationReady
       ? `Status: Validation bereit (${validationReview.completed}/${validationReview.total})`
@@ -6097,6 +6120,10 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     quickCoreCoveragePct,
     quickCoreResidualPerUnit,
     quickCoreResidualMonthly,
+    quickResidualTopItems: [],
+    quickResidualTop1PerUnit: 0,
+    quickResidualTop2PerUnit: 0,
+    quickResidualTop3PerUnit: 0,
 
     db1Unit,
     db1MarginPct,
@@ -6127,6 +6154,10 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
 
   result.breakEvenPrice = solveBreakEvenPrice(product);
   result.maxTacosRateForTarget = solveMaxTacosRateForTargetMargin(product, resolved.targetMarginPct);
+  result.quickResidualTopItems = buildQuickResidualItems(result);
+  result.quickResidualTop1PerUnit = num(result.quickResidualTopItems[0]?.perUnit, 0);
+  result.quickResidualTop2PerUnit = num(result.quickResidualTopItems[1]?.perUnit, 0);
+  result.quickResidualTop3PerUnit = num(result.quickResidualTopItems[2]?.perUnit, 0);
   result.sensitivity = buildSensitivity(product, result.targetMarginPct);
 
   return result;
@@ -7587,7 +7618,7 @@ function renderDriverModal() {
 
   const groupMeta = {
     user: {
-      title: "Von dir eingegeben / direkt überschreibbar",
+      title: "Von dir eingegeben",
       hint: "Produktfelder und Annahmen, die den Treiber direkt beeinflussen.",
     },
     defaults: {
@@ -7599,29 +7630,62 @@ function renderDriverModal() {
       hint: "Transparenzwerte aus der Rechnung. Nicht direkt editierbar.",
     },
   };
+  const groupOrder = ["user", "defaults", "calculated"];
   const groupNodes = new Map();
-  const ensureGroupFields = (groupKey) => {
-    if (groupNodes.has(groupKey)) {
-      return groupNodes.get(groupKey);
-    }
-    const section = document.createElement("section");
-    section.className = "modal-group";
-    const heading = document.createElement("h4");
-    heading.textContent = groupMeta[groupKey].title;
-    const hint = document.createElement("p");
-    hint.className = "hint";
-    hint.textContent = groupMeta[groupKey].hint;
+  const accordionActions = document.createElement("div");
+  accordionActions.className = "modal-accordion-actions";
+  const expandAllBtn = document.createElement("button");
+  expandAllBtn.className = "btn btn-ghost";
+  expandAllBtn.type = "button";
+  expandAllBtn.textContent = "Alles aufklappen";
+  const collapseAllBtn = document.createElement("button");
+  collapseAllBtn.className = "btn btn-ghost";
+  collapseAllBtn.type = "button";
+  collapseAllBtn.textContent = "Alles einklappen";
+  accordionActions.append(expandAllBtn, collapseAllBtn);
+  dom.driverModalFields.appendChild(accordionActions);
+
+  groupOrder.forEach((groupKey, index) => {
+    const details = document.createElement("details");
+    details.className = "modal-group";
+    details.open = index === 0;
+    const summary = document.createElement("summary");
+    summary.className = "modal-group-summary";
+    summary.innerHTML = `<span>${groupMeta[groupKey].title}</span><small>${groupMeta[groupKey].hint}</small>`;
     const fields = document.createElement("div");
     fields.className = "modal-group-fields";
-    section.append(heading, hint, fields);
-    dom.driverModalFields.appendChild(section);
-    groupNodes.set(groupKey, fields);
-    return fields;
+    details.append(summary, fields);
+    dom.driverModalFields.appendChild(details);
+    groupNodes.set(groupKey, { details, fields });
+  });
+
+  expandAllBtn.addEventListener("click", () => {
+    groupOrder.forEach((groupKey) => {
+      const node = groupNodes.get(groupKey);
+      if (node && !node.details.classList.contains("hidden")) {
+        node.details.open = true;
+      }
+    });
+  });
+  collapseAllBtn.addEventListener("click", () => {
+    groupOrder.forEach((groupKey) => {
+      const node = groupNodes.get(groupKey);
+      if (node && !node.details.classList.contains("hidden")) {
+        node.details.open = false;
+      }
+    });
+  });
+
+  const ensureGroupFields = (groupKey) => {
+    return groupNodes.get(groupKey)?.fields ?? null;
   };
 
   const orderedPaths = sortDriverPathsForModal(driverPaths, modalMetrics);
   orderedPaths.forEach((path) => {
     const groupFields = ensureGroupFields(modalGroupForPath(path));
+    if (!groupFields) {
+      return;
+    }
 
     if (path.startsWith("derived.")) {
       const definition = DERIVED_DRIVER_MAP[path];
@@ -7917,6 +7981,18 @@ function renderDriverModal() {
 
     groupFields.appendChild(field);
   });
+
+  groupOrder.forEach((groupKey, index) => {
+    const node = groupNodes.get(groupKey);
+    if (!node) {
+      return;
+    }
+    const isEmpty = node.fields.childElementCount === 0;
+    node.details.classList.toggle("hidden", isEmpty);
+    if (!isEmpty && index === 0) {
+      node.details.open = true;
+    }
+  });
 }
 
 function renderStageImpactList(stage, metrics) {
@@ -8067,6 +8143,7 @@ function buildCostCategoryData(metrics) {
       collapsedRows: 4,
       lines: [
         line({
+          id: "quick_core.exw",
           label: "EXW umgerechnet (EUR/Unit)",
           valueRaw: metrics.exwUnit,
           impactMonthly: metrics.exwUnit * metrics.monthlyUnits,
@@ -8169,6 +8246,7 @@ function buildCostCategoryData(metrics) {
       collapsedRows: 6,
       lines: [
         line({
+          id: "quick_core.shipping.origin",
           label: "Vorlauf (EUR/Unit)",
           valueRaw: shippingPreRunUnit,
           impactMonthly: shippingPreRunUnit * metrics.monthlyUnits,
@@ -8185,6 +8263,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.shipping.main_variable",
           label: "Hauptlauf variabel (EUR/Unit)",
           valueRaw: shippingMainRunVariableUnit,
           impactMonthly: shippingMainRunVariableUnit * metrics.monthlyUnits,
@@ -8199,6 +8278,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.shipping.main_fixed",
           label: "Hauptlauf Fixkosten (EUR/Unit)",
           valueRaw: shippingMainRunFixedUnit,
           impactMonthly: shippingMainRunFixedUnit * metrics.monthlyUnits,
@@ -8212,6 +8292,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.shipping.post",
           label: "Nachlauf (EUR/Unit)",
           valueRaw: shippingPostRunUnit,
           impactMonthly: shippingPostRunUnit * metrics.monthlyUnits,
@@ -8228,6 +8309,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.shipping.customs_clearance",
           label: "Zollabfertigung (EUR/Unit)",
           valueRaw: shippingCustomsClearanceUnit,
           impactMonthly: shippingCustomsClearanceUnit * metrics.monthlyUnits,
@@ -8242,6 +8324,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.shipping.insurance",
           label: "Versicherung (EUR/Unit)",
           valueRaw: shippingInsuranceUnit,
           impactMonthly: shippingInsuranceUnit * metrics.monthlyUnits,
@@ -8260,6 +8343,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.shipping.surcharge",
           label: "Nachbelastung (EUR/Unit)",
           valueRaw: shippingSurchargeUnit,
           impactMonthly: shippingSurchargeUnit * metrics.monthlyUnits,
@@ -8273,6 +8357,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.shipping.customs_duty",
           label: "Zoll (EUR/Unit)",
           valueRaw: metrics.customsUnit,
           impactMonthly: metrics.customsMonthly,
@@ -8283,6 +8368,7 @@ function buildCostCategoryData(metrics) {
           driverPaths: ["assumptions.import.customsDutyRate", "settings.tax.customsDutyRatePct", "basic.exwUnit", "basic.unitsPerOrder"],
         }),
         line({
+          id: "quick_core.shipping.order_fixed",
           label: "Order-Fixkosten (EUR/Unit)",
           valueRaw: metrics.orderFixedPerUnit,
           impactMonthly: metrics.orderFixedPerUnit * metrics.monthlyUnits,
@@ -8308,6 +8394,7 @@ function buildCostCategoryData(metrics) {
       collapsedRows: 5,
       lines: [
         line({
+          id: "quick_core.threepl.inbound",
           label: "3PL Inbound / Receiving (EUR/Unit)",
           valueRaw: metrics.threePlInboundPerUnit,
           impactMonthly: metrics.threePlInboundPerUnit * metrics.monthlyUnits,
@@ -8334,6 +8421,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.threepl.storage",
           label: "3PL Lagerung (EUR/Unit)",
           valueRaw: metrics.threePlStoragePerUnit,
           impactMonthly: metrics.threePlStoragePerUnit * metrics.monthlyUnits,
@@ -8353,6 +8441,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.threepl.service",
           label: "3PL -> Amazon Service (EUR/Unit)",
           valueRaw: metrics.threePlOutboundServicePerUnit,
           impactMonthly: metrics.threePlOutboundServicePerUnit * metrics.monthlyUnits,
@@ -8377,6 +8466,7 @@ function buildCostCategoryData(metrics) {
           ],
         }),
         line({
+          id: "quick_core.threepl.carrier",
           label: "3PL -> Amazon Carrier (EUR/Unit)",
           valueRaw: metrics.threePlCarrierPerUnit,
           impactMonthly: metrics.threePlCarrierPerUnit * metrics.monthlyUnits,
@@ -8418,6 +8508,7 @@ function buildCostCategoryData(metrics) {
       collapsedRows: 4,
       lines: [
         line({
+          id: "quick_core.amazon.referral",
           label: "Referral Fee (EUR/Unit)",
           valueRaw: metrics.referralFeeUnit,
           impactMonthly: metrics.referralMonthly,
@@ -8428,6 +8519,7 @@ function buildCostCategoryData(metrics) {
           driverPaths: ["assumptions.amazon.referralRate", "basic.category", "basic.priceGross"],
         }),
         line({
+          id: "quick_core.amazon.fba",
           label: "FBA Fee (EUR/Unit)",
           valueRaw: metrics.fbaFeeUnit,
           impactMonthly: metrics.fbaFeeUnit * metrics.monthlyUnits,
@@ -8498,6 +8590,7 @@ function buildCostCategoryData(metrics) {
       collapsedRows: 4,
       lines: [
         line({
+          id: "quick_core.amazon.ads",
           label: "Ads inkl. Launch-Boost (EUR/Unit)",
           valueRaw: metrics.adsUnit,
           impactMonthly: metrics.adsMonthly,
@@ -8545,6 +8638,7 @@ function buildCostCategoryData(metrics) {
       collapsedRows: 4,
       lines: [
         line({
+          id: "quick_core.launch.budget",
           label: "Launch-Budget amortisiert (EUR/Unit)",
           valueRaw: metrics.launchUnit,
           impactMonthly: metrics.launchMonthly,
@@ -8555,6 +8649,7 @@ function buildCostCategoryData(metrics) {
           driverPaths: ["basic.launchBudgetTotal", "assumptions.launchSplit.enabled", "basic.horizonMonths"],
         }),
         line({
+          id: "quick_core.launch.listing",
           label: "Listing amortisiert (EUR/Unit)",
           valueRaw: metrics.listingUnit,
           impactMonthly: metrics.listingMonthly,
@@ -8565,6 +8660,7 @@ function buildCostCategoryData(metrics) {
           driverPaths: ["basic.listingPackage", "settings.lifecycle.defaultMonths"],
         }),
         line({
+          id: "quick_core.launch.ops",
           label: "Launch Ops amortisiert (EUR/Unit)",
           valueRaw: metrics.launchOpsUnit,
           impactMonthly: metrics.launchOpsMonthly,
@@ -8813,60 +8909,65 @@ function createShippingDashboardModalContent(metrics) {
     section.appendChild(oversize);
   }
 
-  const grid = document.createElement("div");
-  grid.className = "shipping-dashboard-grid";
+  const createKpiGrid = (rows) => {
+    const grid = document.createElement("div");
+    grid.className = "shipping-kpi-grid";
+    rows.forEach(([label, value]) => {
+      const item = document.createElement("article");
+      item.className = "shipping-kpi-item";
+      item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+      grid.appendChild(item);
+    });
+    return grid;
+  };
+
+  const mainGrid = document.createElement("div");
+  mainGrid.className = "shipping-dashboard-grid shipping-dashboard-grid-compact";
 
   const cartonPanel = document.createElement("article");
   cartonPanel.className = "shipping-panel";
   const cartonTitle = document.createElement("h4");
   cartonTitle.textContent = "Kartonisierung";
-  const cartonList = document.createElement("ul");
-  cartonList.className = "calc-list";
-  const cartonRows = [
-    ["Units je Karton nach Gewichtscap", formatNumber(metrics.shipping.unitsByWeightCap)],
-    ["Units je Karton nach Maßcap", formatNumber(metrics.shipping.unitsByDimensionCap)],
-    [
-      "Gewählte Units je Karton",
-      `${formatNumber(metrics.shipping.unitsPerCartonAuto)} (${metrics.shipping.cartonizationSource === "manual_override" ? "manuell" : "auto"})`,
-    ],
-    ["Physische Kartons", formatNumber(metrics.shipping.physicalCartonsCount)],
-    ["Quelle Kartonisierung", metrics.shipping.cartonizationSourceLabel],
-    [
-      "Geschätzte Umkartonmaße (L×B×H)",
-      `${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm`,
-    ],
-    ["Geschätztes Umkarton-Gewicht", `${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)} kg`],
-  ];
-  cartonRows.forEach(([label, value]) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
-    cartonList.appendChild(li);
-  });
-  cartonPanel.append(cartonTitle, cartonList);
-  grid.appendChild(cartonPanel);
+  cartonPanel.appendChild(cartonTitle);
+  cartonPanel.appendChild(
+    createKpiGrid([
+      ["Units nach Gewichtscap", formatNumber(metrics.shipping.unitsByWeightCap)],
+      ["Units nach Maßcap", formatNumber(metrics.shipping.unitsByDimensionCap)],
+      [
+        "Gewählte Units/Karton",
+        `${formatNumber(metrics.shipping.unitsPerCartonAuto)} (${metrics.shipping.cartonizationSource === "manual_override" ? "manuell" : "auto"})`,
+      ],
+      ["Physische Kartons", formatNumber(metrics.shipping.physicalCartonsCount)],
+    ]),
+  );
+  const cartonDetails = document.createElement("details");
+  cartonDetails.className = "shipping-detail-toggle";
+  cartonDetails.innerHTML =
+    `<summary>Weitere Kartonisierungsdetails</summary>` +
+    `<div class="shipping-detail-body">` +
+    `<p><strong>Quelle:</strong> ${metrics.shipping.cartonizationSourceLabel}</p>` +
+    `<p><strong>Umkartonmaße:</strong> ${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm</p>` +
+    `<p><strong>Umkarton-Gewicht:</strong> ${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)} kg</p>` +
+    `</div>`;
+  cartonPanel.appendChild(cartonDetails);
+  mainGrid.appendChild(cartonPanel);
 
   const basisPanel = document.createElement("article");
   basisPanel.className = "shipping-panel";
   const basisTitle = document.createElement("h4");
   basisTitle.textContent = "Abrechnungsbasis";
-  const basisList = document.createElement("ul");
-  basisList.className = "calc-list";
-  const basisRows = [
-    ["Shipment-CBM", `${formatNumber(metrics.shipping.shipmentCbm)} CBM`],
-    ["Shipment-Gewicht", `${formatNumber(metrics.shipping.shipmentWeightKg)} kg`],
-    ["Chargeable-CBM (W/M)", `${formatNumber(metrics.shipping.chargeableCbm)} CBM`],
-    ["Äquivalenz-Auslastung", formatPercent(metrics.shipping.equivalentFillPct)],
-    ["Äquivalenz-Referenz (CBM)", `${formatNumber(metrics.shipping.equivalentReferenceCbm)} CBM`],
-    ["Äquivalenz-Referenz (Gewicht)", `${formatNumber(metrics.shipping.equivalentReferenceWeightKg)} kg`],
-    ["Äquivalenz-Kartons", formatNumber(metrics.shipping.equivalentCartonsCount)],
-  ];
-  basisRows.forEach(([label, value]) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
-    basisList.appendChild(li);
-  });
-  basisPanel.append(basisTitle, basisList);
-  grid.appendChild(basisPanel);
+  basisPanel.appendChild(basisTitle);
+  basisPanel.appendChild(
+    createKpiGrid([
+      ["Shipment-CBM", `${formatNumber(metrics.shipping.shipmentCbm)} CBM`],
+      ["Shipment-Gewicht", `${formatNumber(metrics.shipping.shipmentWeightKg)} kg`],
+      ["Chargeable-CBM", `${formatNumber(metrics.shipping.chargeableCbm)} CBM`],
+      ["Äquivalenz-Kartons", formatNumber(metrics.shipping.equivalentCartonsCount)],
+      ["Referenz-CBM", `${formatNumber(metrics.shipping.equivalentReferenceCbm)} CBM`],
+      ["Referenz-Gewicht", `${formatNumber(metrics.shipping.equivalentReferenceWeightKg)} kg`],
+    ]),
+  );
+  mainGrid.appendChild(basisPanel);
 
   const costPanel = document.createElement("article");
   costPanel.className = "shipping-panel";
@@ -8875,8 +8976,12 @@ function createShippingDashboardModalContent(metrics) {
   const costHint = document.createElement("p");
   costHint.className = "hint";
   costHint.textContent = "Rail: Vorlauf/Nachlauf variabel = Basis + (EUR/CBM × Shipment-CBM).";
-  const costList = document.createElement("ul");
-  costList.className = "calc-list";
+  costPanel.append(costTitle, costHint);
+  const breakdownDetails = document.createElement("details");
+  breakdownDetails.className = "shipping-detail-toggle";
+  breakdownDetails.innerHTML = "<summary>Kosten-Breakdown einblenden</summary>";
+  const breakdownList = document.createElement("ul");
+  breakdownList.className = "calc-list shipping-detail-body";
   metrics.shipping.breakdown.forEach((line) => {
     const li = document.createElement("li");
     li.className = "shipping-breakdown-row";
@@ -8886,12 +8991,13 @@ function createShippingDashboardModalContent(metrics) {
     if (line.source) {
       li.title = `Herkunft: ${line.source}`;
     }
-    costList.appendChild(li);
+    breakdownList.appendChild(li);
   });
-  costPanel.append(costTitle, costHint, costList);
-  grid.appendChild(costPanel);
+  breakdownDetails.appendChild(breakdownList);
+  costPanel.appendChild(breakdownDetails);
+  mainGrid.appendChild(costPanel);
 
-  section.appendChild(grid);
+  section.appendChild(mainGrid);
   return section;
 }
 
@@ -8899,51 +9005,77 @@ function quickCoverageMeta(coveragePct) {
   if (coveragePct >= 80) {
     return {
       tone: "ok",
-      text: "Abdeckung hoch: Die Lean-Quick-Blöcke decken den Großteil der Kosten ab.",
+      text: "Abdeckung hoch: Der QuickCheck-Workflow deckt den Großteil der Kosten ab.",
     };
   }
   if (coveragePct >= 65) {
     return {
       tone: "warn",
-      text: "Abdeckung mittel: Restkosten prüfen und bei Bedarf nachschärfen.",
+      text: "Abdeckung mittel: Größte Restkosten prüfen und bei Bedarf nachschärfen.",
     };
   }
   return {
     tone: "critical",
-    text: "Abdeckung niedrig: Zusätzliche Kostenblöcke für belastbaren Quickcheck prüfen.",
+    text: "Abdeckung niedrig: Zusätzliche Kostenblöcke für einen belastbaren QuickCheck prüfen.",
   };
 }
 
-function buildQuickResidualItems(metrics) {
-  const monthlyUnits = Math.max(0, metrics.monthlyUnits);
-  return [
-    {
-      label: "Packaging & sonstige Produktkosten",
-      perUnit: metrics.packagingUnit,
-    },
-    {
-      label: "Amazon Lagerung",
-      perUnit: metrics.amazonStoragePerUnit,
-    },
-    {
-      label: "Retouren (Verlust + Handling)",
-      perUnit: metrics.returnsUnit,
-    },
-    {
-      label: "Leakage / Overhead",
-      perUnit: monthlyUnits > 0 ? metrics.block3Monthly / monthlyUnits : 0,
-    },
-    {
-      label: "Weitere Lifecycle-Kosten",
-      perUnit: monthlyUnits > 0 ? metrics.otherLifecycleMonthly / monthlyUnits : 0,
-    },
-  ]
-    .filter((item) => num(item.perUnit, 0) > 0.0001)
-    .map((item) => ({
-      ...item,
-      monthly: num(item.perUnit, 0) * metrics.monthlyUnits,
-    }))
-    .sort((a, b) => num(b.perUnit, 0) - num(a.perUnit, 0));
+const QUICK_CORE_COST_LINE_IDS = new Set([
+  "quick_core.exw",
+  "quick_core.shipping.origin",
+  "quick_core.shipping.main_variable",
+  "quick_core.shipping.main_fixed",
+  "quick_core.shipping.post",
+  "quick_core.shipping.customs_clearance",
+  "quick_core.shipping.insurance",
+  "quick_core.shipping.surcharge",
+  "quick_core.shipping.customs_duty",
+  "quick_core.shipping.order_fixed",
+  "quick_core.threepl.inbound",
+  "quick_core.threepl.storage",
+  "quick_core.threepl.service",
+  "quick_core.threepl.carrier",
+  "quick_core.amazon.referral",
+  "quick_core.amazon.fba",
+  "quick_core.amazon.ads",
+  "quick_core.launch.budget",
+  "quick_core.launch.listing",
+  "quick_core.launch.ops",
+]);
+
+function buildQuickResidualItems(metrics, prebuiltCategories = null) {
+  const categories = prebuiltCategories ?? buildCostCategoryData(metrics);
+  const monthlyUnits = Math.max(0, num(metrics.monthlyUnits, 0));
+  const totalCostPerUnit = Math.max(0, num(metrics.totalCostPerUnit, 0));
+  const rows = [];
+
+  categories.forEach((category) => {
+    category.lines.forEach((lineItem) => {
+      if (lineItem.isSummary || lineItem.excludeFromCategoryTotal) {
+        return;
+      }
+      if (QUICK_CORE_COST_LINE_IDS.has(lineItem.id)) {
+        return;
+      }
+      const perUnit = num(lineItem.valueRaw, 0);
+      if (perUnit <= 0.0001) {
+        return;
+      }
+      const monthly = perUnit * monthlyUnits;
+      const sharePct = totalCostPerUnit > 0 ? (perUnit / totalCostPerUnit) * 100 : 0;
+      rows.push({
+        id: lineItem.id,
+        label: lineItem.label,
+        perUnit,
+        monthly,
+        sharePct,
+      });
+    });
+  });
+
+  return rows
+    .sort((a, b) => num(b.perUnit, 0) - num(a.perUnit, 0))
+    .slice(0, 3);
 }
 
 function buildQuickBlockModalPayload(metrics, blockKey) {
@@ -9131,6 +9263,12 @@ function renderQuickCostWorkflow(metrics) {
     dom.quickBlockLaunchCoreMonthly,
     metrics.quickBlockLaunchCorePerUnit,
   );
+  if (dom.quickPreviewShippingUnit) {
+    dom.quickPreviewShippingUnit.textContent = `${formatCurrency(metrics.shippingUnit)} / Unit`;
+  }
+  if (dom.quickPreviewAmazonCoreUnit) {
+    dom.quickPreviewAmazonCoreUnit.textContent = `${formatCurrency(metrics.quickBlockAmazonCorePerUnit)} / Unit`;
+  }
 
   if (dom.quickCoreCoveragePct) {
     dom.quickCoreCoveragePct.textContent = formatPercent(clamp(metrics.quickCoreCoveragePct, 0, 100));
@@ -9155,15 +9293,17 @@ function renderQuickCostWorkflow(metrics) {
 
   if (dom.quickResidualTopList) {
     dom.quickResidualTopList.innerHTML = "";
-    const topResiduals = buildQuickResidualItems(metrics).slice(0, 3);
+    const topResiduals = Array.isArray(metrics.quickResidualTopItems) ? metrics.quickResidualTopItems : [];
     if (topResiduals.length === 0) {
       const li = document.createElement("li");
-      li.textContent = "Keine relevanten Restkosten außerhalb der Lean-Blöcke.";
+      li.textContent = "Keine wesentlichen Restkosten außerhalb der fünf QuickCheck-Hauptblöcke.";
       dom.quickResidualTopList.appendChild(li);
     } else {
       topResiduals.forEach((item) => {
         const li = document.createElement("li");
-        li.innerHTML = `<span>${item.label}</span><strong>${formatCurrency(item.perUnit)} / Unit</strong>`;
+        li.innerHTML =
+          `<div><span>${item.label}</span><small>${formatCurrency(item.monthly)} / Monat · ${formatPercent(item.sharePct)} Anteil</small></div>` +
+          `<strong>${formatCurrency(item.perUnit)} / Unit</strong>`;
         dom.quickResidualTopList.appendChild(li);
       });
     }
@@ -9307,7 +9447,7 @@ function buildChainStageDataFromCategories(categories, stage, topN, monthlyUnits
         value: formatCurrency(shippingValueRaw),
         impactMonthly: shippingImpactMonthly,
         explain:
-          "Aggregierter Shipping-Block von China bis 3PL. Im Quick-Check ohne Detailaufsplittung nach Vorlauf/Hauptlauf/Nachlauf.",
+          "Aggregierter Shipping-Block von China bis 3PL. Im QuickCheck ohne Detailaufsplittung nach Vorlauf/Hauptlauf/Nachlauf.",
         formula:
           "Shipping gesamt/Unit = Summe aller Shipping-&-Import-Komponenten je Unit (Vorlauf, Hauptlauf variabel/fix, Nachlauf, Zollabfertigung, Versicherung, Nachbelastung, Zoll, Order-Fixkosten).",
         source: "Shipping-12M-Defaults + Produktinput + Import-/Order-Defaults.",
@@ -9802,6 +9942,18 @@ function applyStageVisibility(product, stageState) {
 
   if (dom.quickStagePanel) {
     dom.quickStagePanel.classList.toggle("hidden", !isQuick);
+  }
+  if (dom.shippingQuickCard) {
+    dom.shippingQuickCard.classList.toggle("hidden", isQuick);
+  }
+  if (dom.fbaInfoCard) {
+    dom.fbaInfoCard.classList.toggle("hidden", isQuick);
+  }
+  if (dom.outputsCard) {
+    dom.outputsCard.classList.toggle("hidden", isQuick);
+  }
+  if (dom.compareCard) {
+    dom.compareCard.classList.toggle("hidden", isQuick);
   }
   if (dom.chainMapSection) {
     dom.chainMapSection.classList.toggle("hidden", isQuick);
@@ -10404,7 +10556,7 @@ function applyMouseoverHelp() {
     dom.advancedToggle.title = "Advanced ist in diesem Flow deaktiviert. Änderungen laufen über Treiber-Masken.";
   }
   if (dom.stageQuickBtn) {
-    dom.stageQuickBtn.title = "Quick-Check: leaner 80/20-Workflow mit fünf Hauptkostenblöcken.";
+    dom.stageQuickBtn.title = "QuickCheck: leaner 80/20-Workflow mit fünf Hauptkostenblöcken.";
   }
   if (dom.stageValidationBtn) {
     dom.stageValidationBtn.title = "Validation: Top-20 Kostentreiber prüfen oder überschreiben.";
@@ -10413,7 +10565,7 @@ function applyMouseoverHelp() {
     dom.stageDeepBtn.title = "Deep-Dive: Vollprüfung aller editierbaren kostentrelevanten Treiber.";
   }
   if (dom.toggleAllKpisBtn) {
-    dom.toggleAllKpisBtn.title = "Im Lean-Quickcheck ausgeblendet.";
+    dom.toggleAllKpisBtn.title = "Im QuickCheck ausgeblendet.";
   }
   if (dom.compareSort) {
     dom.compareSort.title = "Sortiert die Vergleichstabelle nach dem gewählten KPI.";
