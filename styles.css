@@ -1108,6 +1108,95 @@ body[data-page="settings"] .settings-section h4 {
   background: #ffffff;
 }
 
+.shipping-bridge {
+  border: 1px solid color-mix(in srgb, var(--line) 62%, white);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.shipping-bridge-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.shipping-bridge-card {
+  border: 1px solid color-mix(in srgb, var(--line) 62%, white);
+  border-radius: 10px;
+  background: #fcfcfa;
+  padding: 9px;
+  display: grid;
+  gap: 4px;
+}
+
+.shipping-bridge-card span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.shipping-bridge-card strong {
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.shipping-bridge-card small {
+  color: #345b53;
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.shipping-bridge-card.tone-d2d {
+  background: #f7fbfa;
+}
+
+.shipping-bridge-card.tone-import {
+  background: #fffaf1;
+}
+
+.shipping-bridge-card.tone-total {
+  background: #eef8f4;
+  border-color: color-mix(in srgb, #9ecfbe 60%, white);
+}
+
+.shipping-bridge-operator {
+  align-self: center;
+  justify-self: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #456a61;
+}
+
+.shipping-bridge-formula {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #365f56;
+}
+
+.shipping-bridge-formula strong {
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  color: #214f45;
+}
+
+.shipping-bridge-formula.is-warning {
+  color: #8b3d2f;
+}
+
+.shipping-bridge-po {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #3f5f58;
+}
+
+.shipping-bridge-po strong {
+  color: #274f46;
+}
+
 .shipping-dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1460,6 +1549,46 @@ body[data-page="settings"] .settings-section h4 {
 .shipping-breakdown-row small {
   color: var(--muted);
   font-size: 0.64rem;
+}
+
+.shipping-breakdown-subtotal {
+  margin: 0;
+  padding: 0 8px 8px;
+  font-size: 0.7rem;
+  color: #395d55;
+}
+
+.shipping-breakdown-subtotal strong {
+  color: #224f46;
+}
+
+.shipping-endsum-card {
+  border: 1px solid color-mix(in srgb, #9ecfbe 60%, white);
+  border-radius: 10px;
+  background: #edf8f4;
+  padding: 9px;
+  display: grid;
+  gap: 4px;
+  position: sticky;
+  bottom: 0;
+}
+
+.shipping-endsum-card span {
+  color: #32594f;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.shipping-endsum-card strong {
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  font-size: 0.98rem;
+  color: #1f4d42;
+}
+
+.shipping-endsum-card small {
+  color: #2e5950;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .hint.warn {
@@ -2073,6 +2202,14 @@ body[data-page="settings"] .settings-section h4 {
 @media (max-width: 980px) {
   .shipping-dashboard-head {
     grid-template-columns: 1fr;
+  }
+
+  .shipping-bridge-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shipping-bridge-operator {
+    display: none;
   }
 
   .shipping-dashboard-grid {

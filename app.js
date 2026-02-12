@@ -1019,8 +1019,8 @@ const COST_METRIC_TOOLTIPS = {
     "Was bedeutet das? Plausibilitätsstatus der manuellen Umkartonisierung (Maße/Gewicht).\nFormel: Prüft Stückzahl gegen physisch mögliche Belegung und Gewicht gegen maximal zulässiges Kartongewicht.\nWofür genutzt? Warnung mit konkretem Korrekturvorschlag.",
   "shipping.layout_preview":
     "Was bedeutet das? Drehbares 3D-Schema der Produktanordnung im Umkarton.\nFormel: Raster aus nx × ny × nz auf Basis der besten Orientierung.\nWofür genutzt? Visuelle Prüfung von Platzierung, Kantenmaßen und freiem Volumen.",
-  "shipping.total_po": "Gesamte Shippingkosten für die komplette PO/Sendung.",
-  "shipping.per_unit": "Shippingkosten je verkaufter Einheit.",
+  "shipping.total_po": "Shipping D2D (ohne Zoll und Order-Fix) für die komplette PO/Sendung.",
+  "shipping.per_unit": "Shipping D2D (ohne Zoll und Order-Fix) je verkaufter Einheit.",
   "amazon.referral_unit": "Referral Fee pro Einheit (prozentual auf Bruttoverkaufspreis, mind. Mindestgebühr).",
   "amazon.tacos_unit": "Ads/TACoS pro Einheit als Prozentsatz vom Bruttoverkaufspreis.",
   "amazon.fba_unit": "FBA Fulfillment Fee pro Einheit aus DE-Ratecard (oder manuellem Fallback).",
@@ -5582,7 +5582,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     },
     {
       key: "broker",
-      label: "Zollabfertigung",
+      label: "Zollabfertigung (Broker)",
       total: customsBroker,
       formula: "Zollabfertigung = customs_broker_fixed (optional)",
       source: "Global Setting -> Shipping 12M -> Gemeinsam",
@@ -9392,11 +9392,11 @@ function buildCostCategoryData(metrics) {
         }),
         line({
           id: "quick_core.shipping.customs_clearance",
-          label: "Zollabfertigung (EUR/Unit)",
+          label: "Zollabfertigung (Broker) (EUR/Unit)",
           valueRaw: shippingCustomsClearanceUnit,
           impactMonthly: shippingCustomsClearanceUnit * metrics.monthlyUnits,
           explain: "Customs Clearance am Zielhafen/-terminal.",
-          formula: "Zollabfertigung/Unit = customs_broker_fixed / PO Units.",
+          formula: "Zollabfertigung (Broker)/Unit = customs_broker_fixed / PO Units.",
           source: "Shipping 12M -> Gemeinsam.",
           robustness: "Hoch.",
           driverPaths: [
@@ -9444,7 +9444,7 @@ function buildCostCategoryData(metrics) {
           valueRaw: metrics.customsUnit,
           impactMonthly: metrics.customsMonthly,
           explain: "Zollkosten auf Warenwert plus Shipping D2D.",
-          formula: "Zoll/Unit = Zollsatz × (Warenwert in EUR + Shipping zu 3PL je Unit).",
+          formula: "Zoll/Unit = Zollsatz × (Warenwert in EUR + Shipping D2D je Unit).",
           source: "Import-Default/Override.",
           robustness: "Hoch.",
           driverPaths: ["assumptions.import.customsDutyRate", "settings.tax.customsDutyRatePct", "basic.exwUnit", "basic.unitsPerOrder"],
@@ -10713,6 +10713,21 @@ function createShippingLayoutPreviewElement(metrics) {
 
 function createShippingDashboardModalContent(metrics) {
   const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.transportMode);
+  const unitsPerPo = Math.max(1, num(metrics.shipping.unitsPerOrder, 1));
+  const shippingD2dPerUnit = Math.max(0, num(metrics.shipping.shippingPerUnit, 0));
+  const customsPerUnit = Math.max(0, num(metrics.customsUnit, 0));
+  const orderFixedPerUnit = Math.max(0, num(metrics.orderFixedPerUnit, 0));
+  const importSurchargesPerUnit = customsPerUnit + orderFixedPerUnit;
+  const shippingTo3plPerUnit = Math.max(
+    0,
+    num(metrics.quickBlockShippingTo3plPerUnit, shippingD2dPerUnit + importSurchargesPerUnit),
+  );
+  const shippingD2dTotalPo = Math.max(0, num(metrics.shipping.shippingTotal, shippingD2dPerUnit * unitsPerPo));
+  const importSurchargesTotalPo = importSurchargesPerUnit * unitsPerPo;
+  const shippingTo3plTotalPo = shippingD2dTotalPo + importSurchargesTotalPo;
+  const equationDiff = Math.abs(shippingD2dPerUnit + importSurchargesPerUnit - shippingTo3plPerUnit);
+  const equationMatches = equationDiff <= 0.0005;
+
   const section = document.createElement("section");
   section.className = "shipping-dashboard shipping-modal-dashboard";
 
@@ -10730,12 +10745,58 @@ function createShippingDashboardModalContent(metrics) {
   tile.className = "shipping-total-tile";
   tile.title = `${tooltipForMetric("shipping.total_po")}\n${tooltipForMetric("shipping.per_unit")}`;
   tile.innerHTML = `
-    <span>Shipping total pro PO</span>
-    <strong>${formatCurrency(metrics.shipping.shippingTotal)}</strong>
-    <small>${formatCurrency(metrics.shipping.shippingPerUnit)} / Unit</small>
+    <span>Shipping D2D total pro PO</span>
+    <strong>${formatCurrency(shippingD2dTotalPo)}</strong>
+    <small>${formatCurrency(shippingD2dPerUnit)} / Unit · Shipping D2D</small>
   `;
   head.append(headLeft, tile);
   section.appendChild(head);
+
+  const bridge = document.createElement("section");
+  bridge.className = "shipping-bridge";
+
+  const bridgeGrid = document.createElement("div");
+  bridgeGrid.className = "shipping-bridge-grid";
+  const addBridgeCard = (label, value, hint, toneClass = "") => {
+    const card = document.createElement("article");
+    card.className = `shipping-bridge-card ${toneClass}`.trim();
+    card.innerHTML = `
+      <span>${label}</span>
+      <strong>${formatCurrency(value)} / Unit</strong>
+      <small>${hint}</small>
+    `;
+    bridgeGrid.appendChild(card);
+  };
+  const addBridgeOperator = (symbol) => {
+    const operator = document.createElement("span");
+    operator.className = "shipping-bridge-operator";
+    operator.textContent = symbol;
+    bridgeGrid.appendChild(operator);
+  };
+
+  addBridgeCard("Shipping D2D / Unit", shippingD2dPerUnit, "(Vorlauf bis Nachbelastung)", "tone-d2d");
+  addBridgeOperator("+");
+  addBridgeCard("Import-Aufschläge / Unit", importSurchargesPerUnit, "(Zoll + Order-Fix)", "tone-import");
+  addBridgeOperator("=");
+  addBridgeCard("Shipping zu 3PL / Unit", shippingTo3plPerUnit, "(Gesamt)", "tone-total");
+  bridge.appendChild(bridgeGrid);
+
+  const equationLine = document.createElement("p");
+  equationLine.className = `shipping-bridge-formula ${equationMatches ? "is-consistent" : "is-warning"}`;
+  equationLine.innerHTML =
+    `Shipping zu 3PL / Unit = Shipping D2D / Unit + Zoll / Unit + Order-Fix / Unit · ` +
+    `<strong>${formatCurrency(shippingTo3plPerUnit)} = ${formatCurrency(shippingD2dPerUnit)} + ${formatCurrency(customsPerUnit)} + ${formatCurrency(orderFixedPerUnit)}</strong>` +
+    (equationMatches ? " ✓" : "");
+  bridge.appendChild(equationLine);
+
+  const poLine = document.createElement("p");
+  poLine.className = "shipping-bridge-po";
+  poLine.innerHTML =
+    `PO-Sicht: <strong>${formatCurrency(shippingD2dTotalPo)}</strong> (Shipping D2D) + ` +
+    `<strong>${formatCurrency(importSurchargesTotalPo)}</strong> (Import-Aufschläge) = ` +
+    `<strong>${formatCurrency(shippingTo3plTotalPo)}</strong> (Shipping zu 3PL)`;
+  bridge.appendChild(poLine);
+  section.appendChild(bridge);
 
   if (metrics.shipping.oversizeFlag) {
     const oversize = document.createElement("p");
@@ -10883,14 +10944,16 @@ function createShippingDashboardModalContent(metrics) {
   costTitle.textContent = "Kosten je PO und je Unit";
   const costHint = document.createElement("p");
   costHint.className = "hint";
-  costHint.textContent = "Rail: Vorlauf/Nachlauf variabel = Basis + (EUR/CBM × Shipment-CBM).";
-  costHint.title = "Der variable Anteil für Rail-Vorlauf/Nachlauf skaliert mit dem tatsächlichen Sendungsvolumen.";
+  costHint.textContent = "Shipping zu 3PL / Unit = Shipping D2D / Unit + Zoll / Unit + Order-Fix / Unit.";
+  costHint.title = "Rechenbrücke: D2D-Kosten plus Import-Aufschläge ergeben den Gesamtblock Shipping zu 3PL.";
   costPanel.append(costTitle, costHint);
-  const breakdownDetails = document.createElement("details");
-  breakdownDetails.className = "shipping-detail-toggle";
-  breakdownDetails.innerHTML = "<summary>Kosten-Breakdown einblenden</summary>";
-  const breakdownList = document.createElement("ul");
-  breakdownList.className = "calc-list shipping-detail-body";
+
+  const d2dDetails = document.createElement("details");
+  d2dDetails.className = "shipping-detail-toggle";
+  d2dDetails.open = true;
+  d2dDetails.innerHTML = `<summary>A) Shipping D2D (ohne Zoll & Order-Fix) · ${formatCurrency(shippingD2dPerUnit)}/Unit</summary>`;
+  const d2dList = document.createElement("ul");
+  d2dList.className = "calc-list shipping-detail-body";
   metrics.shipping.breakdown.forEach((line) => {
     const li = document.createElement("li");
     li.className = "shipping-breakdown-row";
@@ -10900,10 +10963,64 @@ function createShippingDashboardModalContent(metrics) {
     li.title = [line.formula ? `Rechenweg: ${line.formula}` : null, line.source ? `Herkunft: ${line.source}` : null]
       .filter(Boolean)
       .join("\n");
-    breakdownList.appendChild(li);
+    d2dList.appendChild(li);
   });
-  breakdownDetails.appendChild(breakdownList);
-  costPanel.appendChild(breakdownDetails);
+  d2dDetails.appendChild(d2dList);
+  const d2dSubtotal = document.createElement("p");
+  d2dSubtotal.className = "shipping-breakdown-subtotal";
+  d2dSubtotal.innerHTML =
+    `Zwischensumme Shipping D2D: <strong>${formatCurrency(shippingD2dTotalPo)}</strong> pro PO · ` +
+    `<strong>${formatCurrency(shippingD2dPerUnit)}</strong>/Unit`;
+  d2dDetails.appendChild(d2dSubtotal);
+  costPanel.appendChild(d2dDetails);
+
+  const importDetails = document.createElement("details");
+  importDetails.className = "shipping-detail-toggle";
+  importDetails.innerHTML = `<summary>B) Import-Aufschläge (Zoll + Order-Fix) · ${formatCurrency(importSurchargesPerUnit)}/Unit</summary>`;
+  const importList = document.createElement("ul");
+  importList.className = "calc-list shipping-detail-body";
+  [
+    {
+      label: "Zoll (Abgabe)",
+      total: customsPerUnit * unitsPerPo,
+      perUnit: customsPerUnit,
+      formula: "Zoll = Zollsatz × (Warenwert EUR + Shipping D2D/Unit)",
+      source: "Import-Default/Override",
+    },
+    {
+      label: "Order-Fixkosten",
+      total: orderFixedPerUnit * unitsPerPo,
+      perUnit: orderFixedPerUnit,
+      formula: "Order-Fix/Unit = (Dokumentation + Frachtpapiere) / PO Units",
+      source: "Global costDefaults oder Produkt-Override",
+    },
+  ].forEach((line) => {
+    const li = document.createElement("li");
+    li.className = "shipping-breakdown-row";
+    li.innerHTML =
+      `<div><span>${line.label}</span><small>${line.formula}</small></div>` +
+      `<strong>${formatCurrency(line.total)} · ${formatCurrency(line.perUnit)}/Unit</strong>`;
+    li.title = `Rechenweg: ${line.formula}\nHerkunft: ${line.source}`;
+    importList.appendChild(li);
+  });
+  importDetails.appendChild(importList);
+  const importSubtotal = document.createElement("p");
+  importSubtotal.className = "shipping-breakdown-subtotal";
+  importSubtotal.innerHTML =
+    `Zwischensumme Import-Aufschläge: <strong>${formatCurrency(importSurchargesTotalPo)}</strong> pro PO · ` +
+    `<strong>${formatCurrency(importSurchargesPerUnit)}</strong>/Unit`;
+  importDetails.appendChild(importSubtotal);
+  costPanel.appendChild(importDetails);
+
+  const totalCard = document.createElement("article");
+  totalCard.className = "shipping-endsum-card";
+  totalCard.innerHTML = `
+    <span>C) Endsumme Shipping zu 3PL</span>
+    <strong>${formatCurrency(shippingTo3plPerUnit)} / Unit</strong>
+    <small>${formatCurrency(shippingTo3plTotalPo)} pro PO</small>
+  `;
+  costPanel.appendChild(totalCard);
+
   mainGrid.appendChild(costPanel);
 
   section.appendChild(mainGrid);
