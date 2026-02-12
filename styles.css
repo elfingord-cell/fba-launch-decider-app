@@ -968,6 +968,84 @@ body[data-page="settings"] #settingsLifecycleSection .settings-lifecycle-subsect
   margin-top: 0;
 }
 
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview {
+  margin-top: 10px;
+  padding: 9px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #b7c7d6 58%, white);
+  background: linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%);
+  display: grid;
+  gap: 7px;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview-head {
+  display: grid;
+  gap: 2px;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview-head strong {
+  font-size: 0.72rem;
+  color: #2a425d;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview-head small {
+  font-size: 0.68rem;
+  color: #4b617b;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview-note {
+  margin: 0;
+  font-size: 0.68rem;
+  color: #4c5969;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview-note.is-warning {
+  color: #90463b;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview-rows {
+  display: grid;
+  gap: 7px;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview-row {
+  display: grid;
+  gap: 5px;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #304862;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-preview-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-chip {
+  min-width: 64px;
+  padding: 5px 7px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, #c1cfdd 62%, white);
+  background: #fbfdff;
+  display: grid;
+  gap: 1px;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-chip-week {
+  font-size: 0.61rem;
+  color: #60758f;
+}
+
+body[data-page="settings"] #settingsLifecycleSection .launch-week-chip-value {
+  font-size: 0.69rem;
+  color: #1f3852;
+  font-weight: 800;
+}
+
 .hidden {
   display: none !important;
 }

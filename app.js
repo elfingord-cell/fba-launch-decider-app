@@ -4513,7 +4513,162 @@ function renderSettingsInputs() {
       }
     });
   });
+  renderLaunchProfileWeekPreviews();
   applySoftLocksToUI();
+}
+
+function formatDeltaPp(value) {
+  const normalized = num(value, 0);
+  const absText = formatNumber(Math.abs(normalized));
+  return `${normalized >= 0 ? "+" : "-"}${absText} pp`;
+}
+
+function buildLinearWeeklySeries(startValue, endValue, weeks) {
+  const totalWeeks = clamp(roundInt(weeks, 6), 1, 24);
+  const series = [];
+  for (let week = 1; week <= totalWeeks; week += 1) {
+    const ratio = totalWeeks > 1 ? (week - 1) / (totalWeeks - 1) : 0;
+    series.push(startValue + (endValue - startValue) * ratio);
+  }
+  return series;
+}
+
+function resolveLaunchPreviewBaseTacosRate() {
+  const selected = getSelectedProduct();
+  if (!selected) {
+    return null;
+  }
+  try {
+    const resolved = resolveAssumptions(selected, state.settings);
+    return clamp(num(resolved.tacosRate, 0), 0, 100);
+  } catch (_error) {
+    return null;
+  }
+}
+
+function describeLaunchTacosEndpoint(mode, value) {
+  if (mode === "absolute_pct") {
+    return formatPercent(clamp(num(value, 0), 0, 100));
+  }
+  return `Standard-TACoS ${formatDeltaPp(value)}`;
+}
+
+function appendLaunchPreviewTrack(container, { label, values, formatValue }) {
+  const row = document.createElement("div");
+  row.className = "launch-week-preview-row";
+
+  const rowLabel = document.createElement("span");
+  rowLabel.className = "launch-week-preview-label";
+  rowLabel.textContent = label;
+
+  const track = document.createElement("div");
+  track.className = "launch-week-preview-track";
+
+  values.forEach((value, index) => {
+    const chip = document.createElement("div");
+    chip.className = "launch-week-chip";
+
+    const weekLabel = document.createElement("span");
+    weekLabel.className = "launch-week-chip-week";
+    weekLabel.textContent = `W${index + 1}`;
+
+    const valueNode = document.createElement("strong");
+    valueNode.className = "launch-week-chip-value";
+    valueNode.textContent = formatValue(value);
+
+    chip.append(weekLabel, valueNode);
+    track.appendChild(chip);
+  });
+
+  row.append(rowLabel, track);
+  container.appendChild(row);
+}
+
+function renderSingleLaunchProfileWeekPreview(profileKey, root, baseTacosRate) {
+  const profile = state.settings.lifecycle?.launchProfiles?.[profileKey];
+  if (!profile) {
+    root.innerHTML = "";
+    return;
+  }
+
+  const weeks = clamp(roundInt(profile.weeks, 6), 1, 24);
+  const startMode = profile.startTacosMode === "absolute_pct" ? "absolute_pct" : "delta_pp_from_base";
+  const endMode = profile.endTacosMode === "absolute_pct" ? "absolute_pct" : "delta_pp_from_base";
+  const startRaw = num(profile.startTacosBoostPct, 0);
+  const endRaw = num(profile.endTacosBoostPct, 0);
+  const startDiscountPct = clamp(num(profile.startPriceDiscountPct, 0), 0, 60);
+
+  const header = document.createElement("div");
+  header.className = "launch-week-preview-head";
+  const title = document.createElement("strong");
+  title.textContent = `Wochenvorschau (linear, ${weeks} Wochen)`;
+  const meta = document.createElement("small");
+  meta.textContent = baseTacosRate === null
+    ? "Basis-TACoS nicht verfügbar (kein aktives Produkt ausgewählt)."
+    : `Basis-TACoS (aktives Produkt): ${formatPercent(baseTacosRate)}`;
+  header.append(title, meta);
+
+  const note = document.createElement("p");
+  note.className = "launch-week-preview-note";
+  note.textContent =
+    `TACoS-Start: ${describeLaunchTacosEndpoint(startMode, startRaw)} -> ` +
+    `TACoS-Ende: ${describeLaunchTacosEndpoint(endMode, endRaw)}. ` +
+    `Preis-Rabatt startet bei ${formatPercent(startDiscountPct)} unter Zielpreis und läuft bis 0 %.`;
+
+  const tracks = document.createElement("div");
+  tracks.className = "launch-week-preview-rows";
+
+  const discountSeries = buildLinearWeeklySeries(startDiscountPct, 0, weeks);
+  appendLaunchPreviewTrack(tracks, {
+    label: "Preis unter Zielpreis",
+    values: discountSeries,
+    formatValue: (value) => formatPercent(clamp(num(value, 0), 0, 60)),
+  });
+
+  const canRenderAbsoluteTacos = baseTacosRate !== null || (startMode === "absolute_pct" && endMode === "absolute_pct");
+  if (canRenderAbsoluteTacos) {
+    const resolveAbsoluteTacos = (mode, rawValue) => {
+      if (mode === "absolute_pct") {
+        return clamp(num(rawValue, 0), 0, 100);
+      }
+      return clamp(num(baseTacosRate, 0) + num(rawValue, 0), 0, 100);
+    };
+    const tacosStartPct = resolveAbsoluteTacos(startMode, startRaw);
+    const tacosEndPct = resolveAbsoluteTacos(endMode, endRaw);
+    const tacosSeries = buildLinearWeeklySeries(tacosStartPct, tacosEndPct, weeks);
+    appendLaunchPreviewTrack(tracks, {
+      label: "TACoS Zielwert",
+      values: tacosSeries,
+      formatValue: (value) => formatPercent(clamp(num(value, 0), 0, 100)),
+    });
+  } else {
+    const fallbackNote = document.createElement("p");
+    fallbackNote.className = "launch-week-preview-note is-warning";
+    fallbackNote.textContent =
+      "TACoS-Wochenwerte nicht absolut berechenbar: gemischte Start/End-Modi ohne Basis-TACoS.";
+    tracks.appendChild(fallbackNote);
+  }
+
+  root.innerHTML = "";
+  root.append(header, note, tracks);
+}
+
+function renderLaunchProfileWeekPreviews() {
+  const previewNodes = document.querySelectorAll("[data-launch-profile-preview]");
+  if (previewNodes.length === 0) {
+    return;
+  }
+  const baseTacosRate = resolveLaunchPreviewBaseTacosRate();
+  previewNodes.forEach((node) => {
+    if (!(node instanceof HTMLElement)) {
+      return;
+    }
+    const profileKey = node.dataset.launchProfilePreview;
+    if (!profileKey) {
+      return;
+    }
+    renderSingleLaunchProfileWeekPreview(profileKey, node, baseTacosRate);
+  });
 }
 
 function toSortedDims(lengthCm, widthCm, heightCm) {
