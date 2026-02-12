@@ -2381,6 +2381,18 @@ function setAuthStatus(message, isError = false) {
   dom.authStatus.classList.toggle("pass", !isError && Boolean(message));
 }
 
+async function withTimeout(promise, ms, label = "operation") {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(label + "_timeout")), ms);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 function setAppMode(mode, reason = "") {
   state.session.appMode = mode;
 
@@ -2401,7 +2413,7 @@ function setAppMode(mode, reason = "") {
     dom.authLogoutBtn.classList.toggle("hidden", !(state.session.isAuthenticated && state.session.hasWorkspaceAccess && state.storage.adapter?.type === "shared"));
   }
   if (dom.compareCard) {
-    dom.compareCard.classList.toggle("hidden", showAuth || showNoAccess);
+    dom.compareCard.classList.toggle("hidden", !showApp);
   }
 
   if (showAuth) {
@@ -2884,7 +2896,21 @@ async function bootstrapCollaborationSession() {
   loadProductsLocal();
   selectFirstProductIfNeeded();
 
-  const client = await createSupabaseClientFromConfig();
+  let client = null;
+  try {
+    client = await withTimeout(createSupabaseClientFromConfig(), 8000, "supabase_client");
+  } catch (clientError) {
+    console.error("Supabase client init failed", clientError);
+    configureSessionState({
+      requiresAuth: true,
+      isAuthenticated: false,
+      hasWorkspaceAccess: false,
+      pendingLocalImport: false,
+    });
+    setAppMode("auth_required", "Supabase ist aktuell nicht erreichbar. Bitte Seite neu laden.");
+    setAuthStatus("Supabase-Initialisierung timeout/fehlerhaft.", true);
+    return;
+  }
   if (!client) {
     configureSessionState({
       requiresAuth: true,
@@ -2942,7 +2968,18 @@ async function bootstrapCollaborationSession() {
     });
   }
 
-  const { data, error } = await client.auth.getSession();
+  let data = null;
+  let error = null;
+  try {
+    const result = await withTimeout(client.auth.getSession(), 8000, "supabase_get_session");
+    data = result?.data ?? null;
+    error = result?.error ?? null;
+  } catch (sessionError) {
+    console.error("Supabase session load timeout", sessionError);
+    setAppMode("auth_required", "Session-Check timeout. Bitte Seite neu laden und erneut anmelden.");
+    setAuthStatus("Session-Check timeout. Bitte neu laden.", true);
+    return;
+  }
   if (error) {
     console.error("Supabase session load failed", error);
   }
