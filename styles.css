@@ -658,6 +658,20 @@ select:disabled {
   display: none;
 }
 
+.soft-locked {
+  outline: 2px solid color-mix(in srgb, var(--warn) 72%, white);
+  outline-offset: 1px;
+  background: #fff9e8;
+}
+
+.soft-lock-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #8d5f00;
+}
+
 .advanced-grid {
   display: grid;
   gap: 10px;

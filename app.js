@@ -10,6 +10,10 @@ const SUPABASE_CONFIG_ENDPOINT = "/api/config";
 const LOCAL_SUPABASE_CONFIG_KEY = "fba-margin-calculator.supabase-config";
 const REMOTE_SAVE_DEBOUNCE_MS = 350;
 const SUPABASE_CLIENT_TIMEOUT_MS = 12000;
+const REALTIME_PULL_DEBOUNCE_MS = 200;
+const REALTIME_FALLBACK_PULL_MS = 15000;
+const REALTIME_EDIT_GRACE_MS = 1200;
+const REALTIME_PRESENCE_HEARTBEAT_MS = 20000;
 
 const MARKETPLACE_VAT = {
   DE: 19,
@@ -1002,6 +1006,25 @@ const state = {
     lastRemoteError: null,
     lastRemoteSuccessAt: null,
   },
+  realtime: {
+    channel: null,
+    channelWorkspaceId: null,
+    connected: false,
+    pullTimer: null,
+    pullInFlight: false,
+    pendingPull: false,
+    pendingApply: false,
+    fallbackTimer: null,
+    lastEventAt: null,
+    lastPullAt: null,
+    lastLocalEditAt: 0,
+  },
+  presence: {
+    editingByField: {},
+    myEditingField: null,
+    heartbeatTimer: null,
+    focusClearTimer: null,
+  },
   fx: {
     usdToEur: DEFAULT_USD_TO_EUR,
     date: null,
@@ -1090,6 +1113,7 @@ const dom = {
   authStatus: document.getElementById("authStatus"),
   storageModeLabel: document.getElementById("storageModeLabel"),
   sessionInfo: document.getElementById("sessionInfo"),
+  syncNowBtn: document.getElementById("syncNowBtn"),
   importLocalBtn: document.getElementById("importLocalBtn"),
   compareCard: document.getElementById("compareCard"),
   productWorkspace: document.getElementById("productWorkspace"),
@@ -2340,6 +2364,450 @@ function saveProducts() {
   scheduleRemoteProductsSave();
 }
 
+function isEditableControl(target) {
+  return target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement;
+}
+
+function fieldKeyForControl(control) {
+  if (!isEditableControl(control)) {
+    return null;
+  }
+  const settingsPath = control.dataset.settingsPath;
+  if (settingsPath) {
+    return `settings:${settingsPath}`;
+  }
+  const productPath = control.dataset.path;
+  if (!productPath || !state.selectedId) {
+    return null;
+  }
+  return `product:${state.selectedId}:${productPath}`;
+}
+
+function clearSoftLockUi() {
+  document.querySelectorAll(".soft-locked").forEach((node) => {
+    node.classList.remove("soft-locked");
+  });
+  document.querySelectorAll(".soft-lock-hint").forEach((node) => {
+    node.remove();
+  });
+}
+
+function applySoftLocksToUI() {
+  clearSoftLockUi();
+  if (!isSharedStoreActive()) {
+    return;
+  }
+  const controls = document.querySelectorAll("[data-path], [data-settings-path]");
+  controls.forEach((control) => {
+    if (!isEditableControl(control)) {
+      return;
+    }
+    const fieldKey = fieldKeyForControl(control);
+    if (!fieldKey) {
+      return;
+    }
+    const lockerLabel = state.presence.editingByField[fieldKey];
+    if (!lockerLabel) {
+      return;
+    }
+    control.classList.add("soft-locked");
+    const label = control.closest("label");
+    if (!label) {
+      return;
+    }
+    const hint = document.createElement("small");
+    hint.className = "soft-lock-hint";
+    hint.textContent = `${lockerLabel} bearbeitet dieses Feld gerade`;
+    label.appendChild(hint);
+  });
+}
+
+function refreshPresenceLocksFromChannel() {
+  const channel = state.realtime.channel;
+  if (!channel || typeof channel.presenceState !== "function") {
+    state.presence.editingByField = {};
+    applySoftLocksToUI();
+    return;
+  }
+  const nextEditingByField = {};
+  const presenceState = channel.presenceState();
+  Object.values(presenceState).forEach((entries) => {
+    if (!Array.isArray(entries)) {
+      return;
+    }
+    entries.forEach((entry) => {
+      const fieldKey = String(entry?.fieldKey ?? "").trim();
+      if (!fieldKey) {
+        return;
+      }
+      const userId = String(entry?.userId ?? "");
+      if (userId && userId === state.session.userId) {
+        return;
+      }
+      const userEmail = String(entry?.userEmail ?? "").trim();
+      if (!nextEditingByField[fieldKey]) {
+        nextEditingByField[fieldKey] = userEmail || "Kollege";
+      }
+    });
+  });
+  state.presence.editingByField = nextEditingByField;
+  applySoftLocksToUI();
+}
+
+async function trackPresenceField(fieldKey) {
+  const channel = state.realtime.channel;
+  if (!channel || !state.realtime.connected || typeof channel.track !== "function") {
+    return;
+  }
+  try {
+    await channel.track({
+      userId: state.session.userId,
+      userEmail: state.session.userEmail,
+      fieldKey: fieldKey || null,
+      startedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Realtime presence track failed", error);
+  }
+}
+
+function stopPresenceHeartbeat() {
+  if (!state.presence.heartbeatTimer) {
+    return;
+  }
+  clearInterval(state.presence.heartbeatTimer);
+  state.presence.heartbeatTimer = null;
+}
+
+function startPresenceHeartbeat() {
+  stopPresenceHeartbeat();
+  state.presence.heartbeatTimer = setInterval(() => {
+    void trackPresenceField(state.presence.myEditingField);
+  }, REALTIME_PRESENCE_HEARTBEAT_MS);
+}
+
+function markLocalEditActivity() {
+  state.realtime.lastLocalEditAt = Date.now();
+}
+
+function isSafeToApplyRemoteSnapshot() {
+  if (state.presence.myEditingField) {
+    return false;
+  }
+  if (Date.now() - state.realtime.lastLocalEditAt < REALTIME_EDIT_GRACE_MS) {
+    return false;
+  }
+  if (state.sync.settingsSaving || state.sync.productsSaving) {
+    return false;
+  }
+  return true;
+}
+
+function snapshotSignature(value) {
+  try {
+    return JSON.stringify(value);
+  } catch (_error) {
+    return "";
+  }
+}
+
+function productCollectionSignature(products) {
+  if (!Array.isArray(products)) {
+    return "[]";
+  }
+  const normalized = products
+    .map((product) => ({
+      id: String(product?.id ?? ""),
+      payload: product,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  return snapshotSignature(normalized);
+}
+
+function orderRemoteProductsForApply(remoteProducts, currentProducts) {
+  if (!Array.isArray(remoteProducts)) {
+    return [];
+  }
+  const currentOrderById = new Map();
+  if (Array.isArray(currentProducts)) {
+    currentProducts.forEach((product, index) => {
+      currentOrderById.set(String(product?.id ?? ""), index);
+    });
+  }
+  return [...remoteProducts].sort((a, b) => {
+    const idA = String(a?.id ?? "");
+    const idB = String(b?.id ?? "");
+    const indexA = currentOrderById.has(idA) ? currentOrderById.get(idA) : Number.MAX_SAFE_INTEGER;
+    const indexB = currentOrderById.has(idB) ? currentOrderById.get(idB) : Number.MAX_SAFE_INTEGER;
+    if (indexA !== indexB) {
+      return indexA - indexB;
+    }
+    return idA.localeCompare(idB);
+  });
+}
+
+function scheduleRemotePull(reason = "event", { immediate = false, forceApply = false } = {}) {
+  if (!isSharedStoreActive()) {
+    return;
+  }
+  if (state.realtime.pullTimer) {
+    clearTimeout(state.realtime.pullTimer);
+    state.realtime.pullTimer = null;
+  }
+  state.realtime.pullTimer = setTimeout(() => {
+    state.realtime.pullTimer = null;
+    void pullRemoteSnapshot({ reason, forceApply });
+  }, immediate ? 0 : REALTIME_PULL_DEBOUNCE_MS);
+}
+
+function maybeApplyDeferredRemotePull() {
+  if (!state.realtime.pendingApply || !isSafeToApplyRemoteSnapshot()) {
+    return;
+  }
+  scheduleRemotePull("deferred_apply", { immediate: true, forceApply: true });
+}
+
+async function pullRemoteSnapshot({ reason = "event", forceApply = false } = {}) {
+  if (!isSharedStoreActive() || !state.storage.adapter?.loadSettings || !state.storage.adapter?.loadProducts) {
+    return false;
+  }
+  if (state.realtime.pullInFlight) {
+    state.realtime.pendingPull = true;
+    return false;
+  }
+
+  state.realtime.pullInFlight = true;
+  try {
+    const [remoteSettingsRaw, remoteProductsRaw] = await Promise.all([
+      state.storage.adapter.loadSettings(),
+      state.storage.adapter.loadProducts(),
+    ]);
+
+    const remoteSettings = normalizeRemoteSettings(remoteSettingsRaw) ?? defaultSettings();
+    let remoteProducts = normalizeRemoteProducts(remoteProductsRaw);
+    if (remoteProducts.length === 0) {
+      remoteProducts = [defaultProduct(1)];
+    }
+    remoteProducts.forEach((product) => ensureProductId(product));
+
+    const settingsChanged = snapshotSignature(remoteSettings) !== snapshotSignature(state.settings);
+    const productsChanged = productCollectionSignature(remoteProducts) !== productCollectionSignature(state.products);
+    if (!settingsChanged && !productsChanged) {
+      state.realtime.lastPullAt = new Date().toISOString();
+      setSessionInfoText();
+      return false;
+    }
+
+    if (!forceApply && !isSafeToApplyRemoteSnapshot()) {
+      state.realtime.pendingApply = true;
+      window.setTimeout(() => {
+        maybeApplyDeferredRemotePull();
+      }, REALTIME_EDIT_GRACE_MS);
+      setSessionInfoText();
+      return false;
+    }
+
+    const previousSelectedId = state.selectedId;
+    state.settings = remoteSettings;
+    state.products = orderRemoteProductsForApply(remoteProducts, state.products);
+    state.selectedId = previousSelectedId;
+    selectFirstProductIfNeeded();
+    saveSettingsLocal();
+    saveProductsLocal();
+
+    state.sync.lastRemoteError = null;
+    state.sync.lastRemoteSuccessAt = new Date().toISOString();
+    state.realtime.lastPullAt = state.sync.lastRemoteSuccessAt;
+    state.realtime.pendingApply = false;
+
+    if (APP_PAGE === "settings") {
+      renderSettingsInputs();
+      applyMouseoverHelp();
+    } else {
+      renderAll();
+    }
+    setSessionInfoText();
+
+    if (reason === "manual_sync") {
+      setAuthStatus("Synchronisiert.");
+    }
+    return true;
+  } catch (error) {
+    console.error("Remote pull failed", error);
+    state.sync.lastRemoteError = error?.message || "Remote-Daten konnten nicht geladen werden.";
+    setSessionInfoText();
+    if (reason === "manual_sync") {
+      setAuthStatus("Synchronisierung fehlgeschlagen: " + state.sync.lastRemoteError, true);
+    }
+    return false;
+  } finally {
+    state.realtime.pullInFlight = false;
+    if (state.realtime.pendingPull) {
+      state.realtime.pendingPull = false;
+      scheduleRemotePull("pending_queue", { immediate: true, forceApply });
+    } else {
+      maybeApplyDeferredRemotePull();
+    }
+  }
+}
+
+function startFallbackRemotePull() {
+  if (state.realtime.fallbackTimer || !isSharedStoreActive()) {
+    return;
+  }
+  state.realtime.fallbackTimer = setInterval(() => {
+    scheduleRemotePull("fallback_poll", { immediate: true });
+  }, REALTIME_FALLBACK_PULL_MS);
+  setSessionInfoText();
+}
+
+function stopFallbackRemotePull() {
+  if (!state.realtime.fallbackTimer) {
+    return;
+  }
+  clearInterval(state.realtime.fallbackTimer);
+  state.realtime.fallbackTimer = null;
+}
+
+function handleRealtimeChannelStatus(status) {
+  if (status === "SUBSCRIBED") {
+    state.realtime.connected = true;
+    stopFallbackRemotePull();
+    setSessionInfoText();
+    refreshPresenceLocksFromChannel();
+    startPresenceHeartbeat();
+    void trackPresenceField(state.presence.myEditingField);
+    scheduleRemotePull("realtime_subscribed", { immediate: true });
+    return;
+  }
+  if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+    state.realtime.connected = false;
+    stopPresenceHeartbeat();
+    startFallbackRemotePull();
+    setSessionInfoText();
+  }
+}
+
+function stopRealtimeSync() {
+  if (state.realtime.pullTimer) {
+    clearTimeout(state.realtime.pullTimer);
+    state.realtime.pullTimer = null;
+  }
+  stopFallbackRemotePull();
+  stopPresenceHeartbeat();
+  if (state.presence.focusClearTimer) {
+    clearTimeout(state.presence.focusClearTimer);
+    state.presence.focusClearTimer = null;
+  }
+
+  const channel = state.realtime.channel;
+  state.realtime.channel = null;
+  state.realtime.channelWorkspaceId = null;
+  state.realtime.connected = false;
+  state.realtime.pullInFlight = false;
+  state.realtime.pendingPull = false;
+  state.realtime.pendingApply = false;
+  state.realtime.lastEventAt = null;
+
+  state.presence.editingByField = {};
+  state.presence.myEditingField = null;
+  clearSoftLockUi();
+
+  if (channel) {
+    void (async () => {
+      try {
+        if (typeof channel.untrack === "function") {
+          await channel.untrack();
+        }
+      } catch (_error) {
+        // Ignore untrack cleanup failures.
+      }
+      try {
+        await channel.unsubscribe();
+      } catch (_error) {
+        // Ignore unsubscribe cleanup failures.
+      }
+      try {
+        state.supabase.client?.removeChannel?.(channel);
+      } catch (_error) {
+        // Ignore remove channel cleanup failures.
+      }
+    })();
+  }
+  setSessionInfoText();
+}
+
+function startRealtimeSync() {
+  if (!isSharedStoreActive() || !state.supabase.client?.channel) {
+    stopRealtimeSync();
+    return;
+  }
+
+  const workspaceId = state.session.workspaceId;
+  if (
+    state.realtime.channel &&
+    state.realtime.channelWorkspaceId === workspaceId
+  ) {
+    return;
+  }
+
+  stopRealtimeSync();
+
+  const channel = state.supabase.client.channel(`workspace:${workspaceId}`, {
+    config: {
+      presence: {
+        key: state.session.userId || undefined,
+      },
+    },
+  });
+
+  channel.on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "workspace_settings", filter: `workspace_id=eq.${workspaceId}` },
+    () => {
+      state.realtime.lastEventAt = new Date().toISOString();
+      scheduleRemotePull("workspace_settings_event");
+    },
+  );
+  channel.on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "products", filter: `workspace_id=eq.${workspaceId}` },
+    () => {
+      state.realtime.lastEventAt = new Date().toISOString();
+      scheduleRemotePull("products_event");
+    },
+  );
+  channel.on("presence", { event: "sync" }, () => {
+    refreshPresenceLocksFromChannel();
+  });
+  channel.on("presence", { event: "join" }, () => {
+    refreshPresenceLocksFromChannel();
+  });
+  channel.on("presence", { event: "leave" }, () => {
+    refreshPresenceLocksFromChannel();
+  });
+
+  state.realtime.channel = channel;
+  state.realtime.channelWorkspaceId = workspaceId;
+  state.realtime.connected = false;
+  setSessionInfoText();
+  startFallbackRemotePull();
+
+  channel.subscribe((status) => {
+    handleRealtimeChannelStatus(status);
+  });
+}
+
+async function handleSyncNow() {
+  if (!isSharedStoreActive()) {
+    return;
+  }
+  setAuthStatus("Synchronisierung läuft ...");
+  await flushRemoteSettingsSave();
+  await flushRemoteProductsSave();
+  await pullRemoteSnapshot({ reason: "manual_sync", forceApply: true });
+}
+
 function setStorageModeLabel() {
   if (!dom.storageModeLabel) {
     return;
@@ -2367,11 +2835,19 @@ function setSessionInfoText() {
     dom.sessionInfo.textContent = `${base} · Sync-Fehler: ${state.sync.lastRemoteError}`;
     return;
   }
-  if (state.sync.lastRemoteSuccessAt) {
-    dom.sessionInfo.textContent = `${base} · Letzter Sync: ${formatDate(state.sync.lastRemoteSuccessAt)}`;
-    return;
+  const syncHints = [];
+  if (state.realtime.connected) {
+    syncHints.push("Live-Sync aktiv");
+  } else if (state.realtime.fallbackTimer) {
+    syncHints.push("Live-Sync getrennt · Fallback aktiv");
   }
-  dom.sessionInfo.textContent = `${base} · Sync läuft`;
+  if (state.realtime.pendingApply) {
+    syncHints.push("Remote-Änderungen warten auf Übernahme");
+  }
+  if (state.sync.lastRemoteSuccessAt) {
+    syncHints.push(`Letzter Sync: ${formatDate(state.sync.lastRemoteSuccessAt)}`);
+  }
+  dom.sessionInfo.textContent = syncHints.length > 0 ? `${base} · ${syncHints.join(" · ")}` : `${base} · Sync läuft`;
 }
 
 function setAuthStatus(message, isError = false) {
@@ -2413,6 +2889,9 @@ function setAppMode(mode, reason = "") {
   }
   if (dom.authLogoutBtn) {
     dom.authLogoutBtn.classList.toggle("hidden", !(state.session.isAuthenticated && state.session.hasWorkspaceAccess && state.storage.adapter?.type === "shared"));
+  }
+  if (dom.syncNowBtn) {
+    dom.syncNowBtn.classList.toggle("hidden", !(state.session.isAuthenticated && state.session.hasWorkspaceAccess && state.storage.adapter?.type === "shared"));
   }
   if (dom.compareCard) {
     dom.compareCard.classList.toggle("hidden", !showApp);
@@ -2812,6 +3291,7 @@ async function activateSharedWorkspace(user) {
   state.session.pendingLocalImport = false;
   const membership = await fetchWorkspaceMembership(state.supabase.client, user.id);
   if (!membership) {
+    stopRealtimeSync();
     configureSessionState({
       requiresAuth: true,
       isAuthenticated: true,
@@ -2870,6 +3350,7 @@ async function activateSharedWorkspace(user) {
   state.fx.usdToEur = state.settings.tax.fallbackUsdToEur;
   state.fx.source = "Fallback (Settings)";
 
+  startRealtimeSync();
   setAppMode("ready_shared");
   return true;
 }
@@ -2882,6 +3363,7 @@ function formatAuthError(error, fallback = "Unbekannter Fehler") {
 function resetToAuthRequiredState(
   reason = "Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.",
 ) {
+  stopRealtimeSync();
   state.storage.mode = "local";
   state.storage.adapter = createLocalStoreAdapter();
   setStorageModeLabel();
@@ -2959,6 +3441,7 @@ async function syncSessionFromClient(source = "session_sync") {
 }
 
 async function setLocalMode() {
+  stopRealtimeSync();
   state.storage.mode = "local";
   state.storage.adapter = createLocalStoreAdapter();
   setStorageModeLabel();
@@ -2995,11 +3478,24 @@ function exposeSyncDebug() {
     get lastRemoteSuccessAt() {
       return state.sync.lastRemoteSuccessAt;
     },
+    get realtimeConnected() {
+      return state.realtime.connected;
+    },
+    get realtimeFallbackActive() {
+      return Boolean(state.realtime.fallbackTimer);
+    },
+    get pendingRemoteApply() {
+      return state.realtime.pendingApply;
+    },
+    get lastRealtimeEventAt() {
+      return state.realtime.lastEventAt;
+    },
   };
 }
 
 async function bootstrapCollaborationSession() {
   setAppMode("loading", "Session wird geladen ...");
+  stopRealtimeSync();
 
   // Lokale Basis nur als Fallback laden, ohne Shared-Modus vorzutäuschen.
   state.storage.mode = "local";
@@ -3214,6 +3710,7 @@ function renderSettingsInputs() {
   if (surchargeField) {
     surchargeField.disabled = !Boolean(state.settings.shipping12m.manualSurchargeEnabled);
   }
+  applySoftLocksToUI();
 }
 
 function toSortedDims(lengthCm, widthCm, heightCm) {
@@ -8237,6 +8734,7 @@ function renderInputs(product) {
 
   dom.compareSort.value = state.ui.compareSort;
   dom.compareFilter.value = state.ui.compareFilter;
+  applySoftLocksToUI();
 }
 
 function renderProductList(metricsById = new Map()) {
@@ -8426,6 +8924,7 @@ function renderAll() {
   renderComputedViews();
   renderDriverModal();
   applyMouseoverHelp();
+  applySoftLocksToUI();
 }
 
 function normalizeFieldValue(path, rawValue) {
@@ -8453,6 +8952,7 @@ function updateSelectedField(path, rawValue) {
   if (!selected) {
     return;
   }
+  markLocalEditActivity();
 
   const nextValue = normalizeFieldValue(path, rawValue);
   setByPath(selected, path, nextValue);
@@ -8485,6 +8985,7 @@ function updateSelectedField(path, rawValue) {
 }
 
 function updateSettingsField(path, rawValue) {
+  markLocalEditActivity();
   const nextValue = normalizeSettingsValue(path, rawValue);
   setByPath(state.settings, path, nextValue);
 
@@ -8773,10 +9274,41 @@ function applyMouseoverHelp() {
 }
 
 function bindEvents() {
+  document.addEventListener("focusin", (event) => {
+    const target = event.target;
+    if (!isEditableControl(target)) {
+      return;
+    }
+    const fieldKey = fieldKeyForControl(target);
+    if (!fieldKey) {
+      return;
+    }
+    markLocalEditActivity();
+    state.presence.myEditingField = fieldKey;
+    void trackPresenceField(fieldKey);
+  });
+
+  document.addEventListener("focusout", () => {
+    if (state.presence.focusClearTimer) {
+      clearTimeout(state.presence.focusClearTimer);
+      state.presence.focusClearTimer = null;
+    }
+    state.presence.focusClearTimer = setTimeout(() => {
+      const active = document.activeElement;
+      const activeFieldKey = isEditableControl(active) ? fieldKeyForControl(active) : null;
+      state.presence.myEditingField = activeFieldKey;
+      void trackPresenceField(activeFieldKey);
+      maybeApplyDeferredRemotePull();
+    }, 0);
+  });
+
   document.addEventListener("input", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
       return;
+    }
+    if (fieldKeyForControl(target)) {
+      markLocalEditActivity();
     }
 
     const path = target.dataset.path;
@@ -8801,10 +9333,14 @@ function bindEvents() {
     const path = target.dataset.path;
     const settingsPath = target.dataset.settingsPath;
     const value = target.type === "checkbox" ? target.checked : target.value;
+    if (fieldKeyForControl(target)) {
+      markLocalEditActivity();
+    }
 
     if (path) {
       updateSelectedField(path, value);
       renderComputedViews();
+      maybeApplyDeferredRemotePull();
       return;
     }
 
@@ -8815,6 +9351,7 @@ function bindEvents() {
       }
       renderSettingsInputs();
       applyMouseoverHelp();
+      maybeApplyDeferredRemotePull();
     }
   });
 
@@ -8876,6 +9413,12 @@ function bindEvents() {
     });
   }
 
+  if (dom.syncNowBtn) {
+    dom.syncNowBtn.addEventListener("click", async () => {
+      await handleSyncNow();
+    });
+  }
+
   if (dom.authLoginBtn) {
     dom.authLoginBtn.addEventListener("click", async () => {
       await handleAuthLogin();
@@ -8891,6 +9434,16 @@ function bindEvents() {
       await handleAuthLogout();
     });
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+    if (!isSharedStoreActive()) {
+      return;
+    }
+    scheduleRemotePull("tab_visible", { immediate: true });
+  });
 
   if (dom.importLocalBtn) {
     dom.importLocalBtn.addEventListener("click", async () => {
@@ -9111,6 +9664,11 @@ function scrollToHashSectionIfPresent() {
 }
 
 function renderPageAfterLoad() {
+  if (isSharedStoreActive()) {
+    startRealtimeSync();
+  } else {
+    stopRealtimeSync();
+  }
   renderCategoryDefaultsAdmin();
   setStorageModeLabel();
   setSessionInfoText();
@@ -9164,6 +9722,7 @@ async function init() {
 
 init().catch((error) => {
   console.error("App init failed", error);
+  stopRealtimeSync();
   setAuthStatus("Initialisierung fehlgeschlagen. Fallback auf lokale Daten.", true);
   setAppMode("ready_local");
   loadSettingsLocal();
