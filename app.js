@@ -1026,15 +1026,15 @@ const COST_METRIC_TOOLTIPS = {
   "shipping.units_by_dimension_cap":
     "Was bedeutet das? Maximal mögliche Stück je Umkarton unter den zulässigen Maßgrenzen.\nFormel: Best-Fit über Orientierungen unter maximal erlaubten Kartonmaßen inkl. Buffer.\nWofür genutzt? Startwert für die automatische Kartonisierung.",
   "shipping.units_per_carton":
-    "Was bedeutet das? Tatsächlich verwendete Stück je Umkarton (auto oder manuell).\nFormel: Auto startet mit min(Gewichtsgrenze, Maßgrenze) und reduziert ggf., bis eine exakte Anordnung im zulässigen Umkarton möglich ist.\nWofür genutzt? Physische Kartonanzahl, Sendungsvolumen und Teile der 3PL-Kosten.\nWas kann ich tun? Bei Downshift reale Umkartonmaße manuell setzen oder Stück je Umkarton reduzieren.",
+    "Was bedeutet das? Tatsächlich verwendete Stück je Umkarton (auto oder manuell).\nFormel: Auto startet mit min(Gewichtsgrenze, Maßgrenze) und reduziert ggf., bis ein exaktes Raster (nx×ny×nz, ganzzahlig) innerhalb der Hard-Caps möglich ist.\nWichtig: Reduktion ist nicht wegen ungerade/gerade, sondern weil der Kandidatenwert geometrisch nicht exakt in den zulässigen Umkarton passt.\nWofür genutzt? Physische Kartonanzahl, Sendungsvolumen und Teile der 3PL-Kosten.",
   "shipping.physical_cartons":
     "Definition: Physisch benötigte Umkartons für die PO.\nFormel: ceil(PO Stück / Stück je Umkarton).\nWird genutzt für: Shipment-Bildung und kartonbasierte 3PL-/Carrier-Positionen.",
   "shipping.shipment_cbm":
-    "Definition: Tatsächliches Sendungsvolumen der gesamten PO.\nFormel: physische Kartons × Umkarton-CBM.\nWird genutzt für: Rail Vorlauf/Nachlauf variabel (EUR/CBM).",
+    "Definition: Tatsächliches Sendungsvolumen der gesamten PO (wie viel Raum die echte Sendung belegt).\nFormel: physische Kartons × Umkarton-CBM.\nWird genutzt für: Rail Vorlauf/Nachlauf variabel (EUR/CBM).\nNicht zu verwechseln mit Abrechnungsvolumen: Das ist nur für den Hauptlauf (W/M) relevant.",
   "shipping.shipment_weight_kg":
     "Definition: Tatsächliches Sendungsgewicht der gesamten PO.\nFormel: PO Stück × Stück-Bruttogewicht (bei Manual ggf. aus Umkartongewicht abgeleitet).\nWird genutzt für: W/M-Abgleich und Transparenz.",
   "shipping.chargeable_cbm":
-    "Definition: Abrechnungsvolumen nach W/M für den Hauptlauf.\nFormel: max(Sendungsvolumen-CBM, Sendungsgewicht-kg/1000).\nWird genutzt für: Hauptlauf variabel (EUR/CBM), nicht für Rail Vor-/Nachlauf.",
+    "Definition: Abrechnungsvolumen nach W/M (Weight/Measure) für den Hauptlauf.\nFormel: max(Sendungsvolumen-CBM, Sendungsgewicht-kg/1000).\nBedeutung: Der Carrier nimmt den größeren Wert aus Volumen oder Gewicht als Preisbasis.\nWird genutzt für: Hauptlauf variabel (EUR/CBM), nicht für Rail Vor-/Nachlauf.",
   "shipping.equivalent_cartons":
     "Definition: Referenz-Kartonzahl aus Volumen/Gewicht relativ zu einer Standardreferenz.\nFormel: ceil(max(Shipment-CBM/Referenz-CBM, Shipment-Gewicht/Referenzgewicht)).\nWird genutzt für: Transparenz/Benchmark; aktuell nicht als Rail Vor-/Nachlauf-Treiber.",
   "shipping.reference_cbm":
@@ -5103,7 +5103,7 @@ function cartonizationSelectionReasonLabel(reason) {
     return "Manueller Override aktiv";
   }
   if (reason === "auto_cap_downshift_exact_fit") {
-    return "Kandidatenwert reduziert, weil dafür keine exakte Anordnung im zulässigen Umkarton möglich war";
+    return "Kandidatenwert reduziert, weil kein exaktes ganzzahliges Raster (nx×ny×nz) im zulässigen Umkarton möglich war";
   }
   return "Kandidatenwert passt ohne Anpassung";
 }
@@ -9007,7 +9007,11 @@ function renderDriverModal() {
 
   const presetHandledPaths = new Set();
   if (state.ui.driverModal.detailPreset === "shipping_dashboard") {
-    dom.driverModalFields.appendChild(createShippingDashboardModalContent(modalMetrics));
+    dom.driverModalFields.appendChild(
+      createShippingDashboardModalContent(modalMetrics, {
+        contextStage: state.ui.driverModal.contextStage ?? "quick",
+      }),
+    );
     const manualSection = createShippingManualOverrideModalSection(selected, modalMetrics);
     if (manualSection) {
       dom.driverModalFields.appendChild(manualSection);
@@ -10904,11 +10908,15 @@ function createShippingLayout3dElement(metrics) {
   const productDimsText = Array.isArray(metrics.shipping.layoutPreview?.orientation) && metrics.shipping.layoutPreview.orientation.length === 3
     ? `${formatNumber(metrics.shipping.layoutPreview.orientation[0])} × ${formatNumber(metrics.shipping.layoutPreview.orientation[1])} × ${formatNumber(metrics.shipping.layoutPreview.orientation[2])} cm`
     : "-";
+  const placedUnitsText = formatNumber(
+    Math.max(0, roundInt(metrics.shipping.layoutPreview?.placedUnits, roundInt(metrics.shipping.unitsPerCartonAuto, 1))),
+  );
   meta.innerHTML =
     `<p><strong>Freies Volumen:</strong> ${formatNumber(metrics.shipping.voidVolumeLiters)} L (${formatNumber(metrics.shipping.voidVolumeCbm)} CBM)</p>` +
     `<p><strong>Luftanteil:</strong> ${formatPercent(freeVolumePct)} · <strong>Volumen-Packgrad:</strong> ${formatPercent(metrics.shipping.volumeFillPct)}</p>` +
     `<p><strong>Umkarton:</strong> ${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm</p>` +
-    `<p><strong>Produkt (im Raster):</strong> ${productDimsText}</p>`;
+    `<p><strong>Produkt im Raster:</strong> ${productDimsText}</p>` +
+    `<p><strong>Anzahl Produkte im Karton:</strong> ${placedUnitsText}</p>`;
 
   const legend = document.createElement("div");
   legend.className = "shipping-layout-3d-legend";
@@ -11062,7 +11070,9 @@ function createShippingLayoutPreviewElement(metrics) {
   return wrapper;
 }
 
-function createShippingDashboardModalContent(metrics) {
+function createShippingDashboardModalContent(metrics, options = {}) {
+  const contextStage = options.contextStage ?? "quick";
+  const show3dPackImage = options.show3dPackImage ?? !(contextStage === "quick" || contextStage === "validation");
   const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.transportMode);
   const toCurrencyCents = (value) => roundInt(num(value, 0) * 100, 0);
   const unitsPerPo = Math.max(1, num(metrics.shipping.unitsPerOrder, 1));
@@ -11236,12 +11246,12 @@ function createShippingDashboardModalContent(metrics) {
     const downshiftHint = document.createElement("p");
     downshiftHint.className = "hint warn";
     downshiftHint.textContent =
-      `Auto von ${formatNumber(metrics.shipping.unitsPerCartonCapCandidate)} auf ${formatNumber(metrics.shipping.unitsPerCartonAuto)} reduziert: Für den Kandidatenwert passt keine exakte Anordnung im zulässigen Umkarton.`;
+      `Auto von ${formatNumber(metrics.shipping.unitsPerCartonCapCandidate)} auf ${formatNumber(metrics.shipping.unitsPerCartonAuto)} reduziert: Für den Kandidatenwert ist kein exaktes ganzzahliges Raster (nx×ny×nz) im zulässigen Umkarton möglich.`;
     cartonPanel.appendChild(downshiftHint);
     const downshiftAction = document.createElement("p");
     downshiftAction.className = "hint";
     downshiftAction.textContent =
-      "Was du tun kannst: Stück je Umkarton reduzieren oder reale Umkartonmaße manuell setzen.";
+      "Das liegt nicht an ungerade/gerade allein, sondern an der Geometrie unter Hard-Caps + Buffer. Was du tun kannst: Stück je Umkarton reduzieren oder reale Umkartonmaße manuell setzen.";
     cartonPanel.appendChild(downshiftAction);
   }
 
@@ -11279,20 +11289,22 @@ function createShippingDashboardModalContent(metrics) {
     `</div>`;
   cartonPanel.appendChild(cartonDetails);
 
-  const layoutDetails = document.createElement("details");
-  layoutDetails.className = "shipping-detail-toggle";
-  layoutDetails.innerHTML = "<summary>Packbild (3D, drehbar)</summary>";
-  const layoutBody = document.createElement("div");
-  layoutBody.className = "shipping-detail-body";
-  const volumeHint = document.createElement("p");
-  const freeVolumePct = clamp(100 - num(metrics.shipping.volumeFillPct, 0), 0, 100);
-  volumeHint.innerHTML =
-    `<strong>Freies Volumen:</strong> ${formatNumber(metrics.shipping.voidVolumeLiters)} L (${formatNumber(metrics.shipping.voidVolumeCbm)} CBM) · ` +
-    `<strong>Luftanteil:</strong> ${formatPercent(freeVolumePct)}`;
-  layoutBody.appendChild(volumeHint);
-  layoutBody.appendChild(createShippingLayout3dElement(metrics));
-  layoutDetails.appendChild(layoutBody);
-  cartonPanel.appendChild(layoutDetails);
+  if (show3dPackImage) {
+    const layoutDetails = document.createElement("details");
+    layoutDetails.className = "shipping-detail-toggle";
+    layoutDetails.innerHTML = "<summary>Packbild (3D, drehbar)</summary>";
+    const layoutBody = document.createElement("div");
+    layoutBody.className = "shipping-detail-body";
+    const volumeHint = document.createElement("p");
+    const freeVolumePct = clamp(100 - num(metrics.shipping.volumeFillPct, 0), 0, 100);
+    volumeHint.innerHTML =
+      `<strong>Freies Volumen:</strong> ${formatNumber(metrics.shipping.voidVolumeLiters)} L (${formatNumber(metrics.shipping.voidVolumeCbm)} CBM) · ` +
+      `<strong>Luftanteil:</strong> ${formatPercent(freeVolumePct)}`;
+    layoutBody.appendChild(volumeHint);
+    layoutBody.appendChild(createShippingLayout3dElement(metrics));
+    layoutDetails.appendChild(layoutBody);
+    cartonPanel.appendChild(layoutDetails);
+  }
 
   mainGrid.appendChild(cartonPanel);
 
@@ -11305,6 +11317,9 @@ function createShippingDashboardModalContent(metrics) {
   basisHint.className = "hint";
   basisHint.textContent =
     "Vorlauf/Nachlauf (Rail) nutzt Sendungsvolumen. Hauptlauf variabel nutzt Abrechnungsvolumen (W/M).";
+  basisHint.title =
+    "Sendungsvolumen = physische Kartons × Umkarton-CBM (echtes Volumen der Sendung). " +
+    "Abrechnungsvolumen (W/M) = max(Sendungsvolumen, Sendungsgewicht/1000) und wird als Preisbasis für den variablen Hauptlauf genutzt.";
   basisPanel.appendChild(basisHint);
   basisPanel.appendChild(
     createKpiGrid([
@@ -11338,7 +11353,7 @@ function createShippingDashboardModalContent(metrics) {
 
   const d2dDetails = document.createElement("details");
   d2dDetails.className = "shipping-detail-toggle";
-  d2dDetails.open = true;
+  d2dDetails.open = false;
   d2dDetails.innerHTML = `<summary>A) Shipping D2D (ohne Zoll & Order-Fix) · ${formatCurrency(shippingD2dPerUnit)}/Unit</summary>`;
   const d2dList = document.createElement("ul");
   d2dList.className = "calc-list shipping-detail-body";
@@ -11364,6 +11379,7 @@ function createShippingDashboardModalContent(metrics) {
 
   const importDetails = document.createElement("details");
   importDetails.className = "shipping-detail-toggle";
+  importDetails.open = false;
   importDetails.innerHTML = `<summary>B) Import-Aufschläge (Zoll + Order-Fix) · ${formatCurrency(importSurchargesPerUnit)}/Unit</summary>`;
   const importList = document.createElement("ul");
   importList.className = "calc-list shipping-detail-body";
@@ -11443,6 +11459,21 @@ function createShippingManualOverrideModalSection(selected, metrics = null) {
   hint.textContent =
     "Wenn Maße/Gewicht leer bleiben, wird für die manuelle Stückzahl ein plausibler Umkarton geschätzt.";
   section.appendChild(hint);
+
+  const hasStoredManualValues = [
+    "assumptions.cartonization.unitsPerCarton",
+    "assumptions.cartonization.cartonLengthCm",
+    "assumptions.cartonization.cartonWidthCm",
+    "assumptions.cartonization.cartonHeightCm",
+    "assumptions.cartonization.cartonGrossWeightKg",
+  ].some((path) => num(getByPath(selected, path), 0) > 0);
+  if (!manualEnabled && hasStoredManualValues) {
+    const inactiveHint = document.createElement("p");
+    inactiveHint.className = "hint";
+    inactiveHint.textContent =
+      "Hinweis: Gespeicherte manuelle Werte bleiben sichtbar, sind bei deaktiviertem Toggle aber komplett inaktiv und werden nicht in die Auto-Kartonisierung übernommen.";
+    section.appendChild(inactiveHint);
+  }
 
   const manualStatus = metrics?.shipping?.manualFitStatus ?? "n/a";
   if (manualEnabled && (manualStatus !== "n/a" || Boolean(metrics?.shipping?.manualFitHint))) {
@@ -11792,6 +11823,7 @@ function buildCostBlockModalPayload(metrics, blockKey, contextStage = "quick") {
       source: `Shipping 12M (${modeLabel}) + Zollsatz + PO-Parameter.`,
       robustness: "Mittel.",
       detailPreset: "shipping_dashboard",
+      contextStage,
       driverPaths: [
         "derived.quick.blockShippingTo3plPerUnit",
         "derived.shipping.shipmentCbm",
@@ -12395,8 +12427,14 @@ function openValidationResidualModal(item) {
   });
 }
 
-function renderShippingModuleInline(metrics) {
+function renderShippingModuleInline(metrics, stage = "quick") {
   if (!dom.shippingModuleSection || !dom.shippingModuleCanvasHost || !dom.shippingModuleMeta || !dom.shippingModuleStatus) {
+    return;
+  }
+
+  if (stage === "quick" || stage === "validation") {
+    ensureShipping3dCleanup("inline");
+    dom.shippingModuleSection.classList.add("hidden");
     return;
   }
 
@@ -12418,7 +12456,7 @@ function renderShippingModuleInline(metrics) {
     : "-";
   const cartonText = `${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm`;
   dom.shippingModuleMeta.textContent =
-    `Umkarton: ${cartonText} · Produkt: ${orientationText} · Raster: ${formatNumber(preview.nx)} × ${formatNumber(preview.ny)} × ${formatNumber(preview.nz)} · Stück: ${formatNumber(preview.placedUnits)}/${formatNumber(metrics.shipping.unitsPerCartonAuto)}`;
+    `Umkarton: ${cartonText} · Produkt im Raster: ${orientationText} · Raster: ${formatNumber(preview.nx)} × ${formatNumber(preview.ny)} × ${formatNumber(preview.nz)} · Anzahl Produkte im Karton: ${formatNumber(preview.placedUnits)}`;
 
   if (!(window.Packaging3D && typeof window.Packaging3D.buildViewModel === "function" && typeof window.Packaging3D.mount === "function")) {
     ensureShipping3dCleanup("inline");
@@ -12869,7 +12907,7 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
     }
   }
 
-  renderShippingModuleInline(metrics);
+  renderShippingModuleInline(metrics, stage);
   renderShippingDetails(metrics);
   renderFbaDetails(metrics);
   const categories = buildCostCategoryData(metrics);
