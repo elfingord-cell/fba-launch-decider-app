@@ -1687,6 +1687,9 @@ const dom = {
   fbaInfoSourceLink: document.getElementById("fbaInfoSourceLink"),
   fbaInfoFallback: document.getElementById("fbaInfoFallback"),
   fbaInfoHints: document.getElementById("fbaInfoHints"),
+  advancedFbaOverridePanel: document.getElementById("advancedFbaOverridePanel"),
+  advancedFbaAutoHint: document.getElementById("advancedFbaAutoHint"),
+  advancedFbaOverrideStatus: document.getElementById("advancedFbaOverrideStatus"),
   chainMapSection: document.getElementById("chainMapSection"),
   categoryMapSection: document.getElementById("categoryMapSection"),
   sensitivitySection: document.getElementById("sensitivitySection"),
@@ -9923,6 +9926,29 @@ function renderFbaDetails(metrics) {
     dom.fbaInfoTableFeeMeta.classList.toggle("hidden", !rateCardReference.metaText);
     setTooltip(dom.fbaInfoTableFeeMeta, "amazon.fba_source");
   }
+  if (dom.advancedFbaAutoHint) {
+    dom.advancedFbaAutoHint.textContent = `Berechneter Tabellenpreis (DE Ratecard): ${rateCardReference.detailText}.`;
+    setTooltip(dom.advancedFbaAutoHint, "amazon.fba_source");
+  }
+  if (dom.advancedFbaOverrideStatus) {
+    let statusText = `Aktiv: ${formatCurrency(metrics.fbaFeeUnit)}.`;
+    if (metrics.fbaFeeSource === "manual") {
+      statusText = rateCardReference.available
+        ? `Aktiv: Override ${formatCurrency(metrics.fbaFeeUnit)} (Auto-Tier wäre ${rateCardReference.detailText}).`
+        : `Aktiv: Override ${formatCurrency(metrics.fbaFeeUnit)}.`;
+    } else if (metrics.fbaFeeSource === "auto") {
+      statusText = `Aktiv: Auto-Tier ${formatCurrency(metrics.fbaFeeUnit)} (Tabellenpreis).`;
+    } else if (metrics.fbaFeeSource === "fallback_non_de") {
+      statusText = `Aktiv: Fallback ${formatCurrency(metrics.fbaFeeUnit)} (Auto-Tier derzeit nur für Amazon.de).`;
+    } else if (metrics.fbaFeeSource === "fallback_no_tier") {
+      statusText = `Aktiv: Fallback ${formatCurrency(metrics.fbaFeeUnit)} (${metrics.fbaFallbackReason || "kein passendes Tier-Match"}).`;
+    }
+    dom.advancedFbaOverrideStatus.textContent = statusText;
+    setTooltip(dom.advancedFbaOverrideStatus, "amazon.fba_source");
+  }
+  if (dom.advancedFbaOverridePanel) {
+    dom.advancedFbaOverridePanel.classList.toggle("is-manual", metrics.fbaFeeSource === "manual");
+  }
   if (dom.fbaInfoShippingWeight) {
     dom.fbaInfoShippingWeight.textContent = `${formatNumber(metrics.fbaShippingWeightG)} g`;
     setTooltip(dom.fbaInfoShippingWeight, "amazon.fba_shipping_weight");
@@ -12464,9 +12490,10 @@ function syncControlStates(product) {
     });
   });
 
-  const manualFbaFeeInputs = document.querySelectorAll('[data-path="assumptions.amazon.manualFbaFee"]');
+  const manualFbaOverrideEnabled = Boolean(getByPath(product, AMAZON_FBA_MANUAL_OVERRIDE_PATH));
+  const manualFbaFeeInputs = document.querySelectorAll(`[data-path="${AMAZON_FBA_MANUAL_FEE_PATH}"]`);
   manualFbaFeeInputs.forEach((manualFbaFeeInput) => {
-    manualFbaFeeInput.disabled = !Boolean(getByPath(product, "assumptions.amazon.useManualFbaFee"));
+    manualFbaFeeInput.disabled = !manualFbaOverrideEnabled;
   });
 
   const launchSplitEnabled = Boolean(getByPath(product, "assumptions.launchSplit.enabled"));

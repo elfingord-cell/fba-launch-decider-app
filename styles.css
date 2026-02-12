@@ -997,6 +997,40 @@ body[data-page="settings"] .settings-section h4 {
   padding: 0;
 }
 
+.fba-override-panel {
+  border: 1px solid color-mix(in srgb, var(--line) 67%, white);
+  border-radius: 10px;
+  background: #fcfcfa;
+  padding: 9px;
+  display: grid;
+  gap: 7px;
+}
+
+.fba-override-head {
+  display: grid;
+  gap: 3px;
+}
+
+.fba-override-head strong {
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.fba-override-head small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.fba-override-input {
+  margin: 0;
+}
+
+.fba-override-panel.is-manual {
+  border-color: color-mix(in srgb, var(--accent-2) 38%, white);
+  background: #f7fbfa;
+}
+
 .launch-split {
   display: grid;
   gap: 8px;

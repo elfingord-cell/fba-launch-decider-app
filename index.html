@@ -711,14 +711,22 @@
                     <input data-path="assumptions.amazon.referralRate" type="number" min="0" max="25" step="0.1" />
                   </div>
                 </label>
-                <label class="toggle-row">
-                  <input data-path="assumptions.amazon.useManualFbaFee" type="checkbox" />
-                  <span>FBA Fee manuell setzen (statt Auto-Tier)</span>
-                </label>
-                <label>
-                  Manuelle FBA Fee / Einheit (EUR)
-                  <input data-path="assumptions.amazon.manualFbaFee" type="number" min="0" step="0.01" />
-                </label>
+                <div id="advancedFbaOverridePanel" class="fba-override-panel">
+                  <div class="fba-override-head">
+                    <strong>FBA Fee (Auto-Tier / Override)</strong>
+                    <small>Standard: DE-Ratecard. Optional kannst du auf einen manuellen Wert überschreiben.</small>
+                  </div>
+                  <p id="advancedFbaAutoHint" class="hint">Berechneter Tabellenpreis (DE Ratecard): -</p>
+                  <label class="toggle-row">
+                    <input data-path="assumptions.amazon.useManualFbaFee" type="checkbox" />
+                    <span>Override aktivieren (manueller FBA-Wert)</span>
+                  </label>
+                  <label class="fba-override-input">
+                    Manuelle FBA Fee / Einheit (EUR)
+                    <input data-path="assumptions.amazon.manualFbaFee" type="number" min="0" step="0.01" />
+                  </label>
+                  <small id="advancedFbaOverrideStatus" class="hint">Aktiv: Auto-Tier.</small>
+                </div>
               </section>
 
               <section id="advancedLifecycleSection">
