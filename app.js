@@ -123,6 +123,8 @@ const BASE_CATEGORY_DEFAULTS = {
     referralRate: 15,
     tacosRate: 12,
     returnRate: 5,
+    sellableShare: 45,
+    // Legacy-Felder bleiben lesbar.
     resaleRate: 45,
     unsellableShare: 55,
     targetMarginPct: 15,
@@ -132,6 +134,8 @@ const BASE_CATEGORY_DEFAULTS = {
     referralRate: 15,
     tacosRate: 14,
     returnRate: 4,
+    sellableShare: 52,
+    // Legacy-Felder bleiben lesbar.
     resaleRate: 52,
     unsellableShare: 48,
     targetMarginPct: 16,
@@ -141,6 +145,8 @@ const BASE_CATEGORY_DEFAULTS = {
     referralRate: 8,
     tacosRate: 10,
     returnRate: 8,
+    sellableShare: 40,
+    // Legacy-Felder bleiben lesbar.
     resaleRate: 40,
     unsellableShare: 60,
     targetMarginPct: 14,
@@ -150,6 +156,8 @@ const BASE_CATEGORY_DEFAULTS = {
     referralRate: 15,
     tacosRate: 16,
     returnRate: 12,
+    sellableShare: 36,
+    // Legacy-Felder bleiben lesbar.
     resaleRate: 36,
     unsellableShare: 64,
     targetMarginPct: 18,
@@ -159,6 +167,8 @@ const BASE_CATEGORY_DEFAULTS = {
     referralRate: 15,
     tacosRate: 11,
     returnRate: 6,
+    sellableShare: 46,
+    // Legacy-Felder bleiben lesbar.
     resaleRate: 46,
     unsellableShare: 54,
     targetMarginPct: 15,
@@ -168,6 +178,8 @@ const BASE_CATEGORY_DEFAULTS = {
     referralRate: 15,
     tacosRate: 12,
     returnRate: 7,
+    sellableShare: 42,
+    // Legacy-Felder bleiben lesbar.
     resaleRate: 42,
     unsellableShare: 58,
     targetMarginPct: 15,
@@ -182,6 +194,19 @@ const GLOBAL_DEFAULTS = {
   importCustomsDutyRate: 6.5,
   importVatRate: 19,
 };
+
+function deriveSellableSharePct(rawSellableShare, rawUnsellableShare, rawResaleRate, fallbackPct = 42) {
+  if (Number.isFinite(num(rawSellableShare, NaN))) {
+    return clamp(num(rawSellableShare, fallbackPct), 0, 100);
+  }
+  if (Number.isFinite(num(rawUnsellableShare, NaN))) {
+    return clamp(100 - num(rawUnsellableShare, 100 - fallbackPct), 0, 100);
+  }
+  if (Number.isFinite(num(rawResaleRate, NaN))) {
+    return clamp(num(rawResaleRate, fallbackPct), 0, 100);
+  }
+  return clamp(num(fallbackPct, 42), 0, 100);
+}
 
 const RAIL_BALANCED_V1_DEFAULTS = {
   rateEurPerCbm: 185,
@@ -577,8 +602,9 @@ const FIELD_HELP = {
   "assumptions.ads.launchMonths": "Anzahl Monate mit erhöhtem TACoS durch Launch-Multiplier.",
 
   "assumptions.returns.returnRate": "Retourenquote in % der Verkäufe.",
-  "assumptions.returns.resaleRate": "Anteil der Retouren, der wiederverkauft werden kann.",
-  "assumptions.returns.unsellableShare": "Anteil der Retouren, der nicht wiederverkauft werden kann.",
+  "assumptions.returns.sellableShare": "Davon verkaufbar in % der Retouren. Unsellable wird abgeleitet als 100 - verkaufbar.",
+  "assumptions.returns.resaleRate": "Legacy-Feld (fachlich inaktiv).",
+  "assumptions.returns.unsellableShare": "Legacy-Feld (fachlich inaktiv, wird aus verkaufbar% abgeleitet).",
   "assumptions.returns.handlingCost": "Interne Bearbeitungskosten je Retoure in EUR.",
 
   "assumptions.leakage.ratePct": "Pauschale vergessene Kosten als % vom Netto-Umsatz (Leakage-Block).",
@@ -736,38 +762,44 @@ const SETTINGS_HELP = {
   "threePl.shelfLPerMonthEur": "Infowert: Regalplatz L je Monat in EUR.",
   "categoryDefaults.home.tacosRate": "Default TACoS % für Kategorie Home.",
   "categoryDefaults.home.returnRate": "Default Retourenquote % für Kategorie Home.",
-  "categoryDefaults.home.resaleRate": "Default Wiederverkaufsquote % für Kategorie Home.",
-  "categoryDefaults.home.unsellableShare": "Default Unsellable-Anteil % für Kategorie Home.",
+  "categoryDefaults.home.sellableShare": "Default davon verkaufbar % für Kategorie Home.",
+  "categoryDefaults.home.resaleRate": "Legacy-Feld (fachlich inaktiv).",
+  "categoryDefaults.home.unsellableShare": "Legacy-Feld (fachlich inaktiv).",
   "categoryDefaults.home.referralRate": "Default Referral Fee % für Kategorie Home.",
   "categoryDefaults.home.targetMarginPct": "Default Zielmarge % für Kategorie Home.",
   "categoryDefaults.beauty.tacosRate": "Default TACoS % für Kategorie Beauty.",
   "categoryDefaults.beauty.returnRate": "Default Retourenquote % für Kategorie Beauty.",
-  "categoryDefaults.beauty.resaleRate": "Default Wiederverkaufsquote % für Kategorie Beauty.",
-  "categoryDefaults.beauty.unsellableShare": "Default Unsellable-Anteil % für Kategorie Beauty.",
+  "categoryDefaults.beauty.sellableShare": "Default davon verkaufbar % für Kategorie Beauty.",
+  "categoryDefaults.beauty.resaleRate": "Legacy-Feld (fachlich inaktiv).",
+  "categoryDefaults.beauty.unsellableShare": "Legacy-Feld (fachlich inaktiv).",
   "categoryDefaults.beauty.referralRate": "Default Referral Fee % für Kategorie Beauty.",
   "categoryDefaults.beauty.targetMarginPct": "Default Zielmarge % für Kategorie Beauty.",
   "categoryDefaults.electronics.tacosRate": "Default TACoS % für Kategorie Elektronik.",
   "categoryDefaults.electronics.returnRate": "Default Retourenquote % für Kategorie Elektronik.",
-  "categoryDefaults.electronics.resaleRate": "Default Wiederverkaufsquote % für Kategorie Elektronik.",
-  "categoryDefaults.electronics.unsellableShare": "Default Unsellable-Anteil % für Kategorie Elektronik.",
+  "categoryDefaults.electronics.sellableShare": "Default davon verkaufbar % für Kategorie Elektronik.",
+  "categoryDefaults.electronics.resaleRate": "Legacy-Feld (fachlich inaktiv).",
+  "categoryDefaults.electronics.unsellableShare": "Legacy-Feld (fachlich inaktiv).",
   "categoryDefaults.electronics.referralRate": "Default Referral Fee % für Kategorie Elektronik.",
   "categoryDefaults.electronics.targetMarginPct": "Default Zielmarge % für Kategorie Elektronik.",
   "categoryDefaults.apparel.tacosRate": "Default TACoS % für Kategorie Bekleidung.",
   "categoryDefaults.apparel.returnRate": "Default Retourenquote % für Kategorie Bekleidung.",
-  "categoryDefaults.apparel.resaleRate": "Default Wiederverkaufsquote % für Kategorie Bekleidung.",
-  "categoryDefaults.apparel.unsellableShare": "Default Unsellable-Anteil % für Kategorie Bekleidung.",
+  "categoryDefaults.apparel.sellableShare": "Default davon verkaufbar % für Kategorie Bekleidung.",
+  "categoryDefaults.apparel.resaleRate": "Legacy-Feld (fachlich inaktiv).",
+  "categoryDefaults.apparel.unsellableShare": "Legacy-Feld (fachlich inaktiv).",
   "categoryDefaults.apparel.referralRate": "Default Referral Fee % für Kategorie Bekleidung.",
   "categoryDefaults.apparel.targetMarginPct": "Default Zielmarge % für Kategorie Bekleidung.",
   "categoryDefaults.pet.tacosRate": "Default TACoS % für Kategorie Haustier.",
   "categoryDefaults.pet.returnRate": "Default Retourenquote % für Kategorie Haustier.",
-  "categoryDefaults.pet.resaleRate": "Default Wiederverkaufsquote % für Kategorie Haustier.",
-  "categoryDefaults.pet.unsellableShare": "Default Unsellable-Anteil % für Kategorie Haustier.",
+  "categoryDefaults.pet.sellableShare": "Default davon verkaufbar % für Kategorie Haustier.",
+  "categoryDefaults.pet.resaleRate": "Legacy-Feld (fachlich inaktiv).",
+  "categoryDefaults.pet.unsellableShare": "Legacy-Feld (fachlich inaktiv).",
   "categoryDefaults.pet.referralRate": "Default Referral Fee % für Kategorie Haustier.",
   "categoryDefaults.pet.targetMarginPct": "Default Zielmarge % für Kategorie Haustier.",
   "categoryDefaults.generic.tacosRate": "Default TACoS % für Kategorie Sonstiges.",
   "categoryDefaults.generic.returnRate": "Default Retourenquote % für Kategorie Sonstiges.",
-  "categoryDefaults.generic.resaleRate": "Default Wiederverkaufsquote % für Kategorie Sonstiges.",
-  "categoryDefaults.generic.unsellableShare": "Default Unsellable-Anteil % für Kategorie Sonstiges.",
+  "categoryDefaults.generic.sellableShare": "Default davon verkaufbar % für Kategorie Sonstiges.",
+  "categoryDefaults.generic.resaleRate": "Legacy-Feld (fachlich inaktiv).",
+  "categoryDefaults.generic.unsellableShare": "Legacy-Feld (fachlich inaktiv).",
   "categoryDefaults.generic.referralRate": "Default Referral Fee % für Kategorie Sonstiges.",
   "categoryDefaults.generic.targetMarginPct": "Default Zielmarge % für Kategorie Sonstiges.",
 };
@@ -838,6 +870,15 @@ const PATH_LABEL_OVERRIDES = {
   "settings.costDefaults.toolingPerProductEur": "Tooling je Produkt (EUR)",
   "settings.costDefaults.certificatesPerProductEur": "Zertifikate je Produkt (EUR)",
   "settings.costDefaults.inspectionPerProductEur": "Inspection in China je Produkt (EUR)",
+  "assumptions.returns.sellableShare": "Davon verkaufbar (%)",
+  "derived.shipping.chargeableCbm": "Abrechnungsvolumen (W/M-CBM)",
+  "derived.shipping.equivalentCartonsCount": "Abrechnungs-Kartons (Äquivalenz)",
+  "derived.shipping.equivalentReferenceCbm": "Referenzvolumen je Äquivalenz-Karton",
+  "derived.shipping.equivalentReferenceWeightKg": "Referenzgewicht je Äquivalenz-Karton",
+  "derived.returns.returnLossPerReturnEur": "Verlust pro 1 Retoure (EUR)",
+  "derived.returns.returnCostPerReturnEur": "Kosten pro 1 Retoure (EUR)",
+  "derived.returns.sellableSharePct": "Davon verkaufbar (%)",
+  "derived.returns.unsellableSharePctDerived": "Davon nicht verkaufbar (%)",
 };
 
 const KPI_HELP = {
@@ -916,6 +957,45 @@ const TERM_HELP_BY_TEXT = [
   },
 ];
 
+const COST_METRIC_TOOLTIPS = {
+  "quick.exw": "EXW/Einkauf pro verkaufter Einheit in EUR (USD-EK × USD→EUR).",
+  "quick.shipping_to_3pl": "Importblock pro Einheit bis 3PL: Door-to-door Shipping + Zoll + orderbezogene Fixkosten.",
+  "quick.threepl": "3PL-Kosten pro Einheit: Receiving, Lagerung, Outbound-Service und Carrier.",
+  "quick.amazon_core": "Amazon-Kernkosten pro Einheit: Referral + TACoS + FBA Fulfillment.",
+  "quick.launch_core": "Launch-Kernkosten pro Einheit: Listing + Launch-Budget + Launch-Ops.",
+  "quick.coverage_pct": "Anteil der fünf QuickCheck-Kernblöcke an den gesamten Kosten pro Einheit.",
+  "quick.total_cost_per_unit": "Gesamte Stückkosten über alle modellierten Kostenblöcke.",
+  "quick.covered_cost_per_unit": "Kosten pro Einheit, die bereits durch den QuickCheck-Workflow abgedeckt sind.",
+  "quick.residual_cost_per_unit": "Restkosten pro Einheit außerhalb des QuickCheck-Workflows.",
+  "validation.coverage_pct": "Anteil der validierten Blöcke an den gesamten Kosten pro Einheit.",
+  "validation.target_pct": "Zielabdeckung für Validation (Standard 95%).",
+  "validation.covered_cost_per_unit": "Validierte Kosten pro Einheit.",
+  "validation.residual_cost_per_unit": "Noch offene, nicht validierte Restkosten pro Einheit.",
+  "shipping.units_by_weight_cap": "Maximale Units/Karton unter Amazon-Gewichtslimit.",
+  "shipping.units_by_dimension_cap": "Maximale Units/Karton unter Amazon-Maßlimits (inkl. Buffer).",
+  "shipping.units_per_carton": "Tatsächlich verwendete Units pro Karton (Auto oder manueller Override).",
+  "shipping.physical_cartons": "Physisch benötigte Kartons = ceil(PO Units / Units pro Karton).",
+  "shipping.shipment_cbm": "Tatsächliches Sendungsvolumen in Kubikmetern.",
+  "shipping.shipment_weight_kg": "Tatsächliches Sendungsgewicht in Kilogramm.",
+  "shipping.chargeable_cbm": "Abrechnungsvolumen (W/M-CBM) = max(Sendungs-CBM, Sendungsgewicht/1000).",
+  "shipping.equivalent_cartons": "Abrechnungs-Kartons (Äquivalenz) aus Volumen/Gewicht relativ zur Referenz.",
+  "shipping.reference_cbm": "Referenzvolumen je Äquivalenz-Karton = Hard-Caps Volumen × Auslastung.",
+  "shipping.reference_weight_kg": "Referenzgewicht je Äquivalenz-Karton = Hard-Cap Gewicht × Auslastung.",
+  "shipping.total_po": "Gesamte Shippingkosten für die komplette PO/Sendung.",
+  "shipping.per_unit": "Shippingkosten je verkaufter Einheit.",
+  "amazon.referral_unit": "Referral Fee pro Einheit (prozentual auf Bruttoverkaufspreis, mind. Mindestgebühr).",
+  "amazon.tacos_unit": "Ads/TACoS pro Einheit als Prozentsatz vom Bruttoverkaufspreis.",
+  "amazon.fba_unit": "FBA Fulfillment Fee pro Einheit aus DE-Ratecard (oder manuellem Fallback).",
+  "amazon.fba_profile": "Aktives FBA-Profil (Standard/Apparel) für die Tierzuordnung.",
+  "amazon.fba_tier": "Gematchte FBA-Größen-/Gewichtsklasse aus der hinterlegten DE-Ratecard.",
+  "amazon.fba_shipping_weight": "FBA-Versandgewicht = max(tatsächliches Gewicht, dimensionsabhängiges Gewicht).",
+  "amazon.fba_source": "Quelle der FBA-Berechnung (auto/manuell/fallback) inklusive Ratecard-Version.",
+  "returns.sellable_share": "Davon verkaufbar (%) der Retouren; nicht verkaufbar wird als 100 - verkaufbar berechnet.",
+  "returns.unsellable_share_derived": "Nicht verkaufbarer Retourenanteil, automatisch aus 100 - verkaufbar berechnet.",
+  "returns.return_loss_per_return": "Warenwertverlust pro Retoure auf Landed-Basis.",
+  "returns.return_cost_per_return": "Gesamtkosten pro Retoure = Warenwertverlust pro Retoure + Handling je Retoure.",
+};
+
 const DERIVED_DRIVER_MAP = {
   "derived.shipping.unitsPerOrder": {
     label: "PO-Menge (Units pro Order)",
@@ -954,20 +1034,20 @@ const DERIVED_DRIVER_MAP = {
     read: (metrics) => metrics.shipping.physicalCartonsCount,
   },
   "derived.shipping.equivalentCartonsCount": {
-    label: "Äquivalenz-Kartons",
-    help: "Äquivalenz-Kartons aus Shipment-CBM/Gewicht relativ zur Referenz (Hard-Caps × Fill).",
+    label: "Abrechnungs-Kartons (Äquivalenz)",
+    help: "Abgeleitete Kartonanzahl für Rail-Vorlauf/Nachlauf: max(Shipment-CBM/Referenzvolumen, Shipment-Gewicht/Referenzgewicht).",
     format: "number",
     read: (metrics) => metrics.shipping.equivalentCartonsCount,
   },
   "derived.shipping.equivalentReferenceCbm": {
-    label: "Äquivalenz-Referenz CBM",
-    help: "Volumen-Referenz je Äquivalenz-Karton = Hard-Caps CBM × Fill.",
+    label: "Referenzvolumen je Äquivalenz-Karton (CBM)",
+    help: "Referenzvolumen je Äquivalenz-Karton = Hard-Caps Volumen × Auslastung.",
     format: "number",
     read: (metrics) => metrics.shipping.equivalentReferenceCbm,
   },
   "derived.shipping.equivalentReferenceWeightKg": {
-    label: "Äquivalenz-Referenz Gewicht (kg)",
-    help: "Gewichts-Referenz je Äquivalenz-Karton = Hard-Cap Gewicht × Fill.",
+    label: "Referenzgewicht je Äquivalenz-Karton (kg)",
+    help: "Referenzgewicht je Äquivalenz-Karton = Hard-Cap Gewicht × Auslastung.",
     format: "number",
     read: (metrics) => metrics.shipping.equivalentReferenceWeightKg,
   },
@@ -984,10 +1064,34 @@ const DERIVED_DRIVER_MAP = {
     read: (metrics) => metrics.shipping.shipmentWeightKg,
   },
   "derived.shipping.chargeableCbm": {
-    label: "Abrechnungsvolumen (Chargeable CBM)",
-    help: "Abrechnungsvolumen nach W/M = max(CBM, Gewicht/1000).",
+    label: "Abrechnungsvolumen (W/M-CBM)",
+    help: "Für den Hauptlauf abrechenbares Volumen nach W/M = max(Shipment-CBM, Shipment-Gewicht/1000).",
     format: "number",
     read: (metrics) => metrics.shipping.chargeableCbm,
+  },
+  "derived.returns.returnLossPerReturnEur": {
+    label: "Verlust pro 1 Retoure (EUR)",
+    help: "Warenwertverlust pro Retoure auf Landed-Basis: (1 - verkaufbar%) × Landed.",
+    format: "currency",
+    read: (metrics) => metrics.returnLossPerReturn,
+  },
+  "derived.returns.returnCostPerReturnEur": {
+    label: "Kosten pro 1 Retoure (EUR)",
+    help: "Gesamtkosten pro Retoure: Verlust pro Retoure + Handlingkosten je Retoure.",
+    format: "currency",
+    read: (metrics) => metrics.returnCostPerReturn,
+  },
+  "derived.returns.sellableSharePct": {
+    label: "Davon verkaufbar (%)",
+    help: "Anteil der Retouren, der verkaufbar ist.",
+    format: "percent",
+    read: (metrics) => metrics.sellableSharePct,
+  },
+  "derived.returns.unsellableSharePctDerived": {
+    label: "Davon nicht verkaufbar (%)",
+    help: "Automatisch abgeleitet als 100 - verkaufbar%.",
+    format: "percent",
+    read: (metrics) => metrics.unsellableSharePctDerived,
   },
   "derived.shipping.estimatedCartonLengthCm": {
     label: "Geschätzte Umkarton-Länge (cm)",
@@ -1158,8 +1262,8 @@ const DEFAULT_ROBUSTNESS = {
   "ads.launchMultiplier": { score: 50, why: "Launch-Druck schwankt je Wettbewerb und Rankingstatus." },
   "ads.launchMonths": { score: 55, why: "Launch-Dauer ist meist planbar, aber marktabhängig." },
   "returns.returnRate": { score: 50, why: "Retouren variieren je Produktqualität und Erwartungsmanagement." },
-  "returns.resaleRate": { score: 40, why: "Wiederverkauf hängt stark von Zustand und Kategorie ab." },
-  "returns.unsellableShare": { score: 35, why: "Unsellable-Anteile sind erfahrungsgemäß volatil." },
+  "returns.sellableShare": { score: 40, why: "Verkaufbarkeit hängt stark von Zustand, Kategorie und Verpackung ab." },
+  "returns.unsellableSharePctDerived": { score: 40, why: "Abgeleiteter Gegenwert aus verkaufbar%." },
   "returns.handlingCost": { score: 60, why: "Interne Handling-Kosten sind intern meist gut messbar." },
   "leakage.ratePct": { score: 45, why: "Leakage ist ein pauschaler Sicherheitspuffer." },
   "import.customsDutyRate": { score: 82, why: "Zollsätze sind tariflich gut definiert." },
@@ -1179,6 +1283,7 @@ const BOOLEAN_PATHS = new Set([
   "assumptions.ads.overrideLaunchMultiplier",
   "assumptions.ads.overrideLaunchMonths",
   "assumptions.returns.overrideReturnRate",
+  "assumptions.returns.overrideSellableShare",
   "assumptions.returns.overrideResaleRate",
   "assumptions.returns.overrideUnsellableShare",
   "assumptions.returns.overrideHandlingCost",
@@ -1229,6 +1334,7 @@ const OVERRIDE_CONTROL_MAP = [
   ["assumptions.ads.overrideLaunchMultiplier", "assumptions.ads.launchMultiplier"],
   ["assumptions.ads.overrideLaunchMonths", "assumptions.ads.launchMonths"],
   ["assumptions.returns.overrideReturnRate", "assumptions.returns.returnRate"],
+  ["assumptions.returns.overrideSellableShare", "assumptions.returns.sellableShare"],
   ["assumptions.returns.overrideResaleRate", "assumptions.returns.resaleRate"],
   ["assumptions.returns.overrideUnsellableShare", "assumptions.returns.unsellableShare"],
   ["assumptions.returns.overrideHandlingCost", "assumptions.returns.handlingCost"],
@@ -1843,6 +1949,9 @@ function defaultProduct(index = 1) {
       returns: {
         overrideReturnRate: true,
         returnRate: 10,
+        overrideSellableShare: false,
+        sellableShare: 45,
+        // Legacy-Felder bleiben für Alt-Daten lesbar.
         overrideResaleRate: false,
         resaleRate: 45,
         overrideUnsellableShare: false,
@@ -1936,6 +2045,12 @@ function ensureCategoryDefaults(rawDefaults) {
       ...base[key],
       ...candidate,
     };
+    base[key].sellableShare = deriveSellableSharePct(
+      base[key].sellableShare,
+      base[key].unsellableShare,
+      base[key].resaleRate,
+      base[key].sellableShare,
+    );
   });
 
   return base;
@@ -2355,8 +2470,16 @@ function sanitizeSettings(settings) {
     item.referralRate = clamp(num(item.referralRate, 15), 0, 25);
     item.tacosRate = clamp(num(item.tacosRate, 12), 0, 100);
     item.returnRate = clamp(num(item.returnRate, 7), 0, 100);
-    item.resaleRate = clamp(num(item.resaleRate, 42), 0, 100);
-    item.unsellableShare = clamp(num(item.unsellableShare, 58), 0, 100);
+    item.sellableShare = deriveSellableSharePct(
+      item.sellableShare,
+      item.unsellableShare,
+      item.resaleRate,
+      BASE_CATEGORY_DEFAULTS[key]?.sellableShare ?? 42,
+    );
+    const unsellableDerived = clamp(100 - item.sellableShare, 0, 100);
+    // Legacy-Felder bleiben lesbar, aber fachlich inaktiv.
+    item.resaleRate = clamp(num(item.resaleRate, item.sellableShare), 0, 100);
+    item.unsellableShare = clamp(num(item.unsellableShare, unsellableDerived), 0, 100);
     item.targetMarginPct = clamp(num(item.targetMarginPct, 15), 0, 50);
   });
 
@@ -2517,6 +2640,33 @@ function migrateProduct(raw, index) {
   merged.assumptions.cartonization.cartonWidthCm = Math.max(0, num(merged.assumptions.cartonization.cartonWidthCm, 0));
   merged.assumptions.cartonization.cartonHeightCm = Math.max(0, num(merged.assumptions.cartonization.cartonHeightCm, 0));
   merged.assumptions.cartonization.cartonGrossWeightKg = Math.max(0, num(merged.assumptions.cartonization.cartonGrossWeightKg, 0));
+
+  const categoryKey = merged.basic.category in BASE_CATEGORY_DEFAULTS ? merged.basic.category : "generic";
+  const categorySellableFallback = BASE_CATEGORY_DEFAULTS[categoryKey]?.sellableShare ?? 42;
+  merged.assumptions.returns.overrideSellableShare = Boolean(merged.assumptions.returns.overrideSellableShare);
+  merged.assumptions.returns.sellableShare = deriveSellableSharePct(
+    merged.assumptions.returns.sellableShare,
+    merged.assumptions.returns.unsellableShare,
+    merged.assumptions.returns.resaleRate,
+    categorySellableFallback,
+  );
+  if (
+    !merged.assumptions.returns.overrideSellableShare &&
+    (merged.assumptions.returns.overrideUnsellableShare || merged.assumptions.returns.overrideResaleRate)
+  ) {
+    merged.assumptions.returns.overrideSellableShare = true;
+  }
+  // Legacy-Felder bleiben lesbar, aber fachlich inaktiv.
+  merged.assumptions.returns.resaleRate = clamp(
+    num(merged.assumptions.returns.resaleRate, merged.assumptions.returns.sellableShare),
+    0,
+    100,
+  );
+  merged.assumptions.returns.unsellableShare = clamp(
+    num(merged.assumptions.returns.unsellableShare, 100 - merged.assumptions.returns.sellableShare),
+    0,
+    100,
+  );
 
   merged.basic.horizonMonths = clamp(roundInt(merged.basic.horizonMonths, base.basic.horizonMonths), 1, 36);
   merged.basic.unitsPerOrder = Math.max(1, roundInt(merged.basic.unitsPerOrder, base.basic.unitsPerOrder));
@@ -4107,12 +4257,8 @@ function renderCategoryDefaultsAdmin() {
           <input data-settings-path="categoryDefaults.${key}.returnRate" type="number" min="0" max="100" step="0.1" />
         </label>
         <label>
-          Wiederverkauf %
-          <input data-settings-path="categoryDefaults.${key}.resaleRate" type="number" min="0" max="100" step="0.1" />
-        </label>
-        <label>
-          Unsellable %
-          <input data-settings-path="categoryDefaults.${key}.unsellableShare" type="number" min="0" max="100" step="0.1" />
+          Verkaufbar %
+          <input data-settings-path="categoryDefaults.${key}.sellableShare" type="number" min="0" max="100" step="0.1" />
         </label>
         <label>
           Zielmarge %
@@ -5148,8 +5294,13 @@ function resolveAssumptions(product, settings = state.settings) {
   );
 
   const defaultReturnRate = clamp(category.returnRate, 0, 100);
-  const defaultResaleRate = clamp(category.resaleRate, 0, 100);
-  const defaultUnsellableShare = clamp(category.unsellableShare, 0, 100);
+  const defaultSellableShare = deriveSellableSharePct(
+    category.sellableShare,
+    category.unsellableShare,
+    category.resaleRate,
+    42,
+  );
+  const defaultUnsellableShareDerived = clamp(100 - defaultSellableShare, 0, 100);
   const defaultReturnHandling = GLOBAL_DEFAULTS.returnHandlingCost;
 
   const defaultLeakage = clamp(num(costDefaults.leakageRatePct, GLOBAL_DEFAULTS.leakageRatePct), 0, 20);
@@ -5345,8 +5496,8 @@ function resolveAssumptions(product, settings = state.settings) {
     defaultLaunchMultiplier,
     defaultLaunchMonths,
     defaultReturnRate,
-    defaultResaleRate,
-    defaultUnsellableShare,
+    defaultSellableShare,
+    defaultUnsellableShareDerived,
     defaultReturnHandling,
     defaultLeakage,
     defaultCustomsRate,
@@ -5357,6 +5508,14 @@ function resolveAssumptions(product, settings = state.settings) {
     defaultListingPackageTotal,
     categoryBase: category,
   };
+
+  const resolvedSellableShare = resolveValue(
+    isOverrideActive(assumptions.returns.overrideSellableShare),
+    assumptions.returns.sellableShare,
+    defaultSellableShare,
+    0,
+    100,
+  );
 
   const resolved = {
     vatRate: settings.tax?.vatRates?.[basic.marketplace] ?? MARKETPLACE_VAT[basic.marketplace] ?? 19,
@@ -5384,20 +5543,10 @@ function resolveAssumptions(product, settings = state.settings) {
       0,
       100,
     ),
-    resaleRate: resolveValue(
-      isOverrideActive(assumptions.returns.overrideResaleRate),
-      assumptions.returns.resaleRate,
-      defaultResaleRate,
-      0,
-      100,
-    ),
-    unsellableShare: resolveValue(
-      isOverrideActive(assumptions.returns.overrideUnsellableShare),
-      assumptions.returns.unsellableShare,
-      defaultUnsellableShare,
-      0,
-      100,
-    ),
+    sellableShare: resolvedSellableShare,
+    // Legacy-Aliase für Abwärtskompatibilität.
+    resaleRate: resolvedSellableShare,
+    unsellableShare: clamp(100 - resolvedSellableShare, 0, 100),
     returnHandlingCost: resolveValue(
       isOverrideActive(assumptions.returns.overrideHandlingCost),
       assumptions.returns.handlingCost,
@@ -5540,18 +5689,13 @@ function resolveAssumptions(product, settings = state.settings) {
       resolved.returnRate,
       formatPercent,
     ),
-    "returns.resaleRate": assumedText(
-      isOverrideActive(assumptions.returns.overrideResaleRate),
-      defaultResaleRate,
-      resolved.resaleRate,
+    "returns.sellableShare": assumedText(
+      isOverrideActive(assumptions.returns.overrideSellableShare),
+      defaultSellableShare,
+      resolved.sellableShare,
       formatPercent,
     ),
-    "returns.unsellableShare": assumedText(
-      isOverrideActive(assumptions.returns.overrideUnsellableShare),
-      defaultUnsellableShare,
-      resolved.unsellableShare,
-      formatPercent,
-    ),
+    "returns.unsellableSharePctDerived": `Abgeleitet: ${formatPercent(100 - resolved.sellableShare)} (100 - verkaufbar).`,
     "returns.handlingCost": assumedText(
       isOverrideActive(assumptions.returns.overrideHandlingCost),
       defaultReturnHandling,
@@ -5979,15 +6123,13 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const adsUnit = priceGross * (effectiveTacosRate / 100);
 
   const returnRate = resolved.returnRate / 100;
-  const resaleRate = resolved.resaleRate / 100;
-  const unsellableShare = resolved.unsellableShare / 100;
-  const sellableShare = Math.max(0, 1 - unsellableShare);
-  const sellableLossFactor = Math.max(0, 1 - resaleRate);
-
-  const returnLossUnit =
-    returnRate * (unsellableShare * landedUnit + sellableShare * sellableLossFactor * landedUnit);
+  const sellableShare = resolved.sellableShare / 100;
+  const unsellableShare = Math.max(0, 1 - sellableShare);
+  const returnLossPerReturn = unsellableShare * landedUnit;
+  const returnCostPerReturn = returnLossPerReturn + resolved.returnHandlingCost;
+  const returnLossUnit = returnRate * returnLossPerReturn;
   const returnHandlingUnit = returnRate * resolved.returnHandlingCost;
-  const returnsUnit = returnLossUnit + returnHandlingUnit;
+  const returnsUnit = returnRate * returnCostPerReturn;
 
   const unitEconomicsUnit = landedUnit + referralFeeUnit + fba.fee + adsUnit + returnsUnit;
 
@@ -6142,8 +6284,13 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     launchAdsIncrementMonthly,
 
     returnRatePct: resolved.returnRate,
-    resaleRatePct: resolved.resaleRate,
-    unsellableSharePct: resolved.unsellableShare,
+    sellableSharePct: resolved.sellableShare,
+    unsellableSharePctDerived: (100 - resolved.sellableShare),
+    // Legacy für Abwärtskompatibilität.
+    resaleRatePct: resolved.sellableShare,
+    unsellableSharePct: (100 - resolved.sellableShare),
+    returnLossPerReturn,
+    returnCostPerReturn,
     returnLossUnit,
     returnHandlingUnit,
     returnsUnit,
@@ -6482,21 +6629,22 @@ function buildDefaultDiagnostics(product, metrics) {
       impactMonthly: metrics.returnsMonthly,
       costNote: "Treiber für Retourenverluste und Handlingkosten.",
     }),
-    "returns.resaleRate": makeEntry("returns.resaleRate", {
-      override: overrideOn(assumptions.returns.overrideResaleRate),
-      activeValue: resolved.resaleRate,
+    "returns.sellableShare": makeEntry("returns.sellableShare", {
+      override: overrideOn(assumptions.returns.overrideSellableShare),
+      activeValue: resolved.sellableShare,
       formatType: "percent",
-      source: `Kategorie-Default (${resolved.categoryLabel}) = ${formatPercent(defaults.defaultResaleRate)}.`,
+      source: `Kategorie-Default (${resolved.categoryLabel}) = ${formatPercent(defaults.defaultSellableShare)}.`,
       impactMonthly: metrics.returnsMonthly,
-      costNote: "Je höher, desto geringer der Verlust aus rückführbarer Ware.",
+      costNote: "Steuert den Anteil der Retouren ohne Warenverlust; Unsellable wird aus 100 - verkaufbar abgeleitet.",
     }),
-    "returns.unsellableShare": makeEntry("returns.unsellableShare", {
-      override: overrideOn(assumptions.returns.overrideUnsellableShare),
-      activeValue: resolved.unsellableShare,
+    "returns.unsellableSharePctDerived": makeEntry("returns.unsellableSharePctDerived", {
+      override: false,
+      activeValue: 100 - resolved.sellableShare,
       formatType: "percent",
-      source: `Kategorie-Default (${resolved.categoryLabel}) = ${formatPercent(defaults.defaultUnsellableShare)}.`,
+      source: "Abgeleitet aus verkaufbar%: unsellable = 100 - verkaufbar.",
       impactMonthly: metrics.returnsMonthly,
-      costNote: "Erhöht direkt den Anteil der Retouren mit vollem Landed-Loss.",
+      costNote: "Nur Transparenzwert (read-only), wird nicht separat gepflegt.",
+      robustnessKey: "returns.unsellableSharePctDerived",
     }),
     "returns.handlingCost": makeEntry("returns.handlingCost", {
       override: overrideOn(assumptions.returns.overrideHandlingCost),
@@ -6591,6 +6739,20 @@ function setKpi(element, value, type) {
   }
 }
 
+function tooltipForMetric(key, fallback = "") {
+  return COST_METRIC_TOOLTIPS[key] ?? fallback;
+}
+
+function setTooltip(node, key, fallback = "") {
+  if (!(node instanceof HTMLElement)) {
+    return;
+  }
+  const text = tooltipForMetric(key, fallback);
+  if (text) {
+    node.title = text;
+  }
+}
+
 function classifyImpact(impactMonthly, totalCostMonthly) {
   const impact = Math.max(0, num(impactMonthly, 0));
   const base = Math.max(0.0001, num(totalCostMonthly, 0));
@@ -6613,8 +6775,9 @@ function diagnosticsKeyFromPath(path) {
     "assumptions.ads.launchMultiplier": "ads.launchMultiplier",
     "assumptions.ads.launchMonths": "ads.launchMonths",
     "assumptions.returns.returnRate": "returns.returnRate",
-    "assumptions.returns.resaleRate": "returns.resaleRate",
-    "assumptions.returns.unsellableShare": "returns.unsellableShare",
+    "assumptions.returns.sellableShare": "returns.sellableShare",
+    "assumptions.returns.resaleRate": "returns.sellableShare",
+    "assumptions.returns.unsellableShare": "returns.unsellableSharePctDerived",
     "assumptions.returns.handlingCost": "returns.handlingCost",
     "assumptions.leakage.ratePct": "leakage.ratePct",
     "assumptions.import.customsDutyRate": "import.customsDutyRate",
@@ -6640,6 +6803,9 @@ function impactMonthlyFromPath(path, metrics) {
   }
   if (path.startsWith("derived.threepl.")) {
     return metrics.threePlTotalPerUnit * metrics.monthlyUnits;
+  }
+  if (path.startsWith("derived.returns.")) {
+    return metrics.returnsMonthly;
   }
   if (path.startsWith("derived.")) {
     return metrics.totalCostMonthly * 0.08;
@@ -7107,14 +7273,15 @@ function buildStageImpactItems(metrics, stage) {
       value: formatCurrency(metrics.returnsUnit),
       impactMonthly: metrics.returnsMonthly,
       explain: "Retourenverlust plus Handlingkosten.",
-      formula: "Retouren/Unit = Retourenquote × (unsellable × Landed + sellable × Loss-Faktor × Landed + Handling).",
+      formula: "Retouren/Unit = Retourenquote × (((1 - verkaufbar%) × Landed) + Handling je Retoure).",
       source: "Kategorie-Defaults für Retouren + User-Override.",
       robustness: "Niedrig bis mittel (qualitäts- und listingabhängig).",
       driverPaths: [
         "assumptions.returns.returnRate",
-        "assumptions.returns.resaleRate",
-        "assumptions.returns.unsellableShare",
+        "assumptions.returns.sellableShare",
         "assumptions.returns.handlingCost",
+        "derived.returns.returnLossPerReturnEur",
+        "derived.returns.returnCostPerReturnEur",
       ],
     },
     {
@@ -7458,7 +7625,7 @@ function settingsValueText(path, value) {
   }
   if (
     path.endsWith("Pct") ||
-    /(?:referralRate|tacosRate|returnRate|resaleRate|unsellableShare|customsDutyRate|importVatRate|targetMarginPct)$/.test(path)
+    /(?:referralRate|tacosRate|returnRate|sellableShare|resaleRate|unsellableShare|customsDutyRate|importVatRate|targetMarginPct)$/.test(path)
   ) {
     return formatPercent(num(value, 0));
   }
@@ -7692,6 +7859,18 @@ function renderDriverModal() {
       state.ui.driverModal.robustness ? `Robustheit: ${state.ui.driverModal.robustness}` : null,
     ].filter(Boolean).join(" · ") || "Quelle und Robustheit folgen aus den verknüpften Inputs.",
   );
+
+  const hasReturnsDriver = driverPaths.some((path) => path.startsWith("assumptions.returns.") || path.startsWith("derived.returns."));
+  if (hasReturnsDriver) {
+    addSummaryCard(
+      "Kosten pro 1 Retoure",
+      `${formatCurrency(modalMetrics.returnCostPerReturn)} = ${formatCurrency(modalMetrics.returnLossPerReturn)} Verlust + ${formatCurrency(modalMetrics.resolved.returnHandlingCost)} Handling.`,
+    );
+    addSummaryCard(
+      "Verlust pro 1 Retoure",
+      `${formatCurrency(modalMetrics.returnLossPerReturn)} = (1 - ${formatPercent(modalMetrics.sellableSharePct)}) × ${formatCurrency(modalMetrics.landedUnit)} Landed.`,
+    );
+  }
   dom.driverModalFields.appendChild(summaryGrid);
 
   if (state.ui.driverModal.detailPreset === "shipping_dashboard") {
@@ -8694,14 +8873,14 @@ function buildCostCategoryData(metrics) {
           label: "Retourenverlust (EUR/Unit)",
           valueRaw: metrics.returnLossUnit,
           impactMonthly: metrics.returnLossUnit * metrics.monthlyUnits,
-          explain: "Wertverlust aus Retouren und Unsellable-Anteilen.",
-          formula: "Return loss/Unit = return_rate × landed × sellability factors.",
+          explain: "Warenwertverlust aus nicht verkaufbaren Retouren auf Landed-Basis.",
+          formula: "Return loss/Unit = retourenquote × (1 - verkaufbar%) × landed.",
           source: "Kategorie-Defaults + Overrides.",
           robustness: "Niedrig bis mittel.",
           driverPaths: [
             "assumptions.returns.returnRate",
-            "assumptions.returns.resaleRate",
-            "assumptions.returns.unsellableShare",
+            "assumptions.returns.sellableShare",
+            "derived.returns.returnLossPerReturnEur",
           ],
         }),
         line({
@@ -8712,7 +8891,11 @@ function buildCostCategoryData(metrics) {
           formula: "Handling/Unit = return_rate × handling_cost_per_return.",
           source: "Default/Override.",
           robustness: "Mittel.",
-          driverPaths: ["assumptions.returns.returnRate", "assumptions.returns.handlingCost"],
+          driverPaths: [
+            "assumptions.returns.returnRate",
+            "assumptions.returns.handlingCost",
+            "derived.returns.returnCostPerReturnEur",
+          ],
         }),
       ],
     },
@@ -8905,22 +9088,28 @@ function renderFbaDetails(metrics) {
   }
   if (dom.fbaInfoFeeUnit) {
     dom.fbaInfoFeeUnit.textContent = formatCurrency(metrics.fbaFeeUnit);
+    setTooltip(dom.fbaInfoFeeUnit, "amazon.fba_unit");
   }
   if (dom.fbaInfoProfile) {
     dom.fbaInfoProfile.textContent = metrics.fbaProfileLabel ?? fbaProfileLabel(metrics.fbaProfile);
+    setTooltip(dom.fbaInfoProfile, "amazon.fba_profile");
   }
   if (dom.fbaInfoTier) {
     dom.fbaInfoTier.textContent = metrics.fbaTierLabel || "-";
+    setTooltip(dom.fbaInfoTier, "amazon.fba_tier");
   }
   if (dom.fbaInfoShippingWeight) {
     dom.fbaInfoShippingWeight.textContent = `${formatNumber(metrics.fbaShippingWeightG)} g`;
+    setTooltip(dom.fbaInfoShippingWeight, "amazon.fba_shipping_weight");
   }
   if (dom.fbaInfoWeightBreakdown) {
     dom.fbaInfoWeightBreakdown.textContent =
       `actual ${formatNumber(metrics.fbaActualWeightG)} g vs. dimensional ${formatNumber(metrics.fbaDimensionalWeightG)} g (Divisor ${formatNumber(metrics.fbaVolumetricDivisor)})`;
+    setTooltip(dom.fbaInfoWeightBreakdown, "amazon.fba_shipping_weight");
   }
   if (dom.fbaInfoSource) {
     dom.fbaInfoSource.textContent = `${metrics.fbaRateCardVersion} · ${fbaFeeSourceLabel(metrics.fbaFeeSource)}`;
+    setTooltip(dom.fbaInfoSource, "amazon.fba_source");
   }
   if (dom.fbaInfoSourceLink) {
     const href = String(metrics.fbaRateCardUrl ?? "").trim();
@@ -8977,6 +9166,7 @@ function createAmazonCoreModalContent(metrics) {
   headLeft.append(heading, subtitle);
   const tile = document.createElement("article");
   tile.className = "shipping-total-tile";
+  tile.title = tooltipForMetric("quick.amazon_core");
   tile.innerHTML = `
     <span>Amazon Core gesamt</span>
     <strong>${formatCurrency(metrics.quickBlockAmazonCorePerUnit)} / Unit</strong>
@@ -8989,9 +9179,10 @@ function createAmazonCoreModalContent(metrics) {
     metrics.quickBlockAmazonCorePerUnit > 0 ? (num(value, 0) / metrics.quickBlockAmazonCorePerUnit) * 100 : 0;
   const cards = document.createElement("div");
   cards.className = "amazon-core-grid";
-  const addCard = (title, value, formula, tone = "neutral") => {
+  const addCard = (title, value, formula, tone = "neutral", tooltipKey = "") => {
     const card = document.createElement("article");
     card.className = `amazon-core-card tone-${tone}`;
+    card.title = tooltipForMetric(tooltipKey, formula);
     card.innerHTML = `
       <span>${title}</span>
       <strong>${formatCurrency(value)} / Unit</strong>
@@ -9000,9 +9191,9 @@ function createAmazonCoreModalContent(metrics) {
     `;
     cards.appendChild(card);
   };
-  addCard("Referral", metrics.referralFeeUnit, "Brutto-Preis × Referral-%", "referral");
-  addCard("TACoS", metrics.adsUnit, "Brutto-Preis × TACoS-%", "ads");
-  addCard("FBA Fulfillment", metrics.fbaFeeUnit, "Auto-Tier oder manueller Fallback", "fba");
+  addCard("Referral", metrics.referralFeeUnit, "Brutto-Preis × Referral-%", "referral", "amazon.referral_unit");
+  addCard("TACoS", metrics.adsUnit, "Brutto-Preis × TACoS-%", "ads", "amazon.tacos_unit");
+  addCard("FBA Fulfillment", metrics.fbaFeeUnit, "Auto-Tier oder manueller Fallback", "fba", "amazon.fba_unit");
   section.appendChild(cards);
 
   const fbaPanel = document.createElement("article");
@@ -9012,23 +9203,26 @@ function createAmazonCoreModalContent(metrics) {
   const sourceText = document.createElement("p");
   sourceText.className = "hint";
   sourceText.textContent = `${metrics.fbaRateCardVersion} · ${fbaFeeSourceLabel(metrics.fbaFeeSource)}`;
+  sourceText.title = tooltipForMetric("amazon.fba_source");
   fbaPanel.append(fbaTitle, sourceText);
 
   const detailGrid = document.createElement("div");
   detailGrid.className = "shipping-kpi-grid";
   const detailRows = [
-    ["Profil", metrics.fbaProfileLabel ?? fbaProfileLabel(metrics.fbaProfile)],
-    ["Tier", metrics.fbaTierLabel || "-"],
-    ["Versandgewicht", `${formatNumber(metrics.fbaShippingWeightG)} g`],
-    [
-      "Gewichtslogik",
-      `actual ${formatNumber(metrics.fbaActualWeightG)} g vs. dimensional ${formatNumber(metrics.fbaDimensionalWeightG)} g`,
-    ],
+    { label: "Profil", value: metrics.fbaProfileLabel ?? fbaProfileLabel(metrics.fbaProfile), tooltipKey: "amazon.fba_profile" },
+    { label: "Tier", value: metrics.fbaTierLabel || "-", tooltipKey: "amazon.fba_tier" },
+    { label: "Versandgewicht", value: `${formatNumber(metrics.fbaShippingWeightG)} g`, tooltipKey: "amazon.fba_shipping_weight" },
+    {
+      label: "Gewichtslogik",
+      value: `actual ${formatNumber(metrics.fbaActualWeightG)} g vs. dimensional ${formatNumber(metrics.fbaDimensionalWeightG)} g`,
+      tooltipKey: "amazon.fba_shipping_weight",
+    },
   ];
-  detailRows.forEach(([label, value]) => {
+  detailRows.forEach((row) => {
     const item = document.createElement("article");
     item.className = "shipping-kpi-item";
-    item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+    item.title = tooltipForMetric(row.tooltipKey, "");
+    item.innerHTML = `<span>${row.label}</span><strong>${row.value}</strong>`;
     detailGrid.appendChild(item);
   });
   fbaPanel.appendChild(detailGrid);
@@ -9076,6 +9270,7 @@ function createShippingDashboardModalContent(metrics) {
   headLeft.append(heading, method);
   const tile = document.createElement("article");
   tile.className = "shipping-total-tile";
+  tile.title = `${tooltipForMetric("shipping.total_po")}\n${tooltipForMetric("shipping.per_unit")}`;
   tile.innerHTML = `
     <span>Shipping total pro PO</span>
     <strong>${formatCurrency(metrics.shipping.shippingTotal)}</strong>
@@ -9094,10 +9289,11 @@ function createShippingDashboardModalContent(metrics) {
   const createKpiGrid = (rows) => {
     const grid = document.createElement("div");
     grid.className = "shipping-kpi-grid";
-    rows.forEach(([label, value]) => {
+    rows.forEach((row) => {
       const item = document.createElement("article");
       item.className = "shipping-kpi-item";
-      item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+      item.innerHTML = `<span>${row.label}</span><strong>${row.value}</strong>`;
+      item.title = tooltipForMetric(row.tooltipKey, "");
       grid.appendChild(item);
     });
     return grid;
@@ -9113,13 +9309,14 @@ function createShippingDashboardModalContent(metrics) {
   cartonPanel.appendChild(cartonTitle);
   cartonPanel.appendChild(
     createKpiGrid([
-      ["Units nach Gewichtscap", formatNumber(metrics.shipping.unitsByWeightCap)],
-      ["Units nach Maßcap", formatNumber(metrics.shipping.unitsByDimensionCap)],
-      [
-        "Gewählte Units/Karton",
-        `${formatNumber(metrics.shipping.unitsPerCartonAuto)} (${metrics.shipping.cartonizationSource === "manual_override" ? "manuell" : "auto"})`,
-      ],
-      ["Physische Kartons", formatNumber(metrics.shipping.physicalCartonsCount)],
+      { label: "Units nach Gewichtscap", value: formatNumber(metrics.shipping.unitsByWeightCap), tooltipKey: "shipping.units_by_weight_cap" },
+      { label: "Units nach Maßcap", value: formatNumber(metrics.shipping.unitsByDimensionCap), tooltipKey: "shipping.units_by_dimension_cap" },
+      {
+        label: "Gewählte Units/Karton",
+        value: `${formatNumber(metrics.shipping.unitsPerCartonAuto)} (${metrics.shipping.cartonizationSource === "manual_override" ? "manuell" : "auto"})`,
+        tooltipKey: "shipping.units_per_carton",
+      },
+      { label: "Physische Kartons", value: formatNumber(metrics.shipping.physicalCartonsCount), tooltipKey: "shipping.physical_cartons" },
     ]),
   );
   const cartonDetails = document.createElement("details");
@@ -9141,12 +9338,12 @@ function createShippingDashboardModalContent(metrics) {
   basisPanel.appendChild(basisTitle);
   basisPanel.appendChild(
     createKpiGrid([
-      ["Shipment-CBM", `${formatNumber(metrics.shipping.shipmentCbm)} CBM`],
-      ["Shipment-Gewicht", `${formatNumber(metrics.shipping.shipmentWeightKg)} kg`],
-      ["Chargeable-CBM", `${formatNumber(metrics.shipping.chargeableCbm)} CBM`],
-      ["Äquivalenz-Kartons", formatNumber(metrics.shipping.equivalentCartonsCount)],
-      ["Referenz-CBM", `${formatNumber(metrics.shipping.equivalentReferenceCbm)} CBM`],
-      ["Referenz-Gewicht", `${formatNumber(metrics.shipping.equivalentReferenceWeightKg)} kg`],
+      { label: "Sendungsvolumen (CBM)", value: `${formatNumber(metrics.shipping.shipmentCbm)} CBM`, tooltipKey: "shipping.shipment_cbm" },
+      { label: "Sendungsgewicht", value: `${formatNumber(metrics.shipping.shipmentWeightKg)} kg`, tooltipKey: "shipping.shipment_weight_kg" },
+      { label: "Abrechnungsvolumen (W/M-CBM)", value: `${formatNumber(metrics.shipping.chargeableCbm)} CBM`, tooltipKey: "shipping.chargeable_cbm" },
+      { label: "Abrechnungs-Kartons (Äquivalenz)", value: formatNumber(metrics.shipping.equivalentCartonsCount), tooltipKey: "shipping.equivalent_cartons" },
+      { label: "Referenzvolumen je Äquivalenz-Karton", value: `${formatNumber(metrics.shipping.equivalentReferenceCbm)} CBM`, tooltipKey: "shipping.reference_cbm" },
+      { label: "Referenzgewicht je Äquivalenz-Karton", value: `${formatNumber(metrics.shipping.equivalentReferenceWeightKg)} kg`, tooltipKey: "shipping.reference_weight_kg" },
     ]),
   );
   mainGrid.appendChild(basisPanel);
@@ -9158,6 +9355,7 @@ function createShippingDashboardModalContent(metrics) {
   const costHint = document.createElement("p");
   costHint.className = "hint";
   costHint.textContent = "Rail: Vorlauf/Nachlauf variabel = Basis + (EUR/CBM × Shipment-CBM).";
+  costHint.title = "Der variable Anteil für Rail-Vorlauf/Nachlauf skaliert mit dem tatsächlichen Sendungsvolumen.";
   costPanel.append(costTitle, costHint);
   const breakdownDetails = document.createElement("details");
   breakdownDetails.className = "shipping-detail-toggle";
@@ -9170,9 +9368,9 @@ function createShippingDashboardModalContent(metrics) {
     li.innerHTML =
       `<div><span>${line.label}</span><small>${line.formula ?? ""}</small></div>` +
       `<strong>${formatCurrency(line.total)} · ${formatCurrency(line.perUnit)}/Unit</strong>`;
-    if (line.source) {
-      li.title = `Herkunft: ${line.source}`;
-    }
+    li.title = [line.formula ? `Rechenweg: ${line.formula}` : null, line.source ? `Herkunft: ${line.source}` : null]
+      .filter(Boolean)
+      .join("\n");
     breakdownList.appendChild(li);
   });
   breakdownDetails.appendChild(breakdownList);
@@ -9565,17 +9763,27 @@ function renderQuickCostWorkflow(metrics) {
   setQuickBlock(dom.quickBlockAmazonCorePerUnit, metrics.quickBlockAmazonCorePerUnit);
   setQuickBlock(dom.quickBlockLaunchCorePerUnit, metrics.quickBlockLaunchCorePerUnit);
 
+  setTooltip(document.querySelector('[data-quick-block="exw"]'), "quick.exw");
+  setTooltip(document.querySelector('[data-quick-block="shipping_to_3pl"]'), "quick.shipping_to_3pl");
+  setTooltip(document.querySelector('[data-quick-block="threepl"]'), "quick.threepl");
+  setTooltip(document.querySelector('[data-quick-block="amazon_core"]'), "quick.amazon_core");
+  setTooltip(document.querySelector('[data-quick-block="launch_core"]'), "quick.launch_core");
+
   if (dom.quickCoreCoveragePct) {
     dom.quickCoreCoveragePct.textContent = formatPercent(clamp(metrics.quickCoreCoveragePct, 0, 100));
+    setTooltip(dom.quickCoreCoveragePct, "quick.coverage_pct");
   }
   if (dom.quickCoreTotalCost) {
     dom.quickCoreTotalCost.textContent = `Gesamtkosten: ${formatCurrency(metrics.totalCostPerUnit)} / Unit`;
+    setTooltip(dom.quickCoreTotalCost, "quick.total_cost_per_unit");
   }
   if (dom.quickCoreCoveredCost) {
     dom.quickCoreCoveredCost.textContent = `Abgedeckt: ${formatCurrency(metrics.quickCoreCostPerUnit)} / Unit`;
+    setTooltip(dom.quickCoreCoveredCost, "quick.covered_cost_per_unit");
   }
   if (dom.quickCoreResidualCost) {
     dom.quickCoreResidualCost.textContent = `Rest: ${formatCurrency(metrics.quickCoreResidualPerUnit)} / Unit`;
+    setTooltip(dom.quickCoreResidualCost, "quick.residual_cost_per_unit");
   }
 
   const coverageMeta = quickCoverageMeta(metrics.quickCoreCoveragePct);
@@ -9600,9 +9808,10 @@ function renderQuickCostWorkflow(metrics) {
         li.innerHTML =
           `<div><span>${item.label}</span><small>${formatPercent(item.sharePct)} Anteil</small></div>` +
           `<strong>${formatCurrency(item.perUnit)} / Unit</strong>`;
+        li.title = item.explain || "Restkostenposition außerhalb des QuickCheck-Core-Workflows.";
         if (Array.isArray(item.driverPaths) && item.driverPaths.length > 0) {
           li.classList.add("quick-residual-clickable");
-          li.title = "Klick: Details und Treiber öffnen.";
+          li.title = `${item.explain || "Restkostenposition außerhalb des QuickCheck-Core-Workflows."}\nKlick: Details und Treiber öffnen.`;
           li.addEventListener("click", () => {
             openDriverModal({
               title: `${item.label} (Restkosten)`,
@@ -9672,15 +9881,19 @@ function renderValidationWorkflow(metrics, product) {
 
   if (dom.validationCoveragePct) {
     dom.validationCoveragePct.textContent = formatPercent(coveragePct);
+    setTooltip(dom.validationCoveragePct, "validation.coverage_pct");
   }
   if (dom.validationCoverageTarget) {
     dom.validationCoverageTarget.textContent = `Ziel: ${formatPercent(targetPct)} Abdeckung`;
+    setTooltip(dom.validationCoverageTarget, "validation.target_pct");
   }
   if (dom.validationCoveredCost) {
     dom.validationCoveredCost.textContent = `Abgedeckt: ${formatCurrency(coveredPerUnit)} / Unit`;
+    setTooltip(dom.validationCoveredCost, "validation.covered_cost_per_unit");
   }
   if (dom.validationResidualCost) {
     dom.validationResidualCost.textContent = `Offen: ${formatCurrency(residualPerUnit)} / Unit`;
+    setTooltip(dom.validationResidualCost, "validation.residual_cost_per_unit");
   }
   if (dom.validationCoverageStatus) {
     dom.validationCoverageStatus.textContent = meta.text;
@@ -9701,6 +9914,7 @@ function renderValidationWorkflow(metrics, product) {
         li.innerHTML =
           `<div><span>${item.label}</span><small>${formatPercent(item.sharePct)} Anteil</small></div>` +
           `<strong>${formatCurrency(item.perUnit)} / Unit</strong>`;
+        li.title = item.explain || "Offene Restkostenposition außerhalb der Core-Blöcke.";
         dom.validationOpenTopList.appendChild(li);
       });
     }
@@ -9748,6 +9962,7 @@ function renderValidationWorkflow(metrics, product) {
     const values = document.createElement("p");
     values.className = "validation-block-values";
     values.textContent = `${formatCurrency(item.perUnit)} / Unit · Anteil ${formatPercent(item.sharePct)}`;
+    values.title = item.explain || `${item.label}: Kostenanteil an den Gesamtkosten pro Unit.`;
     card.appendChild(values);
 
     const actions = document.createElement("div");
@@ -9994,7 +10209,7 @@ function renderShippingDetails(metrics) {
   }
   if (dom.basicShippingMeta) {
     dom.basicShippingMeta.textContent =
-      `${modeLabel} · Shipment: ${formatNumber(metrics.shipping.shipmentCbm)} CBM · Chargeable: ${formatNumber(metrics.shipping.chargeableCbm)} CBM · Kartons physisch: ${formatNumber(metrics.shipping.physicalCartonsCount)} · PO: ${formatNumber(metrics.shipping.unitsPerOrder)} Units`;
+      `${modeLabel} · Sendungsvolumen: ${formatNumber(metrics.shipping.shipmentCbm)} CBM · Abrechnungsvolumen (W/M): ${formatNumber(metrics.shipping.chargeableCbm)} CBM · Kartons physisch: ${formatNumber(metrics.shipping.physicalCartonsCount)} · PO: ${formatNumber(metrics.shipping.unitsPerOrder)} Units`;
   }
   if (dom.shippingTotalPo) {
     dom.shippingTotalPo.textContent = formatCurrency(metrics.shipping.shippingTotal);
@@ -10049,7 +10264,7 @@ function renderShippingDetails(metrics) {
 
   if (dom.shippingMethodText) {
     dom.shippingMethodText.textContent =
-      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Auto-Kartonisierung nutzt min(Gewichtscap, Maßcap) unter Amazon-Hard-Caps. Optional kannst du reale Packing-List-Werte manuell setzen. Daraus entstehen physische Kartons, Shipment-CBM und Chargeable-CBM (W/M). Bei Rail werden Vorlauf und Nachlauf variabel über Shipment-CBM gerechnet, nicht über Kartonanzahl.`;
+      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Auto-Kartonisierung nutzt min(Gewichtscap, Maßcap) unter Amazon-Hard-Caps. Optional kannst du reale Packing-List-Werte manuell setzen. Daraus entstehen physische Kartons, Sendungsvolumen (CBM) und Abrechnungsvolumen (W/M-CBM). Bei Rail werden Vorlauf und Nachlauf variabel über Sendungsvolumen gerechnet, nicht über Kartonanzahl.`;
   }
 
   if (dom.shippingOversizeNote) {

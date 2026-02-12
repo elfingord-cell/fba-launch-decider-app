@@ -489,24 +489,15 @@
                 </label>
                 <label class="override-row">
                   <span>
-                    Wiederverkaufsquote %
-                    <small data-assumed="returns.resaleRate"></small>
+                    Davon verkaufbar (%)
+                    <small data-assumed="returns.sellableShare"></small>
                   </span>
                   <div>
-                    <input data-path="assumptions.returns.overrideResaleRate" type="checkbox" />
-                    <input data-path="assumptions.returns.resaleRate" type="number" min="0" max="100" step="0.1" />
+                    <input data-path="assumptions.returns.overrideSellableShare" type="checkbox" />
+                    <input data-path="assumptions.returns.sellableShare" type="number" min="0" max="100" step="0.1" />
                   </div>
                 </label>
-                <label class="override-row">
-                  <span>
-                    Unsellable-Anteil %
-                    <small data-assumed="returns.unsellableShare"></small>
-                  </span>
-                  <div>
-                    <input data-path="assumptions.returns.overrideUnsellableShare" type="checkbox" />
-                    <input data-path="assumptions.returns.unsellableShare" type="number" min="0" max="100" step="0.1" />
-                  </div>
-                </label>
+                <p class="hint">Nicht verkaufbar (%) wird automatisch als 100 - verkaufbar berechnet.</p>
                 <label class="override-row">
                   <span>
                     Handling je Retoure (EUR)
