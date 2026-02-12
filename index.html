@@ -492,6 +492,18 @@
                     </select>
                   </label>
                 </div>
+                <article id="shippingModuleSection" class="shipping-module-inline">
+                  <div class="shipping-module-head">
+                    <div>
+                      <h4>Shipping-Packbild (3D)</h4>
+                      <p class="shipping-module-purpose">Direkter Blick auf Ausrichtung, Raster und Karton-Auslastung.</p>
+                    </div>
+                    <button id="shippingModuleOpenDetailBtn" type="button" class="btn btn-ghost">Shipping-Details öffnen</button>
+                  </div>
+                  <div id="shippingModuleCanvasHost" class="shipping-layout-3d-canvas shipping-module-canvas" aria-label="3D Packbild"></div>
+                  <p id="shippingModuleMeta" class="shipping-module-meta">Orientierung: - · Raster: - · Platzierte Stücke: -</p>
+                  <p id="shippingModuleStatus" class="shipping-module-status hint">3D-Packbild wird vorbereitet ...</p>
+                </article>
               </section>
 
               <section>
@@ -998,6 +1010,7 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="modules/packaging3d.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
