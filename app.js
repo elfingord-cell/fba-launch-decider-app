@@ -2971,14 +2971,32 @@ async function bootstrapCollaborationSession() {
   let data = null;
   let error = null;
   try {
-    const result = await withTimeout(client.auth.getSession(), 8000, "supabase_get_session");
+    const result = await withTimeout(client.auth.getSession(), 20000, "supabase_get_session");
     data = result?.data ?? null;
     error = result?.error ?? null;
   } catch (sessionError) {
     console.error("Supabase session load timeout", sessionError);
-    setAppMode("auth_required", "Session-Check timeout. Bitte Seite neu laden und erneut anmelden.");
-    setAuthStatus("Session-Check timeout. Bitte neu laden.", true);
-    return;
+    // Fallback: getUser() kann trotz getSession-Timeout eine valide Session liefern.
+    try {
+      const userResult = await withTimeout(client.auth.getUser(), 10000, "supabase_get_user");
+      const timeoutUser = userResult?.data?.user ?? null;
+      if (!timeoutUser) {
+        setAppMode("auth_required", "Session-Check timeout. Bitte anmelden.");
+        setAuthStatus("Session-Check timeout. Bitte anmelden.", true);
+        return;
+      }
+      const activated = await activateSharedWorkspace(timeoutUser);
+      if (!activated) {
+        return;
+      }
+      setAppMode("ready_shared");
+      return;
+    } catch (userFallbackError) {
+      console.error("Supabase getUser fallback failed", userFallbackError);
+      setAppMode("auth_required", "Session-Check timeout. Bitte neu laden und erneut anmelden.");
+      setAuthStatus("Session-Check timeout. Bitte neu laden.", true);
+      return;
+    }
   }
   if (error) {
     console.error("Supabase session load failed", error);
