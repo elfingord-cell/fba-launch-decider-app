@@ -902,6 +902,69 @@ select:disabled {
   font-size: 0.72rem;
 }
 
+.shipping-fit-box {
+  border: 1px solid color-mix(in srgb, var(--line) 62%, white);
+  border-radius: 9px;
+  background: #f8fbfa;
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.shipping-fit-box.warn {
+  border-color: color-mix(in srgb, #e6b65f 62%, white);
+  background: #fff8e9;
+}
+
+.shipping-fit-box strong {
+  font-size: 0.74rem;
+}
+
+.shipping-fit-box p {
+  margin: 0;
+  font-size: 0.71rem;
+}
+
+.shipping-layout-wrap {
+  margin: 0;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.shipping-layout-svg {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+}
+
+.shipping-layout-outer {
+  fill: #f7faf9;
+  stroke: color-mix(in srgb, var(--line) 66%, white);
+  stroke-width: 1.2;
+}
+
+.shipping-layout-cell {
+  fill: #ffffff;
+  stroke: color-mix(in srgb, var(--line) 66%, white);
+  stroke-width: 0.9;
+}
+
+.shipping-layout-cell.filled {
+  fill: #c9e7dc;
+  stroke: #5d8c7c;
+}
+
+.shipping-layout-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.shipping-layout-meta p {
+  margin: 0;
+  font-size: 0.7rem;
+}
+
 .amazon-core-modal {
   margin-top: 4px;
   display: grid;
@@ -2362,6 +2425,14 @@ tbody tr:hover {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.modal-group-fields-stack {
+  grid-template-columns: 1fr;
+}
+
+.modal-subgroup {
+  margin: 0;
 }
 
 .modal-summary-card {

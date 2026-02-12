@@ -710,7 +710,7 @@ const SETTINGS_HELP = {
   "cartonRules.supplierSoftMaxGrossWeightKg": "Legacy-Parameter für Supplier-Soft-Caps (aktuell inaktiv).",
   "cartonRules.outerBufferCm": "Zusätzlicher Umkarton-Puffer je Achse in cm (Polster/Luft).",
   "cartonRules.grossWeightUpliftPct": "Aufschlag von Netto- auf Bruttogewicht je Unit in %.",
-  "cartonRules.equivalentCartonFillPct": "Auslastung der Äquivalenz-Referenz in %. Referenz = Hard-Caps × Auslastung.",
+  "cartonRules.equivalentCartonFillPct": "Auslastung der Äquivalenz-Referenz in %. Referenz = maximal zulässiger Karton × Auslastung.",
   "lifecycle.defaultMonths": "Lifecycle-Horizont für die Amortisation von Listing-Kosten (Monate).",
   "lifecycle.listingPackages.ai.listingCreationEur": "Kosten für Listing-Erstellung im Paket KI (EUR).",
   "lifecycle.listingPackages.ai.imagesInfographicsEur": "Kosten für Bilder/Infografiken im Paket KI (EUR).",
@@ -870,6 +870,9 @@ const PATH_LABEL_OVERRIDES = {
   "settings.costDefaults.toolingPerProductEur": "Tooling je Produkt (EUR)",
   "settings.costDefaults.certificatesPerProductEur": "Zertifikate je Produkt (EUR)",
   "settings.costDefaults.inspectionPerProductEur": "Inspection in China je Produkt (EUR)",
+  "basic.packLengthCm": "Produktverpackung-Länge (cm)",
+  "basic.packWidthCm": "Produktverpackung-Breite (cm)",
+  "basic.packHeightCm": "Produktverpackung-Höhe (cm)",
   "assumptions.cartonization.manualEnabled": "Manuelle Umkartonisierung aktiv",
   "assumptions.cartonization.unitsPerCarton": "Stück je Umkarton",
   "assumptions.cartonization.cartonLengthCm": "Umkarton-Länge (cm)",
@@ -978,9 +981,9 @@ const COST_METRIC_TOOLTIPS = {
   "validation.covered_cost_per_unit": "Validierte Kosten pro Einheit.",
   "validation.residual_cost_per_unit": "Noch offene, nicht validierte Restkosten pro Einheit.",
   "shipping.units_by_weight_cap":
-    "Definition: Maximal mögliche Stück je Umkarton unter Gewichtsgrenze.\nFormel: floor(Karton max kg / Stück-Bruttogewicht).\nWird genutzt für: Auto-Kandidatenwahl der Kartonisierung.",
+    "Was bedeutet das? Maximal mögliche Stück je Umkarton unter der zulässigen Gewichtsgrenze.\nFormel: floor(Karton-Maximalgewicht / Stück-Bruttogewicht).\nWofür genutzt? Startwert für die automatische Kartonisierung.",
   "shipping.units_by_dimension_cap":
-    "Definition: Maximal mögliche Stück je Umkarton unter Maßgrenzen.\nFormel: Best-Fit über Orientierungen unter Hard-Caps inkl. Buffer.\nWird genutzt für: Auto-Kandidatenwahl der Kartonisierung.",
+    "Was bedeutet das? Maximal mögliche Stück je Umkarton unter den zulässigen Maßgrenzen.\nFormel: Best-Fit über Orientierungen unter maximal erlaubten Kartonmaßen inkl. Buffer.\nWofür genutzt? Startwert für die automatische Kartonisierung.",
   "shipping.units_per_carton":
     "Was bedeutet das? Tatsächlich verwendete Stück je Umkarton (auto oder manuell).\nFormel: Auto startet mit min(Gewichtsgrenze, Maßgrenze) und reduziert ggf., bis eine exakte Anordnung im zulässigen Umkarton möglich ist.\nWofür genutzt? Physische Kartonanzahl, Sendungsvolumen und Teile der 3PL-Kosten.\nWas kann ich tun? Bei Downshift reale Umkartonmaße manuell setzen oder Stück je Umkarton reduzieren.",
   "shipping.physical_cartons":
@@ -994,17 +997,17 @@ const COST_METRIC_TOOLTIPS = {
   "shipping.equivalent_cartons":
     "Definition: Referenz-Kartonzahl aus Volumen/Gewicht relativ zu einer Standardreferenz.\nFormel: ceil(max(Shipment-CBM/Referenz-CBM, Shipment-Gewicht/Referenzgewicht)).\nWird genutzt für: Transparenz/Benchmark; aktuell nicht als Rail Vor-/Nachlauf-Treiber.",
   "shipping.reference_cbm":
-    "Definition: Referenzvolumen je Äquivalenz-Karton.\nFormel: Hard-Caps Volumen × Auslastung (%).\nWird genutzt für: Berechnung der Abrechnungs-Kartons (Äquivalenz) als Info-Wert.",
+    "Definition: Referenzvolumen je Äquivalenz-Karton.\nFormel: Volumen eines maximal zulässigen Kartons × Auslastung (%).\nWird genutzt für: Berechnung der Abrechnungs-Kartons (Äquivalenz) als Info-Wert.",
   "shipping.reference_weight_kg":
-    "Definition: Referenzgewicht je Äquivalenz-Karton.\nFormel: Hard-Cap Gewicht × Auslastung (%).\nWird genutzt für: Berechnung der Abrechnungs-Kartons (Äquivalenz) als Info-Wert.",
+    "Definition: Referenzgewicht je Äquivalenz-Karton.\nFormel: maximales Kartongewicht × Auslastung (%).\nWird genutzt für: Berechnung der Abrechnungs-Kartons (Äquivalenz) als Info-Wert.",
   "shipping.volume_fill_pct":
     "Was bedeutet das? Volumen-Packgrad des Umkartons in %.\nFormel: (Produktvolumen im Umkarton / Umkartonvolumen) × 100.\nWofür genutzt? Transparenz, wie effizient der Umkarton mit Ware statt Luft gefüllt ist.",
   "shipping.void_volume_liters":
     "Was bedeutet das? Freies Luftvolumen je Umkarton in Litern.\nFormel: max(0, Umkartonvolumen - Produktvolumen im Umkarton) × 1000.\nWofür genutzt? Transparenz für Verpackungsoptimierung.",
   "shipping.weight_fill_pct":
-    "Was bedeutet das? Gewichtsauslastung je Umkarton gegenüber der maximal zulässigen Kartongrenze.\nFormel: (Umkarton-Bruttogewicht / Hard-Cap-Gewicht) × 100.\nWofür genutzt? Frühwarnung, wenn Gewichtsgrenze knapp oder überschritten ist.",
+    "Was bedeutet das? Gewichtsauslastung je Umkarton gegenüber der maximal zulässigen Kartongrenze.\nFormel: (Umkarton-Bruttogewicht / maximales Kartongewicht) × 100.\nWofür genutzt? Frühwarnung, wenn Gewichtsgrenze knapp oder überschritten ist.",
   "shipping.manual_fit_status":
-    "Was bedeutet das? Plausibilitätsstatus der manuellen Umkartonisierung (Maße/Gewicht).\nFormel: Prüft Stückzahl gegen physisch mögliche Belegung und Gewicht gegen Hard-Cap.\nWofür genutzt? Warnung mit konkretem Korrekturvorschlag.",
+    "Was bedeutet das? Plausibilitätsstatus der manuellen Umkartonisierung (Maße/Gewicht).\nFormel: Prüft Stückzahl gegen physisch mögliche Belegung und Gewicht gegen maximal zulässiges Kartongewicht.\nWofür genutzt? Warnung mit konkretem Korrekturvorschlag.",
   "shipping.layout_preview":
     "Was bedeutet das? Schematische 2D-Top-View der Produktanordnung im Umkarton.\nFormel: Raster aus nx × ny je Layer auf Basis der besten Orientierung.\nWofür genutzt? Schnelles Verständnis von belegter und freier Fläche.",
   "shipping.total_po": "Gesamte Shippingkosten für die komplette PO/Sendung.",
@@ -1031,7 +1034,7 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.shipping.unitsPerCartonAuto": {
     label: "Stück je Umkarton (auto/manuell)",
-    help: "Stück je Umkarton aus min(Gewichtsgrenze, Maßgrenze) unter Hard-Caps oder manuellem Packing-List-Override.",
+    help: "Stück je Umkarton aus min(Gewichtsgrenze, Maßgrenze) unter maximal zulässigen Kartongrenzen oder manuellem Packing-List-Override.",
     format: "number",
     read: (metrics) => metrics.shipping.unitsPerCartonAuto,
   },
@@ -1055,7 +1058,7 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.shipping.unitsPerCartonDownshift": {
     label: "Auto-Downshift Stück je Umkarton",
-    help: "Reduktion vom Kandidatenwert auf den finalen Auto-Wert, falls keine exakte Belegung unter Hard-Caps möglich ist.",
+    help: "Reduktion vom Kandidatenwert auf den finalen Auto-Wert, falls keine exakte Belegung unter zulässigen Kartongrenzen möglich ist.",
     format: "number",
     read: (metrics) => metrics.shipping.unitsPerCartonDownshift,
   },
@@ -1079,19 +1082,19 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.shipping.equivalentCartonsCount": {
     label: "Abrechnungs-Kartons (Äquivalenz)",
-    help: "Abgeleitete Kartonanzahl für Rail-Vorlauf/Nachlauf: max(Shipment-CBM/Referenzvolumen, Shipment-Gewicht/Referenzgewicht).",
+    help: "Referenzwert aus Volumen/Gewicht: max(Shipment-CBM/Referenzvolumen, Shipment-Gewicht/Referenzgewicht). Aktuell Info-Wert.",
     format: "number",
     read: (metrics) => metrics.shipping.equivalentCartonsCount,
   },
   "derived.shipping.equivalentReferenceCbm": {
     label: "Referenzvolumen je Äquivalenz-Karton (CBM)",
-    help: "Referenzvolumen je Äquivalenz-Karton = Hard-Caps Volumen × Auslastung.",
+    help: "Referenzvolumen je Äquivalenz-Karton = Maximalvolumen eines zulässigen Kartons × Auslastung.",
     format: "number",
     read: (metrics) => metrics.shipping.equivalentReferenceCbm,
   },
   "derived.shipping.equivalentReferenceWeightKg": {
     label: "Referenzgewicht je Äquivalenz-Karton (kg)",
-    help: "Referenzgewicht je Äquivalenz-Karton = Hard-Cap Gewicht × Auslastung.",
+    help: "Referenzgewicht je Äquivalenz-Karton = maximales Kartongewicht × Auslastung.",
     format: "number",
     read: (metrics) => metrics.shipping.equivalentReferenceWeightKg,
   },
@@ -1112,6 +1115,48 @@ const DERIVED_DRIVER_MAP = {
     help: "Für den Hauptlauf abrechenbares Volumen nach W/M = max(Shipment-CBM, Shipment-Gewicht/1000).",
     format: "number",
     read: (metrics) => metrics.shipping.chargeableCbm,
+  },
+  "derived.shipping.volumeFillPct": {
+    label: "Volumen-Packgrad je Umkarton (%)",
+    help: "Packgrad = Produktvolumen im Umkarton / Umkartonvolumen.",
+    format: "percent",
+    read: (metrics) => metrics.shipping.volumeFillPct,
+  },
+  "derived.shipping.voidVolumeLiters": {
+    label: "Luft je Umkarton (Liter)",
+    help: "Freies Volumen je Umkarton als Literwert.",
+    format: "number",
+    read: (metrics) => metrics.shipping.voidVolumeLiters,
+  },
+  "derived.shipping.weightFillPct": {
+    label: "Gewichtsauslastung je Umkarton (%)",
+    help: "Auslastung gegen maximal zulässiges Kartongewicht pro Umkarton.",
+    format: "percent",
+    read: (metrics) => metrics.shipping.weightFillPct,
+  },
+  "derived.shipping.manualFitStatus": {
+    label: "Plausibilitätsstatus manuelle Umkartonisierung",
+    help: "Status der manuellen Plausibilitätsprüfung (Maße/Gewicht).",
+    format: "string",
+    read: (metrics) => metrics.shipping.manualFitStatus,
+  },
+  "derived.shipping.manualMaxUnitsByDimensions": {
+    label: "Maximal mögliche Stück bei manuellen Maßen",
+    help: "Physisch maximal mögliche Stückzahl je Umkarton auf Basis manueller Maße.",
+    format: "number",
+    read: (metrics) => metrics.shipping.manualMaxUnitsByDimensions,
+  },
+  "derived.shipping.layoutPreview": {
+    label: "Packbild Vorschau (Top-View)",
+    help: "2D-Schema mit Raster nx × ny und Layeranzahl nz.",
+    format: "string",
+    read: (metrics) => {
+      const preview = metrics.shipping.layoutPreview;
+      if (!preview?.available) {
+        return "Nicht verfügbar";
+      }
+      return `${preview.nx}x${preview.ny}x${preview.nz} · ${preview.placedUnits} Stück`;
+    },
   },
   "derived.returns.returnLossPerReturnEur": {
     label: "Verlust pro 1 Retoure (EUR)",
@@ -1163,7 +1208,7 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.shipping.cartonizationSource": {
     label: "Quelle der Kartonisierung",
-    help: "Quelle der Kartonisierung: Auto über Hard-Caps oder manueller Override.",
+    help: "Quelle der Kartonisierung: automatisch nach zulässigen Kartongrenzen oder manueller Override.",
     format: "string",
     read: (metrics) => metrics.shipping.cartonizationSourceLabel ?? metrics.shipping.cartonizationSource,
   },
@@ -5246,13 +5291,13 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
       manualFitHint =
         `Manuelle Angabe ist nicht plausibel: ${formatNumber(unitsPerCartonAuto)} Stück je Umkarton überschreiten die Maßgrenzen und das manuelle Umkarton-Gewicht überschreitet ${formatNumber(hardCaps.weightKg)} kg.`;
       manualSuggestion =
-        `Reduziere auf maximal ${formatNumber(Math.max(1, manualMaxUnitsByDimensions))} Stück je Umkarton und senke das Umkarton-Bruttogewicht auf <= ${formatNumber(hardCaps.weightKg)} kg.`;
+        `Reduziere auf maximal ${formatNumber(manualMaxUnitsByDimensions)} Stück je Umkarton und senke das Umkarton-Bruttogewicht auf <= ${formatNumber(hardCaps.weightKg)} kg.`;
     } else if (manualDimWarn) {
       manualFitStatus = "warn_dim";
       manualFitHint =
-        `Manuelle Maßangaben sind inkonsistent: Bei diesen Umkartonmaßen passen physisch nur ${formatNumber(Math.max(1, manualMaxUnitsByDimensions))} Stück.`;
+        `Manuelle Maßangaben sind inkonsistent: Bei diesen Umkartonmaßen passen physisch nur ${formatNumber(manualMaxUnitsByDimensions)} Stück.`;
       manualSuggestion =
-        `Reduziere Stück je Umkarton auf <= ${formatNumber(Math.max(1, manualMaxUnitsByDimensions))} oder erhöhe die Umkartonmaße.`;
+        `Reduziere Stück je Umkarton auf <= ${formatNumber(manualMaxUnitsByDimensions)} oder erhöhe die Umkartonmaße.`;
     } else if (manualWeightWarn) {
       manualFitStatus = "warn_weight";
       manualFitHint =
@@ -5265,6 +5310,11 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
         "Für die manuelle Stückzahl werden Umkartonmaße/-gewicht aktuell geschätzt. Für einen Plausibilitätscheck bitte reale Umkartondaten ergänzen.";
       manualSuggestion =
         "Trage reale Umkartonmaße und/oder ein reales Umkarton-Bruttogewicht ein, um die Plausibilität sicher zu prüfen.";
+    } else if (!manualDimensionsProvided) {
+      manualFitStatus = "n/a";
+      manualFitHint =
+        "Manuelle Umkartonmaße fehlen. Gewicht wurde berücksichtigt, die physische Belegung nach Maßen konnte aber nicht geprüft werden.";
+      manualSuggestion = "Trage reale Umkartonmaße ein, damit die Maß-Plausibilität geprüft werden kann.";
     } else {
       manualFitHint = "Manuelle Umkartonisierung ist innerhalb der zulässigen Grenzen plausibel.";
       manualSuggestion = "Keine direkte Korrektur nötig.";
@@ -5425,7 +5475,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
   }));
 
   const oversizeNote = oversizeFlag
-    ? "Produktkante überschreitet Hard-Cap Kartonmaß. Es wird konservativ mit 1 Stück je Umkarton weitergerechnet."
+    ? "Produktkante überschreitet ein maximal zulässiges Kartonmaß. Es wird konservativ mit 1 Stück je Umkarton weitergerechnet."
     : "";
 
   return {
@@ -5448,8 +5498,19 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     estimatedCartonWidthCm,
     estimatedCartonHeightCm,
     estimatedCartonGrossWeightKg,
+    cartonVolumeCbm: cartonCbm,
+    productVolumeInCartonCbm,
+    voidVolumeCbm,
+    voidVolumeLiters,
+    volumeFillPct,
+    weightFillPct,
     cartonizationSource,
     cartonizationSourceLabel: cartonizationSourceLabel(cartonizationSource),
+    manualFitStatus,
+    manualMaxUnitsByDimensions,
+    manualFitHint,
+    manualSuggestion,
+    layoutPreview,
     shipmentCbm,
     shipmentWeightKg,
     chargeableCbm,
@@ -8056,6 +8117,72 @@ function modalGroupForPath(path) {
   return "user";
 }
 
+const SHIPPING_DEFAULT_MODAL_GROUPS = [
+  { key: "carton_rules", title: "Kartonregeln" },
+  { key: "rail", title: "Rail" },
+  { key: "sea_lcl", title: "Sea LCL" },
+  { key: "addons", title: "Add-ons" },
+];
+
+const SHIPPING_DEFAULT_PATH_ORDER = [
+  "settings.cartonRules.maxLengthCm",
+  "settings.cartonRules.maxWidthCm",
+  "settings.cartonRules.maxHeightCm",
+  "settings.cartonRules.maxWeightKg",
+  "settings.cartonRules.outerBufferCm",
+  "settings.cartonRules.grossWeightUpliftPct",
+  "settings.cartonRules.equivalentCartonFillPct",
+  "settings.shipping12m.modes.rail.rateEurPerCbm",
+  "settings.shipping12m.modes.rail.originBaseEurPerShipment",
+  "settings.shipping12m.modes.rail.originPerCbmEur",
+  "settings.shipping12m.modes.rail.mainRunFixedEurPerShipment",
+  "settings.shipping12m.modes.rail.deOncarriageBaseEurPerShipment",
+  "settings.shipping12m.modes.rail.deOncarriagePerCbmEur",
+  "settings.shipping12m.modes.sea_lcl.rateEurPerCbm",
+  "settings.shipping12m.modes.sea_lcl.originFixedEurPerShipment",
+  "settings.shipping12m.modes.sea_lcl.destinationFixedEurPerShipment",
+  "settings.shipping12m.modes.sea_lcl.deOncarriageFixedEurPerShipment",
+  "settings.shipping12m.customsBrokerEnabled",
+  "settings.shipping12m.customsBrokerFixedEurPerShipment",
+  "settings.shipping12m.insurance.enabled",
+  "settings.shipping12m.insurance.basis",
+  "settings.shipping12m.insurance.ratePct",
+  "settings.shipping12m.manualSurchargeEnabled",
+  "settings.shipping12m.manualSurchargeEurPerShipment",
+];
+
+const SHIPPING_DEFAULT_PATH_ORDER_MAP = new Map(
+  SHIPPING_DEFAULT_PATH_ORDER.map((path, index) => [path, index]),
+);
+
+function shippingDefaultModalGroupKey(path) {
+  if (!path.startsWith("settings.")) {
+    return null;
+  }
+  if (path.startsWith("settings.cartonRules.")) {
+    return "carton_rules";
+  }
+  if (path.startsWith("settings.shipping12m.modes.rail.")) {
+    return "rail";
+  }
+  if (path.startsWith("settings.shipping12m.modes.sea_lcl.")) {
+    return "sea_lcl";
+  }
+  if (
+    path.startsWith("settings.shipping12m.customsBroker") ||
+    path.startsWith("settings.shipping12m.insurance.") ||
+    path.startsWith("settings.shipping12m.manualSurcharge")
+  ) {
+    return "addons";
+  }
+  return null;
+}
+
+function shippingDefaultPathOrderRank(path) {
+  const rank = SHIPPING_DEFAULT_PATH_ORDER_MAP.get(path);
+  return rank === undefined ? Number.POSITIVE_INFINITY : rank;
+}
+
 function buildDriverFieldBadges(path, selected, diagnostics, metrics) {
   const badges = [];
   if (path.startsWith("derived.")) {
@@ -8185,7 +8312,7 @@ function renderDriverModal() {
   const presetHandledPaths = new Set();
   if (state.ui.driverModal.detailPreset === "shipping_dashboard") {
     dom.driverModalFields.appendChild(createShippingDashboardModalContent(modalMetrics));
-    const manualSection = createShippingManualOverrideModalSection(selected);
+    const manualSection = createShippingManualOverrideModalSection(selected, modalMetrics);
     if (manualSection) {
       dom.driverModalFields.appendChild(manualSection);
       cartonizationProductPaths().forEach((path) => presetHandledPaths.add(path));
@@ -8211,6 +8338,8 @@ function renderDriverModal() {
   };
   const groupOrder = ["user", "defaults", "calculated"];
   const groupNodes = new Map();
+  const shippingDefaultGroupNodes = new Map();
+  const isShippingPreset = state.ui.driverModal.detailPreset === "shipping_dashboard";
   const accordionActions = document.createElement("div");
   accordionActions.className = "modal-accordion-actions";
   const expandAllBtn = document.createElement("button");
@@ -8233,9 +8362,28 @@ function renderDriverModal() {
     summary.innerHTML = `<span>${groupMeta[groupKey].title}</span><small>${groupMeta[groupKey].hint}</small>`;
     const fields = document.createElement("div");
     fields.className = "modal-group-fields";
+    if (isShippingPreset && groupKey === "defaults") {
+      fields.classList.add("modal-group-fields-stack");
+    }
     details.append(summary, fields);
     dom.driverModalFields.appendChild(details);
     groupNodes.set(groupKey, { details, fields });
+
+    if (isShippingPreset && groupKey === "defaults") {
+      SHIPPING_DEFAULT_MODAL_GROUPS.forEach((entry) => {
+        const subgroup = document.createElement("details");
+        subgroup.className = "modal-group modal-subgroup";
+        subgroup.open = false;
+        const subgroupSummary = document.createElement("summary");
+        subgroupSummary.className = "modal-group-summary";
+        subgroupSummary.innerHTML = `<span>${entry.title}</span><small>Shipping-Defaults</small>`;
+        const subgroupFields = document.createElement("div");
+        subgroupFields.className = "modal-group-fields";
+        subgroup.append(subgroupSummary, subgroupFields);
+        fields.appendChild(subgroup);
+        shippingDefaultGroupNodes.set(entry.key, { details: subgroup, fields: subgroupFields });
+      });
+    }
   });
 
   expandAllBtn.addEventListener("click", () => {
@@ -8259,12 +8407,26 @@ function renderDriverModal() {
     return groupNodes.get(groupKey)?.fields ?? null;
   };
 
-  const orderedPaths = sortDriverPathsForModal(driverPaths, modalMetrics)
+  let orderedPaths = sortDriverPathsForModal(driverPaths, modalMetrics)
     .filter((path) => !presetHandledPaths.has(path));
+  if (isShippingPreset) {
+    const shippingSettings = orderedPaths.filter((path) => shippingDefaultModalGroupKey(path));
+    const nonShippingSettings = orderedPaths.filter((path) => !shippingDefaultModalGroupKey(path));
+    shippingSettings.sort((a, b) => shippingDefaultPathOrderRank(a) - shippingDefaultPathOrderRank(b));
+    orderedPaths = [...nonShippingSettings, ...shippingSettings];
+  }
   orderedPaths.forEach((path) => {
-    const groupFields = ensureGroupFields(modalGroupForPath(path));
+    const baseGroupKey = modalGroupForPath(path);
+    const groupFields = ensureGroupFields(baseGroupKey);
     if (!groupFields) {
       return;
+    }
+    let targetFields = groupFields;
+    if (isShippingPreset && baseGroupKey === "defaults") {
+      const subgroupKey = shippingDefaultModalGroupKey(path);
+      if (subgroupKey && shippingDefaultGroupNodes.has(subgroupKey)) {
+        targetFields = shippingDefaultGroupNodes.get(subgroupKey).fields;
+      }
     }
 
     if (path.startsWith("derived.")) {
@@ -8294,7 +8456,7 @@ function renderDriverModal() {
         field.appendChild(help);
       }
 
-      groupFields.appendChild(field);
+      targetFields.appendChild(field);
       return;
     }
 
@@ -8434,7 +8596,7 @@ function renderDriverModal() {
       saveHint.textContent = `Speicherweg: ${oldEffectiveText} -> neuer Wert. Wahl zwischen Produkt-Override und globalem Default.`;
       field.appendChild(saveHint);
 
-      groupFields.appendChild(field);
+      targetFields.appendChild(field);
       return;
     }
 
@@ -8526,7 +8688,17 @@ function renderDriverModal() {
       }
     }
 
-    groupFields.appendChild(field);
+    targetFields.appendChild(field);
+  });
+
+  shippingDefaultGroupNodes.forEach((node) => {
+    if (node.fields.childElementCount === 0) {
+      const emptyNote = document.createElement("p");
+      emptyNote.className = "hint shipping-empty-note";
+      emptyNote.textContent = "Keine aktiven Werte für den aktuellen Transportmodus.";
+      node.fields.appendChild(emptyNote);
+    }
+    node.details.classList.remove("hidden");
   });
 
   groupOrder.forEach((groupKey, index) => {
@@ -8534,7 +8706,10 @@ function renderDriverModal() {
     if (!node) {
       return;
     }
-    const isEmpty = node.fields.childElementCount === 0;
+    let isEmpty = node.fields.childElementCount === 0;
+    if (isShippingPreset && groupKey === "defaults") {
+      isEmpty = false;
+    }
     node.details.classList.toggle("hidden", isEmpty);
     if (!isEmpty && index === 0) {
       node.details.open = true;
@@ -9536,6 +9711,96 @@ function createAmazonCoreModalContent(metrics) {
   return section;
 }
 
+function shippingManualFitStatusLabel(status) {
+  if (status === "warn_dim_weight") {
+    return "Warnung (Maße + Gewicht)";
+  }
+  if (status === "warn_dim") {
+    return "Warnung (Maße)";
+  }
+  if (status === "warn_weight") {
+    return "Warnung (Gewicht)";
+  }
+  if (status === "ok") {
+    return "Plausibel";
+  }
+  return "Nicht geprüft";
+}
+
+function createShippingLayoutPreviewElement(metrics) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "shipping-layout-wrap";
+  wrapper.title = tooltipForMetric("shipping.layout_preview", "");
+  const preview = metrics.shipping.layoutPreview;
+  if (!preview?.available) {
+    const hint = document.createElement("p");
+    hint.className = "hint";
+    hint.textContent = "Packbild nicht verfügbar. Bitte prüfe Produkt- und Umkartonmaße.";
+    wrapper.appendChild(hint);
+    return wrapper;
+  }
+
+  const cols = Math.max(1, roundInt(preview.nx, 1));
+  const rows = Math.max(1, roundInt(preview.ny, 1));
+  const topSlots = Math.max(1, cols * rows);
+  const topPlaced = Math.min(topSlots, Math.max(0, roundInt(preview.placedUnits, 0)));
+  const totalPlaced = Math.max(0, roundInt(preview.placedUnits, 0));
+  const targetUnits = Math.max(1, roundInt(metrics.shipping.unitsPerCartonAuto, 1));
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 280 180");
+  svg.classList.add("shipping-layout-svg");
+  const outer = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  outer.setAttribute("x", "8");
+  outer.setAttribute("y", "8");
+  outer.setAttribute("width", "264");
+  outer.setAttribute("height", "164");
+  outer.setAttribute("rx", "6");
+  outer.setAttribute("class", "shipping-layout-outer");
+  svg.appendChild(outer);
+
+  const inset = 14;
+  const gap = 2;
+  const usableW = 280 - inset * 2;
+  const usableH = 180 - inset * 2;
+  const cellW = (usableW - gap * (cols - 1)) / cols;
+  const cellH = (usableH - gap * (rows - 1)) / rows;
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const idx = row * cols + col;
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("x", String(inset + col * (cellW + gap)));
+      rect.setAttribute("y", String(inset + row * (cellH + gap)));
+      rect.setAttribute("width", String(cellW));
+      rect.setAttribute("height", String(cellH));
+      rect.setAttribute("rx", "2");
+      rect.setAttribute("class", idx < topPlaced ? "shipping-layout-cell filled" : "shipping-layout-cell");
+      svg.appendChild(rect);
+    }
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "shipping-layout-meta";
+  const orientationText = Array.isArray(preview.orientation) && preview.orientation.length === 3
+    ? `${formatNumber(preview.orientation[0])} × ${formatNumber(preview.orientation[1])} × ${formatNumber(preview.orientation[2])} cm`
+    : "-";
+  const fitTypeLabel = {
+    auto: "Auto",
+    manual_estimated: "Manuell (Umkarton geschätzt)",
+    manual_declared: "Manuell (Umkarton vorgegeben)",
+    fallback: "Fallback",
+  }[preview.fitType] ?? "Auto";
+  meta.innerHTML =
+    `<p><strong>Basis:</strong> ${fitTypeLabel}</p>` +
+    `<p><strong>Raster:</strong> ${cols} × ${rows} (Top-View), ${formatNumber(preview.nz)} Layer</p>` +
+    `<p><strong>Platzierte Stücke:</strong> ${formatNumber(totalPlaced)}/${formatNumber(targetUnits)}</p>` +
+    `<p><strong>Freie Fläche Top-View:</strong> ${formatPercent(preview.freeAreaPctTopView)}</p>` +
+    `<p><strong>Orientierung je Stück:</strong> ${orientationText}</p>`;
+
+  wrapper.append(svg, meta);
+  return wrapper;
+}
+
 function createShippingDashboardModalContent(metrics) {
   const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.transportMode);
   const section = document.createElement("section");
@@ -9549,7 +9814,7 @@ function createShippingDashboardModalContent(metrics) {
   const method = document.createElement("p");
   method.className = "hint";
   method.textContent =
-    `Modus ${modeLabel}: Auto-Kartonisierung startet mit min(Gewichtsgrenze, Maßgrenze) unter Hard-Caps. Rail Vor-/Nachlauf variabel basiert auf Sendungsvolumen (CBM).`;
+    `Modus ${modeLabel}: Auto-Kartonisierung startet mit der maximal zulässigen Stückzahl aus Gewichts- und Maßgrenze. Rail Vor-/Nachlauf variabel basiert auf Sendungsvolumen (CBM).`;
   headLeft.append(heading, method);
   const tile = document.createElement("article");
   tile.className = "shipping-total-tile";
@@ -9600,6 +9865,9 @@ function createShippingDashboardModalContent(metrics) {
         tooltipKey: "shipping.units_per_carton",
       },
       { label: "Physische Kartons", value: formatNumber(metrics.shipping.physicalCartonsCount), tooltipKey: "shipping.physical_cartons" },
+      { label: "Volumen-Packgrad", value: formatPercent(metrics.shipping.volumeFillPct), tooltipKey: "shipping.volume_fill_pct" },
+      { label: "Luft je Umkarton", value: `${formatNumber(metrics.shipping.voidVolumeLiters)} L`, tooltipKey: "shipping.void_volume_liters" },
+      { label: "Gewichtsauslastung", value: formatPercent(metrics.shipping.weightFillPct), tooltipKey: "shipping.weight_fill_pct" },
     ]),
   );
   if (
@@ -9609,21 +9877,55 @@ function createShippingDashboardModalContent(metrics) {
     const downshiftHint = document.createElement("p");
     downshiftHint.className = "hint warn";
     downshiftHint.textContent =
-      `Auto von ${formatNumber(metrics.shipping.unitsPerCartonCapCandidate)} auf ${formatNumber(metrics.shipping.unitsPerCartonAuto)} reduziert (exakte Belegung unter Hard-Caps nicht möglich).`;
+      `Auto von ${formatNumber(metrics.shipping.unitsPerCartonCapCandidate)} auf ${formatNumber(metrics.shipping.unitsPerCartonAuto)} reduziert: Für den Kandidatenwert passt keine exakte Anordnung im zulässigen Umkarton.`;
     cartonPanel.appendChild(downshiftHint);
+    const downshiftAction = document.createElement("p");
+    downshiftAction.className = "hint";
+    downshiftAction.textContent =
+      "Was du tun kannst: Stück je Umkarton reduzieren oder reale Umkartonmaße manuell setzen.";
+    cartonPanel.appendChild(downshiftAction);
   }
+
+  if (metrics.shipping.cartonizationSource === "manual_override") {
+    const manualFitBox = document.createElement("div");
+    manualFitBox.className = `shipping-fit-box ${String(metrics.shipping.manualFitStatus).startsWith("warn") ? "warn" : ""}`;
+    manualFitBox.title = tooltipForMetric("shipping.manual_fit_status", "");
+    const statusLine = document.createElement("strong");
+    statusLine.textContent = `Manuelle Plausibilitätsprüfung: ${shippingManualFitStatusLabel(metrics.shipping.manualFitStatus)}`;
+    manualFitBox.appendChild(statusLine);
+    if (metrics.shipping.manualFitHint) {
+      const hint = document.createElement("p");
+      hint.textContent = metrics.shipping.manualFitHint;
+      manualFitBox.appendChild(hint);
+    }
+    if (metrics.shipping.manualSuggestion) {
+      const suggestion = document.createElement("p");
+      suggestion.textContent = `Vorschlag: ${metrics.shipping.manualSuggestion}`;
+      manualFitBox.appendChild(suggestion);
+    }
+    cartonPanel.appendChild(manualFitBox);
+  }
+
   const cartonDetails = document.createElement("details");
   cartonDetails.className = "shipping-detail-toggle";
   cartonDetails.innerHTML =
     `<summary>Weitere Kartonisierungsdetails</summary>` +
     `<div class="shipping-detail-body">` +
     `<p><strong>Quelle:</strong> ${metrics.shipping.cartonizationSourceLabel}</p>` +
-    `<p><strong>Kandidatenwert (vor Feasibility):</strong> ${formatNumber(metrics.shipping.unitsPerCartonCapCandidate)} Stück je Umkarton</p>` +
+    `<p><strong>Kandidatenwert (vor Plausibilitätsprüfung):</strong> ${formatNumber(metrics.shipping.unitsPerCartonCapCandidate)} Stück je Umkarton</p>` +
     `<p><strong>Auswahlgrund:</strong> ${cartonizationSelectionReasonLabel(metrics.shipping.unitsPerCartonSelectionReason)}</p>` +
+    `<p><strong>Was tun:</strong> ${cartonizationSelectionActionLabel(metrics.shipping.unitsPerCartonSelectionReason)}</p>` +
     `<p><strong>Umkartonmaße:</strong> ${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm</p>` +
-    `<p><strong>Umkarton-Gewicht:</strong> ${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)} kg</p>` +
+    `<p><strong>Umkarton-Bruttogewicht:</strong> ${formatNumber(metrics.shipping.estimatedCartonGrossWeightKg)} kg</p>` +
     `</div>`;
   cartonPanel.appendChild(cartonDetails);
+
+  const layoutDetails = document.createElement("details");
+  layoutDetails.className = "shipping-detail-toggle";
+  layoutDetails.innerHTML = "<summary>Packbild (2D-Schema)</summary>";
+  layoutDetails.appendChild(createShippingLayoutPreviewElement(metrics));
+  cartonPanel.appendChild(layoutDetails);
+
   mainGrid.appendChild(cartonPanel);
 
   const basisPanel = document.createElement("article");
@@ -9689,7 +9991,7 @@ function createShippingDashboardModalContent(metrics) {
   return section;
 }
 
-function createShippingManualOverrideModalSection(selected) {
+function createShippingManualOverrideModalSection(selected, metrics = null) {
   if (!selected) {
     return null;
   }
@@ -9717,6 +10019,27 @@ function createShippingManualOverrideModalSection(selected) {
   hint.textContent =
     "Wenn Maße/Gewicht leer bleiben, wird für die manuelle Stückzahl ein plausibler Umkarton geschätzt.";
   section.appendChild(hint);
+
+  const manualStatus = metrics?.shipping?.manualFitStatus ?? "n/a";
+  if (manualEnabled && (manualStatus !== "n/a" || Boolean(metrics?.shipping?.manualFitHint))) {
+    const fitInfo = document.createElement("div");
+    fitInfo.className = `shipping-fit-box ${String(manualStatus).startsWith("warn") ? "warn" : ""}`;
+    fitInfo.title = tooltipForMetric("shipping.manual_fit_status", "");
+    const title = document.createElement("strong");
+    title.textContent = `Plausibilitätsstatus: ${shippingManualFitStatusLabel(manualStatus)}`;
+    fitInfo.appendChild(title);
+    if (metrics?.shipping?.manualFitHint) {
+      const hintText = document.createElement("p");
+      hintText.textContent = metrics.shipping.manualFitHint;
+      fitInfo.appendChild(hintText);
+    }
+    if (metrics?.shipping?.manualSuggestion) {
+      const suggestionText = document.createElement("p");
+      suggestionText.textContent = `Vorschlag: ${metrics.shipping.manualSuggestion}`;
+      fitInfo.appendChild(suggestionText);
+    }
+    section.appendChild(fitInfo);
+  }
 
   const grid = document.createElement("div");
   grid.className = "modal-group-fields";
@@ -10711,7 +11034,7 @@ function renderShippingDetails(metrics) {
 
   if (dom.shippingMethodText) {
     dom.shippingMethodText.textContent =
-      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Auto-Kartonisierung nutzt min(Gewichtscap, Maßcap) unter Amazon-Hard-Caps. Optional kannst du reale Packing-List-Werte manuell setzen. Daraus entstehen physische Kartons, Sendungsvolumen (CBM) und Abrechnungsvolumen (W/M-CBM). Bei Rail werden Vorlauf und Nachlauf variabel über Sendungsvolumen gerechnet, nicht über Kartonanzahl.`;
+      `So berechnen wir Shipping (12-Monats-Ø, Modus ${modeLabel}): Auto-Kartonisierung startet mit min(Gewichtsgrenze, Maßgrenze) innerhalb der maximal zulässigen Kartongrenzen. Optional kannst du reale Packing-List-Werte manuell setzen. Daraus entstehen physische Kartons, Sendungsvolumen (CBM) und Abrechnungsvolumen (W/M-CBM). Bei Rail werden Vorlauf und Nachlauf variabel über Sendungsvolumen gerechnet, nicht über Kartonanzahl.`;
   }
 
   if (dom.shippingOversizeNote) {
