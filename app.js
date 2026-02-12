@@ -1329,22 +1329,15 @@ const dom = {
   stageGateStatus: document.getElementById("stageGateStatus"),
   stageWarning: document.getElementById("stageWarning"),
   quickStagePanel: document.getElementById("quickStagePanel"),
-  quickPreviewBar: document.getElementById("quickPreviewBar"),
-  quickPreviewShippingUnit: document.getElementById("quickPreviewShippingUnit"),
-  quickPreviewAmazonCoreUnit: document.getElementById("quickPreviewAmazonCoreUnit"),
   quickCostWorkflowGrid: document.getElementById("quickCostWorkflowGrid"),
   quickBlockExwPerUnit: document.getElementById("quickBlockExwPerUnit"),
-  quickBlockExwMonthly: document.getElementById("quickBlockExwMonthly"),
   quickBlockShippingTo3plPerUnit: document.getElementById("quickBlockShippingTo3plPerUnit"),
-  quickBlockShippingTo3plMonthly: document.getElementById("quickBlockShippingTo3plMonthly"),
   quickBlockThreePlPerUnit: document.getElementById("quickBlockThreePlPerUnit"),
-  quickBlockThreePlMonthly: document.getElementById("quickBlockThreePlMonthly"),
   quickBlockAmazonCorePerUnit: document.getElementById("quickBlockAmazonCorePerUnit"),
-  quickBlockAmazonCoreMonthly: document.getElementById("quickBlockAmazonCoreMonthly"),
   quickBlockLaunchCorePerUnit: document.getElementById("quickBlockLaunchCorePerUnit"),
-  quickBlockLaunchCoreMonthly: document.getElementById("quickBlockLaunchCoreMonthly"),
   quickCoverageCard: document.getElementById("quickCoverageCard"),
   quickCoreCoveragePct: document.getElementById("quickCoreCoveragePct"),
+  quickCoreTotalCost: document.getElementById("quickCoreTotalCost"),
   quickCoreCoveredCost: document.getElementById("quickCoreCoveredCost"),
   quickCoreResidualCost: document.getElementById("quickCoreResidualCost"),
   quickCoverageStatus: document.getElementById("quickCoverageStatus"),
@@ -4435,7 +4428,7 @@ function estimateFbaFee(product, resolved, settings = state.settings) {
     actualWeightG: weights.actualWeightG,
     dimensionalWeightG: weights.dimensionalWeightG,
     shippingWeightG: weights.shippingWeightG,
-    fallbackReason: "Produktmaße/-gewicht liegen außerhalb der modellierten DE-Ratecard-Tiers.",
+    fallbackReason: "Kein DE-Ratecard-Tier-Match für Maße/Gewicht; daher wird der manuelle FBA-Wert verwendet.",
     volumetricDivisor: weights.volumetricDivisor,
     optimizationHints: [],
   };
@@ -7615,6 +7608,9 @@ function renderDriverModal() {
   if (state.ui.driverModal.detailPreset === "shipping_dashboard") {
     dom.driverModalFields.appendChild(createShippingDashboardModalContent(modalMetrics));
   }
+  if (state.ui.driverModal.detailPreset === "amazon_core") {
+    dom.driverModalFields.appendChild(createAmazonCoreModalContent(modalMetrics));
+  }
 
   const groupMeta = {
     user: {
@@ -8851,7 +8847,7 @@ function renderFbaDetails(metrics) {
     const isFallback = metrics.fbaFeeSource === "fallback_non_de" || metrics.fbaFeeSource === "fallback_no_tier";
     const isManual = metrics.fbaFeeSource === "manual";
     if (isFallback) {
-      dom.fbaInfoFallback.textContent = `Warnung: ${metrics.fbaFallbackReason || "Kein Tier-Match, daher manueller Wert."}`;
+      dom.fbaInfoFallback.textContent = `Warnung: ${metrics.fbaFallbackReason || "Kein passendes DE-Tier, daher manueller FBA-Wert."}`;
       dom.fbaInfoFallback.classList.remove("hidden");
     } else if (isManual) {
       dom.fbaInfoFallback.textContent = "Hinweis: Manueller FBA-Override ist aktiv.";
@@ -8875,6 +8871,103 @@ function renderFbaDetails(metrics) {
       dom.fbaInfoHints.classList.add("hidden");
     }
   }
+}
+
+function createAmazonCoreModalContent(metrics) {
+  const section = document.createElement("section");
+  section.className = "amazon-core-modal";
+
+  const head = document.createElement("div");
+  head.className = "shipping-dashboard-head";
+  const headLeft = document.createElement("div");
+  const heading = document.createElement("h4");
+  heading.textContent = "Amazon Core Übersicht";
+  const subtitle = document.createElement("p");
+  subtitle.className = "hint";
+  subtitle.textContent = "Referral, TACoS und FBA getrennt, damit der Kostenbeitrag je Block sofort sichtbar ist.";
+  headLeft.append(heading, subtitle);
+  const tile = document.createElement("article");
+  tile.className = "shipping-total-tile";
+  tile.innerHTML = `
+    <span>Amazon Core gesamt</span>
+    <strong>${formatCurrency(metrics.quickBlockAmazonCorePerUnit)} / Unit</strong>
+    <small>Anteil an Gesamtkosten: ${formatPercent(metrics.totalCostPerUnit > 0 ? (metrics.quickBlockAmazonCorePerUnit / metrics.totalCostPerUnit) * 100 : 0)}</small>
+  `;
+  head.append(headLeft, tile);
+  section.appendChild(head);
+
+  const shareFor = (value) =>
+    metrics.quickBlockAmazonCorePerUnit > 0 ? (num(value, 0) / metrics.quickBlockAmazonCorePerUnit) * 100 : 0;
+  const cards = document.createElement("div");
+  cards.className = "amazon-core-grid";
+  const addCard = (title, value, formula, tone = "neutral") => {
+    const card = document.createElement("article");
+    card.className = `amazon-core-card tone-${tone}`;
+    card.innerHTML = `
+      <span>${title}</span>
+      <strong>${formatCurrency(value)} / Unit</strong>
+      <small>${formatPercent(shareFor(value))} von Amazon Core</small>
+      <p>${formula}</p>
+    `;
+    cards.appendChild(card);
+  };
+  addCard("Referral", metrics.referralFeeUnit, "Brutto-Preis × Referral-%", "referral");
+  addCard("TACoS", metrics.adsUnit, "Brutto-Preis × TACoS-%", "ads");
+  addCard("FBA Fulfillment", metrics.fbaFeeUnit, "Auto-Tier oder manueller Fallback", "fba");
+  section.appendChild(cards);
+
+  const fbaPanel = document.createElement("article");
+  fbaPanel.className = "shipping-panel amazon-core-fba-panel";
+  const fbaTitle = document.createElement("h4");
+  fbaTitle.textContent = "FBA Fulfillment Details";
+  const sourceText = document.createElement("p");
+  sourceText.className = "hint";
+  sourceText.textContent = `${metrics.fbaRateCardVersion} · ${fbaFeeSourceLabel(metrics.fbaFeeSource)}`;
+  fbaPanel.append(fbaTitle, sourceText);
+
+  const detailGrid = document.createElement("div");
+  detailGrid.className = "shipping-kpi-grid";
+  const detailRows = [
+    ["Profil", metrics.fbaProfileLabel ?? fbaProfileLabel(metrics.fbaProfile)],
+    ["Tier", metrics.fbaTierLabel || "-"],
+    ["Versandgewicht", `${formatNumber(metrics.fbaShippingWeightG)} g`],
+    [
+      "Gewichtslogik",
+      `actual ${formatNumber(metrics.fbaActualWeightG)} g vs. dimensional ${formatNumber(metrics.fbaDimensionalWeightG)} g`,
+    ],
+  ];
+  detailRows.forEach(([label, value]) => {
+    const item = document.createElement("article");
+    item.className = "shipping-kpi-item";
+    item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+    detailGrid.appendChild(item);
+  });
+  fbaPanel.appendChild(detailGrid);
+
+  if (metrics.fbaRateCardUrl) {
+    const link = document.createElement("a");
+    link.className = "fba-source-link";
+    link.href = metrics.fbaRateCardUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Ratecard-Quelle öffnen";
+    fbaPanel.appendChild(link);
+  }
+
+  if (metrics.fbaFeeSource === "fallback_non_de" || metrics.fbaFeeSource === "fallback_no_tier") {
+    const fallback = document.createElement("p");
+    fallback.className = "hint warn";
+    fallback.textContent = `Warnung: ${metrics.fbaFallbackReason || "Kein passendes Tier gefunden, manueller FBA-Wert aktiv."}`;
+    fbaPanel.appendChild(fallback);
+  } else if (metrics.fbaFeeSource === "manual") {
+    const manual = document.createElement("p");
+    manual.className = "hint";
+    manual.textContent = "Manueller FBA-Override ist aktiv.";
+    fbaPanel.appendChild(manual);
+  }
+
+  section.appendChild(fbaPanel);
+  return section;
 }
 
 function createShippingDashboardModalContent(metrics) {
@@ -9064,11 +9157,16 @@ function buildQuickResidualItems(metrics, prebuiltCategories = null) {
       const monthly = perUnit * monthlyUnits;
       const sharePct = totalCostPerUnit > 0 ? (perUnit / totalCostPerUnit) * 100 : 0;
       rows.push({
-        id: lineItem.id,
+        id: lineItem.id ?? `${category.key}:${lineItem.label}`,
         label: lineItem.label,
         perUnit,
         monthly,
         sharePct,
+        explain: lineItem.explain ?? "",
+        formula: lineItem.formula ?? "",
+        source: lineItem.source ?? "",
+        robustness: lineItem.robustness ?? "Mittel",
+        driverPaths: Array.isArray(lineItem.driverPaths) ? lineItem.driverPaths : [],
       });
     });
   });
@@ -9082,8 +9180,7 @@ function buildQuickBlockModalPayload(metrics, blockKey) {
   const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.modeKey);
   const listingPackageKey = metrics.resolved?.listingPackageKey ?? "ai";
   const listingPackagePrefix = `settings.lifecycle.listingPackages.${listingPackageKey}`;
-  const baseValue = (perUnit) =>
-    `${formatCurrency(perUnit)} / Unit · ${formatCurrency(perUnit * metrics.monthlyUnits)} / Monat`;
+  const baseValue = (perUnit) => `${formatCurrency(perUnit)} / Unit`;
 
   if (blockKey === "exw") {
     return {
@@ -9171,6 +9268,7 @@ function buildQuickBlockModalPayload(metrics, blockKey) {
       formula: "Amazon Core/Unit = referral + ads + fba.",
       source: "Amazon-Gebührenlogik + Kategorie-/Launch-Parameter + DE FBA Ratecard.",
       robustness: "Mittel bis hoch.",
+      detailPreset: "amazon_core",
       driverPaths: [
         "derived.quick.blockAmazonCorePerUnit",
         "assumptions.amazon.referralRate",
@@ -9232,54 +9330,29 @@ function buildQuickBlockModalPayload(metrics, blockKey) {
 }
 
 function renderQuickCostWorkflow(metrics) {
-  const monthlyUnits = Math.max(0, num(metrics.monthlyUnits, 0));
-  const setQuickBlock = (perUnitNode, monthlyNode, perUnitValue) => {
+  const setQuickBlock = (perUnitNode, perUnitValue) => {
     if (perUnitNode) {
       perUnitNode.textContent = `${formatCurrency(perUnitValue)} / Unit`;
     }
-    if (monthlyNode) {
-      monthlyNode.textContent = `${formatCurrency(perUnitValue * monthlyUnits)} / Monat`;
-    }
   };
 
-  setQuickBlock(dom.quickBlockExwPerUnit, dom.quickBlockExwMonthly, metrics.quickBlockExwPerUnit);
-  if (dom.quickBlockExwMonthly) {
-    dom.quickBlockExwMonthly.textContent =
-      `${formatCurrency(metrics.quickBlockExwPerUnit * monthlyUnits)} / Monat · FX 1 USD = ${formatNumber(metrics.fxUsdToEur)} EUR`;
-  }
-  setQuickBlock(
-    dom.quickBlockShippingTo3plPerUnit,
-    dom.quickBlockShippingTo3plMonthly,
-    metrics.quickBlockShippingTo3plPerUnit,
-  );
-  setQuickBlock(dom.quickBlockThreePlPerUnit, dom.quickBlockThreePlMonthly, metrics.quickBlockThreePlPerUnit);
-  setQuickBlock(
-    dom.quickBlockAmazonCorePerUnit,
-    dom.quickBlockAmazonCoreMonthly,
-    metrics.quickBlockAmazonCorePerUnit,
-  );
-  setQuickBlock(
-    dom.quickBlockLaunchCorePerUnit,
-    dom.quickBlockLaunchCoreMonthly,
-    metrics.quickBlockLaunchCorePerUnit,
-  );
-  if (dom.quickPreviewShippingUnit) {
-    dom.quickPreviewShippingUnit.textContent = `${formatCurrency(metrics.shippingUnit)} / Unit`;
-  }
-  if (dom.quickPreviewAmazonCoreUnit) {
-    dom.quickPreviewAmazonCoreUnit.textContent = `${formatCurrency(metrics.quickBlockAmazonCorePerUnit)} / Unit`;
-  }
+  setQuickBlock(dom.quickBlockExwPerUnit, metrics.quickBlockExwPerUnit);
+  setQuickBlock(dom.quickBlockShippingTo3plPerUnit, metrics.quickBlockShippingTo3plPerUnit);
+  setQuickBlock(dom.quickBlockThreePlPerUnit, metrics.quickBlockThreePlPerUnit);
+  setQuickBlock(dom.quickBlockAmazonCorePerUnit, metrics.quickBlockAmazonCorePerUnit);
+  setQuickBlock(dom.quickBlockLaunchCorePerUnit, metrics.quickBlockLaunchCorePerUnit);
 
   if (dom.quickCoreCoveragePct) {
     dom.quickCoreCoveragePct.textContent = formatPercent(clamp(metrics.quickCoreCoveragePct, 0, 100));
   }
+  if (dom.quickCoreTotalCost) {
+    dom.quickCoreTotalCost.textContent = `Gesamtkosten: ${formatCurrency(metrics.totalCostPerUnit)} / Unit`;
+  }
   if (dom.quickCoreCoveredCost) {
-    dom.quickCoreCoveredCost.textContent =
-      `Abgedeckt: ${formatCurrency(metrics.quickCoreCostPerUnit)} / Unit · ${formatCurrency(metrics.quickCoreCostMonthly)} / Monat`;
+    dom.quickCoreCoveredCost.textContent = `Abgedeckt: ${formatCurrency(metrics.quickCoreCostPerUnit)} / Unit`;
   }
   if (dom.quickCoreResidualCost) {
-    dom.quickCoreResidualCost.textContent =
-      `Rest: ${formatCurrency(metrics.quickCoreResidualPerUnit)} / Unit · ${formatCurrency(metrics.quickCoreResidualMonthly)} / Monat`;
+    dom.quickCoreResidualCost.textContent = `Rest: ${formatCurrency(metrics.quickCoreResidualPerUnit)} / Unit`;
   }
 
   const coverageMeta = quickCoverageMeta(metrics.quickCoreCoveragePct);
@@ -9302,8 +9375,23 @@ function renderQuickCostWorkflow(metrics) {
       topResiduals.forEach((item) => {
         const li = document.createElement("li");
         li.innerHTML =
-          `<div><span>${item.label}</span><small>${formatCurrency(item.monthly)} / Monat · ${formatPercent(item.sharePct)} Anteil</small></div>` +
+          `<div><span>${item.label}</span><small>${formatPercent(item.sharePct)} Anteil</small></div>` +
           `<strong>${formatCurrency(item.perUnit)} / Unit</strong>`;
+        if (Array.isArray(item.driverPaths) && item.driverPaths.length > 0) {
+          li.classList.add("quick-residual-clickable");
+          li.title = "Klick: Details und Treiber öffnen.";
+          li.addEventListener("click", () => {
+            openDriverModal({
+              title: `${item.label} (Restkosten)`,
+              value: `${formatCurrency(item.perUnit)} / Unit`,
+              explain: item.explain || "Kostenposition außerhalb des QuickCheck-Core-Workflows.",
+              formula: item.formula || "",
+              source: item.source || "",
+              robustness: item.robustness || "Mittel",
+              driverPaths: item.driverPaths,
+            });
+          });
+        }
         dom.quickResidualTopList.appendChild(li);
       });
     }
@@ -9324,6 +9412,15 @@ function openQuickCostBlockModal(blockKey) {
 }
 
 function renderShippingDetails(metrics) {
+  const hasInlineShippingDom =
+    Boolean(dom.basicShippingUnit) ||
+    Boolean(dom.shippingDetailList) ||
+    Boolean(dom.shippingMethodText) ||
+    Boolean(dom.shippingTotalPo);
+  if (!hasInlineShippingDom) {
+    return;
+  }
+
   const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.transportMode);
   const quickLabel = document.querySelector("#shippingQuickCard p");
   if (quickLabel) {
@@ -10096,7 +10193,7 @@ function inferAdvancedSectionFromPath(path) {
     return "advancedLifecycleSection";
   }
   if (path.startsWith("assumptions.cartonization.")) {
-    return "shippingDashboardSection";
+    return "quickStagePanel";
   }
   if (path.startsWith("assumptions.extraCosts.")) {
     return "advancedOpsSection";
@@ -10115,7 +10212,7 @@ function inferAdvancedSectionFromPath(path) {
     path === "basic.packWidthCm" ||
     path === "basic.packHeightCm"
   ) {
-    return "shippingDashboardSection";
+    return "quickStagePanel";
   }
   return null;
 }

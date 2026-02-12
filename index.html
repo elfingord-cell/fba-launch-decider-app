@@ -151,41 +151,26 @@
                   Lean-Ansicht für 80/20: Klicke auf einen Hauptkostenblock für Details und Treiber. EUR/Unit bedeutet Kosten pro verkaufter Einheit.
                 </p>
               </div>
-              <div class="quick-preview-bar" id="quickPreviewBar">
-                <article>
-                  <span>Shipping D2D</span>
-                  <strong id="quickPreviewShippingUnit">-</strong>
-                </article>
-                <article>
-                  <span>Amazon Core (Referral + TACoS + FBA)</span>
-                  <strong id="quickPreviewAmazonCoreUnit">-</strong>
-                </article>
-              </div>
               <div id="quickCostWorkflowGrid" class="quick-cost-grid">
                 <button type="button" class="quick-cost-card" data-quick-block="exw">
                   <span>EXW / Einkauf</span>
                   <strong id="quickBlockExwPerUnit">-</strong>
-                  <small id="quickBlockExwMonthly">-</small>
                 </button>
                 <button type="button" class="quick-cost-card" data-quick-block="shipping_to_3pl">
                   <span>Shipping zu 3PL</span>
                   <strong id="quickBlockShippingTo3plPerUnit">-</strong>
-                  <small id="quickBlockShippingTo3plMonthly">-</small>
                 </button>
                 <button type="button" class="quick-cost-card" data-quick-block="threepl">
                   <span>3PL</span>
                   <strong id="quickBlockThreePlPerUnit">-</strong>
-                  <small id="quickBlockThreePlMonthly">-</small>
                 </button>
                 <button type="button" class="quick-cost-card" data-quick-block="amazon_core">
                   <span>Amazon (Referral + TACoS + FBA)</span>
                   <strong id="quickBlockAmazonCorePerUnit">-</strong>
-                  <small id="quickBlockAmazonCoreMonthly">-</small>
                 </button>
                 <button type="button" class="quick-cost-card" data-quick-block="launch_core">
                   <span>Launch (Listing + Budget + Ops)</span>
                   <strong id="quickBlockLaunchCorePerUnit">-</strong>
-                  <small id="quickBlockLaunchCoreMonthly">-</small>
                 </button>
               </div>
               <article id="quickCoverageCard" class="quick-coverage-card">
@@ -194,10 +179,10 @@
                   <strong id="quickCoreCoveragePct">-</strong>
                 </div>
                 <div class="quick-coverage-values">
+                  <small id="quickCoreTotalCost">-</small>
                   <small id="quickCoreCoveredCost">-</small>
                   <small id="quickCoreResidualCost">-</small>
                 </div>
-                <p class="hint">Werte in EUR/Unit sowie ergänzend in EUR/Monat.</p>
                 <p id="quickCoverageStatus" class="hint">-</p>
                 <p class="hint quick-residual-caption">
                   Größte Restkosten außerhalb des QuickCheck-Workflows (inkl. Anteil an Gesamtkosten):
@@ -287,73 +272,6 @@
                     </select>
                   </label>
                 </div>
-                <div class="shipping-quick" id="shippingQuickCard">
-                  <p>Shipping door-to-door gesamt (EUR / Unit)</p>
-                  <strong id="basicShippingUnit">-</strong>
-                  <small id="basicShippingMeta">12-Monats-Ø, kein Live-Tarif</small>
-                </div>
-                <section id="shippingDashboardSection" class="shipping-dashboard hidden">
-                  <div class="shipping-dashboard-head">
-                    <div>
-                      <h4>Shipping Dashboard (Bottom-up)</h4>
-                      <p id="shippingMethodText" class="hint"></p>
-                    </div>
-                    <article class="shipping-total-tile">
-                      <span>Shipping total pro PO</span>
-                      <strong id="shippingTotalPo">-</strong>
-                      <small id="shippingTotalUnit">-</small>
-                    </article>
-                  </div>
-                  <p id="shippingOversizeNote" class="hint warn hidden"></p>
-
-                  <section id="packingListOverrideSection" class="card shipping-subcard">
-                    <h4>Reale Packing-List Override</h4>
-                    <p class="hint">Immer sichtbar: Wenn echte Lieferanten-Packing-List vorliegt, kannst du die Auto-Kartonisierung gezielt übersteuern.</p>
-                    <label class="toggle-row">
-                      <input data-path="assumptions.cartonization.manualEnabled" type="checkbox" />
-                      <span>Manuelle Kartonisierung aktivieren</span>
-                    </label>
-                    <div class="admin-grid">
-                      <label>Units je Umkarton (manuell)<input data-path="assumptions.cartonization.unitsPerCarton" type="number" min="1" step="1" /></label>
-                      <label>Umkarton Länge (cm, optional)<input data-path="assumptions.cartonization.cartonLengthCm" type="number" min="0" step="0.1" /></label>
-                      <label>Umkarton Breite (cm, optional)<input data-path="assumptions.cartonization.cartonWidthCm" type="number" min="0" step="0.1" /></label>
-                      <label>Umkarton Höhe (cm, optional)<input data-path="assumptions.cartonization.cartonHeightCm" type="number" min="0" step="0.1" /></label>
-                      <label>Umkarton Bruttogewicht (kg, optional)<input data-path="assumptions.cartonization.cartonGrossWeightKg" type="number" min="0" step="0.01" /></label>
-                    </div>
-                  </section>
-
-                  <div class="shipping-dashboard-grid">
-                    <article class="shipping-panel">
-                      <h4>Kartonisierung</h4>
-                      <ul class="calc-list">
-                        <li><span>Units je Karton nach Gewichtscap</span><strong id="shippingUnitsByWeightCap">-</strong></li>
-                        <li><span>Units je Karton nach Maßcap</span><strong id="shippingUnitsByDimensionCap">-</strong></li>
-                        <li><span>Gewählte Units je Karton</span><strong id="shippingCartonUnits">-</strong></li>
-                        <li><span>Physische Kartons</span><strong id="shippingPhysicalCartons">-</strong></li>
-                        <li><span>Quelle Kartonisierung</span><strong id="shippingCartonSource">-</strong></li>
-                        <li><span>Geschätzte Umkartonmaße (L×B×H)</span><strong id="shippingCartonDims">-</strong></li>
-                        <li><span>Geschätztes Umkarton-Gewicht</span><strong id="shippingCartonWeight">-</strong></li>
-                      </ul>
-                    </article>
-                    <article class="shipping-panel">
-                      <h4>Abrechnungsbasis</h4>
-                      <ul class="calc-list">
-                        <li><span>Shipment-CBM</span><strong id="shippingShipmentCbm">-</strong></li>
-                        <li><span>Shipment-Gewicht</span><strong id="shippingShipmentWeight">-</strong></li>
-                        <li><span>Chargeable-CBM (W/M)</span><strong id="shippingChargeableCbm">-</strong></li>
-                        <li><span>Äquivalenz-Auslastung</span><strong id="shippingEquivalentFillPct">-</strong></li>
-                        <li><span>Äquivalenz-Referenz (CBM)</span><strong id="shippingEquivalentReferenceCbm">-</strong></li>
-                        <li><span>Äquivalenz-Referenz (Gewicht)</span><strong id="shippingEquivalentReferenceWeightKg">-</strong></li>
-                        <li><span>Äquivalenz-Kartons</span><strong id="shippingEquivalentCartons">-</strong></li>
-                      </ul>
-                    </article>
-                    <article class="shipping-panel">
-                      <h4>Kosten je PO und je Unit</h4>
-                      <p class="hint">Rail: Vorlauf/Nachlauf variabel = Basis + (EUR/CBM × Shipment-CBM).</p>
-                      <ul id="shippingDetailList" class="calc-list"></ul>
-                    </article>
-                  </div>
-                </section>
               </section>
 
               <section>
@@ -769,22 +687,6 @@
                 <article><span>Best Case</span><strong id="sensBest">-</strong></article>
               </div>
             </div>
-          </section>
-          <section id="validationReviewPanel" class="card review-panel hidden">
-            <h3>Validation: Top-20 Treiber prüfen</h3>
-            <p class="hint">
-              Nach Lieferkette gruppiert: Top-20 Treiber prüfen, überschreiben oder wieder auf ungeprüft setzen.
-            </p>
-            <p id="validationReviewStatus" class="stage-status">0/20 geprüft</p>
-            <div id="validationReviewList" class="review-list"></div>
-          </section>
-          <section id="deepDiveReviewPanel" class="card review-panel hidden">
-            <h3>Deep-Dive: Vollprüfung aller Treiber</h3>
-            <p class="hint">
-              Vollprüfung nach Lieferkette: alle editierbaren Treiber prüfen, überschreiben oder zurücksetzen.
-            </p>
-            <p id="deepDiveReviewStatus" class="stage-status">0/0 geprüft</p>
-            <div id="deepDiveReviewList" class="review-list"></div>
           </section>
           </div>
         </section>
