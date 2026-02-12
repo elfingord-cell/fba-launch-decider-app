@@ -5228,6 +5228,61 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     shipmentWeightKg = unitsPerOrder * manualGrossPerUnit;
   }
   shipmentWeightKg = Math.max(0.001, shipmentWeightKg);
+  const productVolumeInCartonCbm = Math.max(0, unitCbm * unitsPerCartonAuto);
+  const voidVolumeCbm = Math.max(0, cartonCbm - productVolumeInCartonCbm);
+  const voidVolumeLiters = voidVolumeCbm * 1000;
+  const volumeFillPct = cartonCbm > 0 ? (productVolumeInCartonCbm / cartonCbm) * 100 : 0;
+  const weightFillPct = hardCaps.weightKg > 0 ? (estimatedCartonGrossWeightKg / hardCaps.weightKg) * 100 : 0;
+
+  const manualDimWarn = manualEnabled && manualDimensionsProvided && unitsPerCartonAuto > manualMaxUnitsByDimensions;
+  const manualWeightWarn = manualEnabled && manualWeightProvided && estimatedCartonGrossWeightKg > hardCaps.weightKg;
+  let manualFitStatus = "n/a";
+  let manualFitHint = "";
+  let manualSuggestion = "";
+  if (manualEnabled) {
+    manualFitStatus = "ok";
+    if (manualDimWarn && manualWeightWarn) {
+      manualFitStatus = "warn_dim_weight";
+      manualFitHint =
+        `Manuelle Angabe ist nicht plausibel: ${formatNumber(unitsPerCartonAuto)} Stück je Umkarton überschreiten die Maßgrenzen und das manuelle Umkarton-Gewicht überschreitet ${formatNumber(hardCaps.weightKg)} kg.`;
+      manualSuggestion =
+        `Reduziere auf maximal ${formatNumber(Math.max(1, manualMaxUnitsByDimensions))} Stück je Umkarton und senke das Umkarton-Bruttogewicht auf <= ${formatNumber(hardCaps.weightKg)} kg.`;
+    } else if (manualDimWarn) {
+      manualFitStatus = "warn_dim";
+      manualFitHint =
+        `Manuelle Maßangaben sind inkonsistent: Bei diesen Umkartonmaßen passen physisch nur ${formatNumber(Math.max(1, manualMaxUnitsByDimensions))} Stück.`;
+      manualSuggestion =
+        `Reduziere Stück je Umkarton auf <= ${formatNumber(Math.max(1, manualMaxUnitsByDimensions))} oder erhöhe die Umkartonmaße.`;
+    } else if (manualWeightWarn) {
+      manualFitStatus = "warn_weight";
+      manualFitHint =
+        `Manuelles Umkarton-Bruttogewicht liegt über der zulässigen Gewichtsgrenze von ${formatNumber(hardCaps.weightKg)} kg.`;
+      manualSuggestion =
+        `Reduziere das Umkarton-Bruttogewicht oder die Stück je Umkarton, bis <= ${formatNumber(hardCaps.weightKg)} kg erreicht sind.`;
+    } else if (!manualDimensionsProvided && !manualWeightProvided) {
+      manualFitStatus = "n/a";
+      manualFitHint =
+        "Für die manuelle Stückzahl werden Umkartonmaße/-gewicht aktuell geschätzt. Für einen Plausibilitätscheck bitte reale Umkartondaten ergänzen.";
+      manualSuggestion =
+        "Trage reale Umkartonmaße und/oder ein reales Umkarton-Bruttogewicht ein, um die Plausibilität sicher zu prüfen.";
+    } else {
+      manualFitHint = "Manuelle Umkartonisierung ist innerhalb der zulässigen Grenzen plausibel.";
+      manualSuggestion = "Keine direkte Korrektur nötig.";
+    }
+  }
+
+  const layoutPreview = calculateCartonLayoutPreview({
+    unitDims: [lengthCm, widthCm, heightCm],
+    cartonDims: {
+      lengthCm: estimatedCartonLengthCm,
+      widthCm: estimatedCartonWidthCm,
+      heightCm: estimatedCartonHeightCm,
+    },
+    units: unitsPerCartonAuto,
+    outerBufferCm,
+    manualEnabled,
+    manualDimsDeclared: manualDimensionsProvided,
+  });
 
   const equivalentFill = equivalentFillPct / 100;
   const hardCbm = (hardCaps.lengthCm * hardCaps.widthCm * hardCaps.heightCm) / 1_000_000;
