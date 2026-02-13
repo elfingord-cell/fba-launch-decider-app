@@ -30,7 +30,7 @@ const STAGE_LABELS = {
   deep_dive: "Deep-Dive",
 };
 const STAGE_NEXT_STEP_TEXT = {
-  quick: "Nächster Schritt: 5 Kostenblöcke prüfen, dann Validation aktivieren.",
+  quick: "Nächster Schritt: 7 Kostenkategorien prüfen, dann Validation aktivieren.",
   validation: "Nächster Schritt: Offene Restkosten schließen, bis die Zielabdeckung erreicht ist.",
   deep_dive: "Nächster Schritt: Kritische Treiber im Detail absichern.",
 };
@@ -1164,15 +1164,14 @@ const TERM_HELP_BY_TEXT = [
 ];
 
 const COST_METRIC_TOOLTIPS_BASE = {
-  "quick.exw": "EXW/Einkauf pro verkaufter Einheit in EUR (USD-EK × USD→EUR).",
-  "quick.shipping_to_3pl": "Importblock pro Einheit bis 3PL: Door-to-door Shipping + Zoll + orderbezogene Fixkosten.",
-  "quick.threepl": "3PL-Kosten pro Einheit: Receiving, Lagerung, Outbound-Service und Carrier.",
+  "quick.product": "Kategorie Produkt: Einkauf und direkte Produktkosten am Ursprung.",
+  "quick.shipping_import": "Kategorie Shipping & Import: CN->DE Door-to-door inkl. Zoll/Importanteile.",
+  "quick.threepl": "Kategorie 3PL: Receiving, Lagerung sowie 3PL->Amazon Service/Carrier.",
+  "quick.amazon": "Kategorie Amazon: Referral, FBA und Amazon-Lagerkosten.",
   "quick.amazon_core": "Amazon-Kernkosten pro Einheit: Referral + TACoS + FBA Fulfillment.",
-  "quick.launch_core": "Launch-Kernkosten pro Einheit: Listing + Launch-Budget + Launch-Ops.",
-  "quick.coverage_pct": "Anteil der fünf QuickCheck-Kernblöcke an den gesamten Kosten pro Einheit.",
-  "quick.total_cost_per_unit": "Gesamte Stückkosten über alle modellierten Kostenblöcke.",
-  "quick.covered_cost_per_unit": "Kosten pro Einheit, die bereits durch den QuickCheck-Workflow abgedeckt sind.",
-  "quick.residual_cost_per_unit": "Restkosten pro Einheit außerhalb des QuickCheck-Workflows.",
+  "quick.ads_returns": "Kategorie Werbung & Retouren: Ads sowie Retourenverlust und Retouren-Handling.",
+  "quick.launch_lifecycle": "Kategorie Launch & Lifecycle: Budget, Listing und Launch-Ops über den Zeitraum.",
+  "quick.overhead": "Kategorie Overhead / Leakage: pauschaler Sicherheitsblock für indirekte Kosten.",
   "validation.coverage_pct": "Anteil der validierten Blöcke an den gesamten Kosten pro Einheit.",
   "validation.target_pct": "Zielabdeckung für Validation (Standard 95%).",
   "validation.covered_cost_per_unit": "Validierte Kosten pro Einheit.",
@@ -1235,7 +1234,7 @@ const UI_HELP_TEXT = {
   "ui.basic_flow":
     "Basic-Flow: QuickCheck für den Erstcheck, danach Validation für die strukturierte Restkostenprüfung.",
   "ui.quick_workflow":
-    "QuickCheck fokussiert auf 5 Kernkostenblöcke. Ziel: schnell erkennen, ob die Idee grundsätzlich tragfähig ist.",
+    "QuickCheck zeigt 7 Kostenkategorien für eine vollständige und konsistente Erstbewertung.",
   "ui.validation_workflow":
     "Validation schließt die größten Restkostenblöcke bis zur Zielabdeckung (Standard 95%).",
   "ui.market_absatz":
@@ -1251,11 +1250,13 @@ const UI_HELP_TEXT = {
 };
 
 const QUICK_BLOCK_SUMMARY = {
-  exw: "enthält: Einkauf + FX-Umrechnung.",
-  shipping_to_3pl: "enthält: D2D-Shipping + Zoll + Orderfixkosten.",
-  threepl: "enthält: Receiving, Lagerung, Outbound.",
-  amazon_core: "enthält: Referral, TACoS, FBA Fee.",
-  launch_core: "enthält: Listing, Launch-Budget, Ops.",
+  product: "EXW, Packaging, Setup-Anteile.",
+  shipping_import: "Vorlauf, Hauptlauf, Nachlauf, Zoll.",
+  threepl: "Receiving, Lagerung, Outbound.",
+  amazon: "Referral, FBA, Amazon-Lagerung.",
+  ads_returns: "Ads, Retourenverlust, Handling.",
+  launch_lifecycle: "Listing, Launch-Budget, Ops.",
+  overhead: "Leakage / Overhead.",
 };
 
 const DERIVED_DRIVER_MAP = {
@@ -1477,13 +1478,13 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.quick.coreCoveragePct": {
     label: "Quick-Kostenabdeckung (%)",
-    help: "Abdeckungsgrad der fünf QuickCheck-Hauptkostenblöcke an den Gesamtkosten je Unit.",
+    help: "Abdeckungsgrad der QuickCheck-Kostenkategorien an den Gesamtkosten je Unit.",
     format: "percent",
     read: (metrics) => metrics.quickCoreCoveragePct,
   },
   "derived.quick.coreResidualPerUnit": {
     label: "Quick-Restkosten (EUR/Unit)",
-    help: "Nicht durch die fünf QuickCheck-Hauptblöcke abgedeckte Restkosten je Unit.",
+    help: "Nicht durch das QuickCheck-Set abgedeckte Restkosten je Unit.",
     format: "currency",
     read: (metrics) => metrics.quickCoreResidualPerUnit,
   },
@@ -1507,19 +1508,19 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.quick.residualTop1PerUnit": {
     label: "Quick-Restkosten Top 1 (EUR/Unit)",
-    help: "Größter Nicht-Core-Kostenblock außerhalb des QuickCheck-Workflows.",
+    help: "Größter Kostenblock außerhalb des QuickCheck-Sets.",
     format: "currency",
     read: (metrics) => metrics.quickResidualTop1PerUnit,
   },
   "derived.quick.residualTop2PerUnit": {
     label: "Quick-Restkosten Top 2 (EUR/Unit)",
-    help: "Zweitgrößter Nicht-Core-Kostenblock außerhalb des QuickCheck-Workflows.",
+    help: "Zweitgrößter Kostenblock außerhalb des QuickCheck-Sets.",
     format: "currency",
     read: (metrics) => metrics.quickResidualTop2PerUnit,
   },
   "derived.quick.residualTop3PerUnit": {
     label: "Quick-Restkosten Top 3 (EUR/Unit)",
-    help: "Drittgrößter Nicht-Core-Kostenblock außerhalb des QuickCheck-Workflows.",
+    help: "Drittgrößter Kostenblock außerhalb des QuickCheck-Sets.",
     format: "currency",
     read: (metrics) => metrics.quickResidualTop3PerUnit,
   },
@@ -1835,18 +1836,6 @@ const dom = {
   validationPlaygroundPanel: document.getElementById("validationPlaygroundPanel"),
   quickCostWorkflowGrid: document.getElementById("quickCostWorkflowGrid"),
   validationBlockGrid: document.getElementById("validationBlockGrid"),
-  quickBlockExwPerUnit: document.getElementById("quickBlockExwPerUnit"),
-  quickBlockShippingTo3plPerUnit: document.getElementById("quickBlockShippingTo3plPerUnit"),
-  quickBlockThreePlPerUnit: document.getElementById("quickBlockThreePlPerUnit"),
-  quickBlockAmazonCorePerUnit: document.getElementById("quickBlockAmazonCorePerUnit"),
-  quickBlockLaunchCorePerUnit: document.getElementById("quickBlockLaunchCorePerUnit"),
-  quickCoverageCard: document.getElementById("quickCoverageCard"),
-  quickCoreCoveragePct: document.getElementById("quickCoreCoveragePct"),
-  quickCoreTotalCost: document.getElementById("quickCoreTotalCost"),
-  quickCoreCoveredCost: document.getElementById("quickCoreCoveredCost"),
-  quickCoreResidualCost: document.getElementById("quickCoreResidualCost"),
-  quickCoverageStatus: document.getElementById("quickCoverageStatus"),
-  quickResidualTopList: document.getElementById("quickResidualTopList"),
   validationCoverageCard: document.getElementById("validationCoverageCard"),
   validationCoveragePct: document.getElementById("validationCoveragePct"),
   validationCoverageTarget: document.getElementById("validationCoverageTarget"),
@@ -7227,7 +7216,7 @@ function buildStageState(product, metrics) {
 
   const hintByStage = {
     quick:
-      "QuickCheck: leaner 80/20-Workflow mit fünf Hauptkostenblöcken und transparenter Abdeckungsanzeige.",
+      "QuickCheck: leaner 80/20-Workflow mit sieben Kostenkategorien für einen konsistenten Erstcheck.",
     validation:
       "Validation: Größte Kostenblöcke bis 95% Abdeckung validieren und Kernannahmen über Sandbox testen.",
     deep_dive:
@@ -14972,11 +14961,38 @@ function buildQuickResidualItems(metrics, prebuiltCategories = null) {
     .slice(0, 3);
 }
 
+function buildCategoryCostBlockModalPayload(metrics, categoryKey, categories = null) {
+  const categoryRows = categories ?? buildCostCategoryData(metrics);
+  const category = categoryRows.find((entry) => entry.key === categoryKey);
+  if (!category) {
+    return null;
+  }
+  const detailLines = category.lines.filter((lineItem) => !lineItem.isSummary && !lineItem.excludeFromCategoryTotal);
+  const driverPaths = [...new Set(detailLines.flatMap((lineItem) => lineItem.driverPaths ?? []))];
+  const totalPerUnit = detailLines.reduce((sum, lineItem) => sum + num(lineItem.valueRaw, 0), 0);
+  const totalMonthly = totalPerUnit * Math.max(0, num(metrics.monthlyUnits, 0));
+
+  return {
+    title: `${category.title} (EUR/Unit)`,
+    value: `${formatCurrency(totalPerUnit)} / Unit · ${formatCurrency(totalMonthly)} / Monat`,
+    explain: category.description || "Aggregierte Kategorie-Sicht für den QuickCheck.",
+    formula: "Kategorie total = Summe aller zugeordneten Kostenzeilen.",
+    source: "Kategorienmodell aus buildCostCategoryData(metrics).",
+    robustness: "Mittel.",
+    driverPaths,
+  };
+}
+
 function buildCostBlockModalPayload(metrics, blockKey, contextStage = "quick") {
   const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.modeKey);
   const listingPackageKey = metrics.resolved?.listingPackageKey ?? "ai";
   const listingPackagePrefix = `settings.lifecycle.listingPackages.${listingPackageKey}`;
   const baseValue = (perUnit) => `${formatCurrency(perUnit)} / Unit`;
+
+  const categoryPayload = buildCategoryCostBlockModalPayload(metrics, blockKey);
+  if (categoryPayload) {
+    return categoryPayload;
+  }
 
   if (blockKey === "exw") {
     return {
@@ -15130,95 +15146,66 @@ function buildCostBlockModalPayload(metrics, blockKey, contextStage = "quick") {
 }
 
 function renderQuickCostWorkflow(metrics) {
-  const setQuickBlock = (perUnitNode, perUnitValue) => {
-    if (perUnitNode) {
-      perUnitNode.textContent = `${formatCurrency(perUnitValue)} / Unit`;
-    }
-  };
-  const setQuickSubline = (blockKey) => {
-    const node = document.querySelector(`[data-quick-subline="${blockKey}"]`);
-    if (!(node instanceof HTMLElement)) {
+  const categories = buildCostCategoryData(metrics);
+  const categoryMap = new Map(categories.map((entry) => [entry.key, entry]));
+  const rankedKeys = categories
+    .filter((entry) => num(entry.totalPerUnit, 0) > 0.0001)
+    .sort((left, right) => num(right.totalPerUnit, 0) - num(left.totalPerUnit, 0))
+    .slice(0, 3)
+    .map((entry) => entry.key);
+  const rankByKey = new Map(rankedKeys.map((key, idx) => [key, idx + 1]));
+
+  document.querySelectorAll("#quickCostWorkflowGrid [data-quick-block]").forEach((tile) => {
+    if (!(tile instanceof HTMLElement)) {
       return;
     }
-    node.textContent = QUICK_BLOCK_SUMMARY[blockKey] ?? "";
-  };
-
-  setQuickBlock(dom.quickBlockExwPerUnit, metrics.quickBlockExwPerUnit);
-  setQuickBlock(dom.quickBlockShippingTo3plPerUnit, metrics.quickBlockShippingTo3plPerUnit);
-  setQuickBlock(dom.quickBlockThreePlPerUnit, metrics.quickBlockThreePlPerUnit);
-  setQuickBlock(dom.quickBlockAmazonCorePerUnit, metrics.quickBlockAmazonCorePerUnit);
-  setQuickBlock(dom.quickBlockLaunchCorePerUnit, metrics.quickBlockLaunchCorePerUnit);
-  setQuickSubline("exw");
-  setQuickSubline("shipping_to_3pl");
-  setQuickSubline("threepl");
-  setQuickSubline("amazon_core");
-  setQuickSubline("launch_core");
-
-  setTooltip(document.querySelector('[data-quick-block="exw"]'), "quick.exw");
-  setTooltip(document.querySelector('[data-quick-block="shipping_to_3pl"]'), "quick.shipping_to_3pl");
-  setTooltip(document.querySelector('[data-quick-block="threepl"]'), "quick.threepl");
-  setTooltip(document.querySelector('[data-quick-block="amazon_core"]'), "quick.amazon_core");
-  setTooltip(document.querySelector('[data-quick-block="launch_core"]'), "quick.launch_core");
-
-  if (dom.quickCoreCoveragePct) {
-    dom.quickCoreCoveragePct.textContent = formatPercent(clamp(metrics.quickCoreCoveragePct, 0, 100));
-    setTooltip(dom.quickCoreCoveragePct, "quick.coverage_pct");
-  }
-  if (dom.quickCoreTotalCost) {
-    dom.quickCoreTotalCost.textContent = `Gesamtkosten: ${formatCurrency(metrics.totalCostPerUnit)} / Unit`;
-    setTooltip(dom.quickCoreTotalCost, "quick.total_cost_per_unit");
-  }
-  if (dom.quickCoreCoveredCost) {
-    dom.quickCoreCoveredCost.textContent = `Abgedeckt: ${formatCurrency(metrics.quickCoreCostPerUnit)} / Unit`;
-    setTooltip(dom.quickCoreCoveredCost, "quick.covered_cost_per_unit");
-  }
-  if (dom.quickCoreResidualCost) {
-    dom.quickCoreResidualCost.textContent = `Rest: ${formatCurrency(metrics.quickCoreResidualPerUnit)} / Unit`;
-    setTooltip(dom.quickCoreResidualCost, "quick.residual_cost_per_unit");
-  }
-
-  const coverageMeta = quickCoverageMeta(metrics.quickCoreCoveragePct);
-  if (dom.quickCoverageStatus) {
-    dom.quickCoverageStatus.textContent = coverageMeta.text;
-  }
-  if (dom.quickCoverageCard) {
-    dom.quickCoverageCard.classList.remove("coverage-ok", "coverage-warn", "coverage-critical");
-    dom.quickCoverageCard.classList.add(`coverage-${coverageMeta.tone}`);
-  }
-
-  if (dom.quickResidualTopList) {
-    dom.quickResidualTopList.innerHTML = "";
-    const topResiduals = Array.isArray(metrics.quickResidualTopItems) ? metrics.quickResidualTopItems : [];
-    if (topResiduals.length === 0) {
-      const li = document.createElement("li");
-      li.textContent = "Keine wesentlichen Restkosten außerhalb der fünf QuickCheck-Hauptblöcke.";
-      dom.quickResidualTopList.appendChild(li);
-    } else {
-      topResiduals.forEach((item) => {
-        const li = document.createElement("li");
-        li.innerHTML =
-          `<div><span>${item.label}</span><small>${formatPercent(item.sharePct)} Anteil</small></div>` +
-          `<strong>${formatCurrency(item.perUnit)} / Unit</strong>`;
-        li.title = item.explain || "Restkostenposition außerhalb des QuickCheck-Core-Workflows.";
-        if (Array.isArray(item.driverPaths) && item.driverPaths.length > 0) {
-          li.classList.add("quick-residual-clickable");
-          li.title = `${item.explain || "Restkostenposition außerhalb des QuickCheck-Core-Workflows."}\nKlick: Details und Treiber öffnen.`;
-          li.addEventListener("click", () => {
-            openDriverModal({
-              title: `${item.label} (Restkosten)`,
-              value: `${formatCurrency(item.perUnit)} / Unit`,
-              explain: item.explain || "Kostenposition außerhalb des QuickCheck-Core-Workflows.",
-              formula: item.formula || "",
-              source: item.source || "",
-              robustness: item.robustness || "Mittel",
-              driverPaths: item.driverPaths,
-            });
-          });
-        }
-        dom.quickResidualTopList.appendChild(li);
-      });
+    const blockKey = String(tile.dataset.quickBlock ?? "");
+    if (!blockKey) {
+      return;
     }
-  }
+    const category = categoryMap.get(blockKey);
+    const valueNode = tile.querySelector("strong[data-quick-value]");
+    const sublineNode = tile.querySelector("small[data-quick-subline]");
+    const labelWrap = tile.querySelector(".quick-card-label");
+    const rank = rankByKey.get(blockKey);
+    tile.classList.remove(
+      "quick-impact-high",
+      "quick-impact-medium",
+      "quick-impact-low",
+      "quick-top-impact",
+      "quick-rank-1",
+      "quick-rank-2",
+      "quick-rank-3",
+    );
+    labelWrap?.querySelector(".quick-rank-badge")?.remove();
+
+    if (valueNode instanceof HTMLElement) {
+      valueNode.textContent = category
+        ? `${formatCurrency(num(category.totalPerUnit, 0))} / Unit`
+        : "-";
+    }
+    if (sublineNode instanceof HTMLElement && category) {
+      const impact = classifyImpact(num(category.totalMonthly, 0), num(metrics.totalCostMonthly, 0));
+      tile.classList.add(`quick-impact-${impact.level}`);
+      if (rank) {
+        tile.classList.add("quick-top-impact", `quick-rank-${rank}`);
+        if (labelWrap instanceof HTMLElement) {
+          const badge = document.createElement("em");
+          badge.className = "quick-rank-badge";
+          badge.textContent = `Top ${rank}`;
+          labelWrap.prepend(badge);
+        }
+      }
+      sublineNode.textContent = category
+        ? `${QUICK_BLOCK_SUMMARY[blockKey] ?? category.description ?? ""} · ${formatPercent(impact.sharePct)} Anteil`
+        : "Keine Kategoriezuordnung.";
+    }
+    setTooltip(tile, `quick.${blockKey}`);
+    if (category && tile.title) {
+      const impact = classifyImpact(num(category.totalMonthly, 0), num(metrics.totalCostMonthly, 0));
+      tile.title = `${tile.title}\nImpact: ${impact.label} (${formatPercent(impact.sharePct)} der Gesamtkosten).`;
+    }
+  });
 }
 
 function validationCoverageMeta(coveragePct, targetPct) {
@@ -16654,7 +16641,7 @@ function applyStageVisibility(product, stageState) {
     dom.categoryMapSection.classList.toggle("hidden", isLeanStage);
   }
   if (dom.sensitivitySection) {
-    dom.sensitivitySection.classList.toggle("hidden", isLeanStage);
+    dom.sensitivitySection.classList.remove("hidden");
   }
   if (dom.driverFocusHint) {
     dom.driverFocusHint.classList.toggle("hidden", isLeanStage);
@@ -17364,7 +17351,7 @@ function applyMouseoverHelp() {
     dom.advancedToggle.title = "Advanced ist in diesem Flow deaktiviert. Änderungen laufen über Treiber-Masken.";
   }
   if (dom.stageQuickBtn) {
-    dom.stageQuickBtn.title = "QuickCheck: leaner 80/20-Workflow mit fünf Hauptkostenblöcken.";
+    dom.stageQuickBtn.title = "QuickCheck: leaner 80/20-Workflow mit sieben Kostenkategorien.";
   }
   if (dom.stageValidationBtn) {
     dom.stageValidationBtn.title = "Validation: Kostenabdeckung bis 95% und Kernannahmen im Sandbox-Playground prüfen.";

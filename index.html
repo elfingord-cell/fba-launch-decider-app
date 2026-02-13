@@ -84,10 +84,6 @@
             <strong id="productCount">0</strong>
           </article>
           <article>
-            <span>Modell</span>
-            <strong>3 Kostenblöcke</strong>
-          </article>
-          <article>
             <span>Speicher</span>
             <strong id="storageModeLabel">lokal</strong>
           </article>
@@ -135,10 +131,6 @@
         <section class="main-column">
           <div id="productWorkspace">
 	          <section class="workspace-zone workspace-zone-results" id="workspaceZoneResults">
-	            <header class="workspace-zone-head">
-	              <h2>Ergebnis</h2>
-	              <p>KPIs und Kostenwirkung auf einen Blick. Von hier aus gehst du bei Auffälligkeiten zurück in Validierung oder Eingabe.</p>
-	            </header>
 	          <section class="card decision-bar" id="decisionBar">
             <div class="decision-head">
               <div class="help-context">
@@ -234,7 +226,7 @@
               </div>
               <div class="stage-gate">
                 <p id="stageHint" class="hint">QuickCheck: Ballpark-Marge prüfen.</p>
-                <p id="stageNextStep" class="stage-next-step quick" data-next-step>Nächster Schritt: 5 Kostenblöcke prüfen, dann Validation aktivieren.</p>
+                <p id="stageNextStep" class="stage-next-step quick" data-next-step>Nächster Schritt: 7 Kostenkategorien prüfen, dann Validation aktivieren.</p>
                 <p id="stageGateStatus" class="stage-status">Status: -</p>
                 <p id="stageWarning" class="hint hidden">-</p>
               </div>
@@ -248,7 +240,7 @@
                     </span>
                     <div class="section-title-copy">
                       <h3>QuickCheck Workflow</h3>
-                      <p class="hint">Prüfe die 5 Kernkostenblöcke, öffne Details nur bei Bedarf.</p>
+                      <p class="hint">Prüfe die 7 Kostenkategorien, öffne Details nur bei Bedarf.</p>
                     </div>
                   </div>
                   <button type="button" class="info-trigger" data-help-key="ui.quick_workflow" aria-label="Hilfe zum QuickCheck-Workflow" aria-expanded="false">
@@ -257,25 +249,25 @@
                 </div>
               </div>
               <div id="quickCostWorkflowGrid" class="quick-cost-grid">
-                <button type="button" class="quick-cost-card" data-quick-block="exw">
+                <button type="button" class="quick-cost-card" data-quick-block="product">
                   <span class="quick-card-label">
-                    <span class="ui-icon quick-card-icon" data-icon="factory" aria-hidden="true">
-                      <svg viewBox="0 0 24 24"><use href="#icon-factory"></use></svg>
+                    <span class="ui-icon quick-card-icon" data-icon="box" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-box"></use></svg>
                     </span>
-                    <span>EXW / Einkauf</span>
+                    <span>Produkt</span>
                   </span>
-                  <strong id="quickBlockExwPerUnit">-</strong>
-                  <small id="quickBlockExwSummary" data-quick-subline="exw">-</small>
+                  <strong data-quick-value="product">-</strong>
+                  <small data-quick-subline="product">-</small>
                 </button>
-                <button type="button" class="quick-cost-card" data-quick-block="shipping_to_3pl">
+                <button type="button" class="quick-cost-card" data-quick-block="shipping_import">
                   <span class="quick-card-label">
                     <span class="ui-icon quick-card-icon" data-icon="truck" aria-hidden="true">
                       <svg viewBox="0 0 24 24"><use href="#icon-truck"></use></svg>
                     </span>
-                    <span>Shipping zu 3PL</span>
+                    <span>Shipping &amp; Import</span>
                   </span>
-                  <strong id="quickBlockShippingTo3plPerUnit">-</strong>
-                  <small id="quickBlockShippingTo3plSummary" data-quick-subline="shipping_to_3pl">-</small>
+                  <strong data-quick-value="shipping_import">-</strong>
+                  <small data-quick-subline="shipping_import">-</small>
                 </button>
                 <button type="button" class="quick-cost-card" data-quick-block="threepl">
                   <span class="quick-card-label">
@@ -284,46 +276,50 @@
                     </span>
                     <span>3PL</span>
                   </span>
-                  <strong id="quickBlockThreePlPerUnit">-</strong>
-                  <small id="quickBlockThreePlSummary" data-quick-subline="threepl">-</small>
+                  <strong data-quick-value="threepl">-</strong>
+                  <small data-quick-subline="threepl">-</small>
                 </button>
-                <button type="button" class="quick-cost-card" data-quick-block="amazon_core">
+                <button type="button" class="quick-cost-card" data-quick-block="amazon">
                   <span class="quick-card-label">
                     <span class="ui-icon quick-card-icon" data-icon="store" aria-hidden="true">
                       <svg viewBox="0 0 24 24"><use href="#icon-store"></use></svg>
                     </span>
-                    <span>Amazon (Referral + TACoS + FBA)</span>
+                    <span>Amazon</span>
                   </span>
-                  <strong id="quickBlockAmazonCorePerUnit">-</strong>
-                  <small id="quickBlockAmazonCoreSummary" data-quick-subline="amazon_core">-</small>
+                  <strong data-quick-value="amazon">-</strong>
+                  <small data-quick-subline="amazon">-</small>
                 </button>
-                <button type="button" class="quick-cost-card" data-quick-block="launch_core">
+                <button type="button" class="quick-cost-card" data-quick-block="ads_returns">
+                  <span class="quick-card-label">
+                    <span class="ui-icon quick-card-icon" data-icon="cart" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-cart"></use></svg>
+                    </span>
+                    <span>Werbung &amp; Retouren</span>
+                  </span>
+                  <strong data-quick-value="ads_returns">-</strong>
+                  <small data-quick-subline="ads_returns">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="launch_lifecycle">
                   <span class="quick-card-label">
                     <span class="ui-icon quick-card-icon" data-icon="megaphone" aria-hidden="true">
                       <svg viewBox="0 0 24 24"><use href="#icon-megaphone"></use></svg>
                     </span>
-                    <span>Launch (Listing + Budget + Ops)</span>
+                    <span>Launch &amp; Lifecycle</span>
                   </span>
-                  <strong id="quickBlockLaunchCorePerUnit">-</strong>
-                  <small id="quickBlockLaunchCoreSummary" data-quick-subline="launch_core">-</small>
+                  <strong data-quick-value="launch_lifecycle">-</strong>
+                  <small data-quick-subline="launch_lifecycle">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="overhead">
+                  <span class="quick-card-label">
+                    <span class="ui-icon quick-card-icon" data-icon="trend" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-trend"></use></svg>
+                    </span>
+                    <span>Overhead / Leakage</span>
+                  </span>
+                  <strong data-quick-value="overhead">-</strong>
+                  <small data-quick-subline="overhead">-</small>
                 </button>
               </div>
-              <article id="quickCoverageCard" class="quick-coverage-card">
-                <div>
-                  <span>Abdeckung des QuickCheck-Workflows</span>
-                  <strong id="quickCoreCoveragePct">-</strong>
-                </div>
-                <div class="quick-coverage-values">
-                  <small id="quickCoreTotalCost">-</small>
-                  <small id="quickCoreCoveredCost">-</small>
-                  <small id="quickCoreResidualCost">-</small>
-                </div>
-                <p id="quickCoverageStatus" class="hint">-</p>
-                <p class="hint quick-residual-caption">
-                  Größte Restkosten außerhalb des QuickCheck-Workflows (inkl. Anteil an Gesamtkosten):
-                </p>
-                <ul id="quickResidualTopList" class="quick-residual-list"></ul>
-              </article>
             </section>
             <section id="validationStagePanel" class="card stage-impact validation-workflow hidden">
               <div class="quick-cost-head help-context">

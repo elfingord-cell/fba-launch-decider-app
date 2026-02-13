@@ -2945,8 +2945,10 @@ body[data-page="settings"] #settingsLifecycleSection .launch-week-chip-value {
 
 .quick-cost-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 9px;
+  grid-auto-rows: 1fr;
+  align-items: stretch;
 }
 
 .validation-block-grid {
@@ -3121,12 +3123,15 @@ body[data-page="settings"] #settingsLifecycleSection .launch-week-chip-value {
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
   padding: 10px;
   display: grid;
-  gap: 5px;
+  grid-template-rows: auto auto 1fr;
+  gap: 6px;
   text-align: left;
   cursor: pointer;
   color: inherit;
   font: inherit;
   transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+  min-height: 118px;
+  height: 100%;
 }
 
 .quick-cost-card:hover {
@@ -3135,22 +3140,102 @@ body[data-page="settings"] #settingsLifecycleSection .launch-week-chip-value {
   box-shadow: 0 9px 16px rgba(16, 56, 52, 0.09);
 }
 
+.quick-cost-card.quick-impact-high {
+  background: linear-gradient(180deg, #fff7f4 0%, #fff2ef 100%);
+}
+
+.quick-cost-card.quick-impact-medium {
+  background: linear-gradient(180deg, #fffbf3 0%, #fff8eb 100%);
+}
+
+.quick-cost-card.quick-impact-low {
+  background: linear-gradient(180deg, #f7fcf9 0%, #f1faf6 100%);
+}
+
+.quick-cost-card.quick-top-impact {
+  border-width: 2px;
+}
+
+.quick-cost-card.quick-rank-1 {
+  border-color: color-mix(in srgb, #d7733f 56%, white);
+  box-shadow: 0 6px 16px rgba(211, 110, 54, 0.13);
+}
+
+.quick-cost-card.quick-rank-2 {
+  border-color: color-mix(in srgb, #e0a75d 58%, white);
+}
+
+.quick-cost-card.quick-rank-3 {
+  border-color: color-mix(in srgb, #7db5a6 58%, white);
+}
+
+.quick-cost-card.quick-rank-1:hover {
+  border-color: color-mix(in srgb, #d7733f 56%, white);
+}
+
+.quick-cost-card.quick-rank-2:hover {
+  border-color: color-mix(in srgb, #e0a75d 58%, white);
+}
+
+.quick-cost-card.quick-rank-3:hover {
+  border-color: color-mix(in srgb, #7db5a6 58%, white);
+}
+
 .quick-card-label {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   color: var(--muted);
   font-size: 0.7rem;
   font-weight: 700;
+  line-height: 1.25;
 }
 
 .quick-card-label > span:last-child {
   min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.quick-rank-badge {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--line) 65%, white);
+  background: #f7f8fa;
+  color: #506173;
+  font-style: normal;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 2px 6px;
+  margin-top: 1px;
+  flex: 0 0 auto;
+}
+
+.quick-cost-card.quick-rank-1 .quick-rank-badge {
+  background: #fff4ec;
+  border-color: color-mix(in srgb, #d7733f 48%, white);
+  color: #8c4321;
+}
+
+.quick-cost-card.quick-rank-2 .quick-rank-badge {
+  background: #fff8e8;
+  border-color: color-mix(in srgb, #c7902f 48%, white);
+  color: #795009;
+}
+
+.quick-cost-card.quick-rank-3 .quick-rank-badge {
+  background: #eff9f5;
+  border-color: color-mix(in srgb, #5f9d8e 48%, white);
+  color: #2e685c;
 }
 
 .quick-card-icon {
   width: 17px;
   height: 17px;
+  margin-top: 1px;
+  flex: 0 0 auto;
 }
 
 .quick-card-icon svg {
@@ -3161,6 +3246,7 @@ body[data-page="settings"] #settingsLifecycleSection .launch-week-chip-value {
 .quick-cost-card strong {
   font-size: 0.95rem;
   font-family: "Space Grotesk", "Manrope", sans-serif;
+  line-height: 1.15;
 }
 
 .quick-cost-card small {
@@ -3168,6 +3254,11 @@ body[data-page="settings"] #settingsLifecycleSection .launch-week-chip-value {
   font-size: 0.66rem;
   font-weight: 700;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  align-self: end;
 }
 
 .quick-coverage-card {
@@ -5949,6 +6040,10 @@ tbody tr:hover {
 
   .quick-cost-grid {
     grid-template-columns: 1fr;
+  }
+
+  .quick-cost-card {
+    min-height: 0;
   }
 
   .setup-wizard-steps {
