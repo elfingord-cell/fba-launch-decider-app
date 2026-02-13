@@ -4064,6 +4064,30 @@ details li strong {
   margin-top: 10px;
 }
 
+.sensitivity-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+
+.sensitivity-controls label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.sensitivity-controls input {
+  min-height: 34px;
+}
+
+.sensitivity-controls .btn {
+  min-height: 34px;
+}
+
 .sensitivity-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -4087,6 +4111,10 @@ details li strong {
 .sensitivity-grid strong {
   font-size: 0.82rem;
   font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+#sensSimInfo {
+  margin: 4px 0 10px;
 }
 
 .table-wrap {
@@ -5773,6 +5801,10 @@ tbody tr:hover {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .sensitivity-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .chain-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -5934,6 +5966,10 @@ tbody tr:hover {
   }
 
   .sensitivity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sensitivity-controls {
     grid-template-columns: 1fr;
   }
 

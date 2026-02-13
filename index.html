@@ -168,7 +168,7 @@
               <article class="kpi kpi-traffic-focus" data-kpi="kpiGoNoGoRoi"><span>ROI % (Ampel, Unit-basiert)</span><strong id="kpiGoNoGoRoi">-</strong></article>
               <article class="kpi" data-kpi="kpiSellerboardMargin"><span>Sellerboard-Marge % (brutto)</span><strong id="kpiSellerboardMargin">-</strong></article>
               <article class="kpi" data-kpi="kpiTotalCostPerUnit"><span>Kosten pro Stück (EUR)</span><strong id="kpiTotalCostPerUnit">-</strong></article>
-              <article class="kpi" data-kpi="kpiDb1Unit"><span>Deckungsbeitrag pro Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
+              <article class="kpi" data-kpi="kpiDb1Unit"><span>Gewinn pro Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
               <article class="kpi" data-kpi="kpiRevenueGross"><span>Umsatz / Monat (EUR brutto)</span><strong id="kpiRevenueGross">-</strong></article>
               <article class="kpi" data-kpi="kpiProfitMonthly"><span>Gewinn netto / Monat (EUR)</span><strong id="kpiProfitMonthly">-</strong></article>
             </div>
@@ -195,7 +195,7 @@
                   <p>Preis, Risiko, Sensitivität und Kostentreiber auf einen Blick.</p>
                 </div>
                 <div class="section-head-actions">
-                  <button id="cockpitVisualToggleBtn" type="button" class="btn btn-ghost btn-compact">Einklappen</button>
+                  <button id="cockpitVisualToggleBtn" type="button" class="btn btn-ghost btn-compact">Ausklappen</button>
                 </div>
               </div>
               <div id="cockpitVisualGrid" class="cockpit-visual-grid"></div>
@@ -955,9 +955,25 @@
 
             <div id="sensitivitySection" class="sensitivity">
               <h3>Sensitivität</h3>
+              <div class="sensitivity-controls">
+                <label>
+                  Preis (EUR brutto)
+                  <input id="sensSimPriceInput" type="number" min="0" step="0.01" />
+                </label>
+                <label>
+                  TACoS (%)
+                  <input id="sensSimTacosInput" type="number" min="0" max="100" step="0.1" />
+                </label>
+                <label>
+                  Absatz / Monat
+                  <input id="sensSimUnitsInput" type="number" min="0" step="1" />
+                </label>
+                <button id="sensSimResetBtn" type="button" class="btn btn-ghost">Zurücksetzen</button>
+              </div>
+              <p id="sensSimInfo" class="hint">Simulation inaktiv.</p>
               <div class="sensitivity-grid">
                 <article><span>Preis -10%</span><strong id="sensPriceDown">-</strong></article>
-                <article><span>TACoS +2%</span><strong id="sensTacosUp">-</strong></article>
+                <article><span>TACoS +2 pp</span><strong id="sensTacosUp">-</strong></article>
                 <article><span>Absatz -10%</span><strong id="sensUnitsDown">-</strong></article>
                 <article><span>Worst Case</span><strong id="sensWorst">-</strong></article>
                 <article><span>Best Case</span><strong id="sensBest">-</strong></article>

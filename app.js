@@ -1094,7 +1094,7 @@ const KPI_HELP = {
   kpiNetMargin: "Netto-Marge nach PPC % = (Netto-Gewinn nach PPC / Netto-Umsatz) × 100.",
   kpiShippingUnit: "Door-to-door Shipping je Unit als 12-Monats-Durchschnitt (ein Richtwert).",
   kpiLandedUnit: "Landed je Unit = EXW(EUR) + Shipping + Zoll.",
-  kpiDb1Unit: "DB1/Stück = Nettoverkaufspreis - Unit Economics je Stück (Landed, Amazon, Ads, Retouren).",
+  kpiDb1Unit: "Gewinn pro Stück = Gewinn netto/Monat geteilt durch Monatsabsatz.",
   kpiDb1Margin: "DB1-Marge % = DB1/Stück / Nettoverkaufspreis × 100.",
   kpiNetMarginBeforePpc: "Marge vor PPC % = (Deckungsbeitrag vor PPC / Netto-Umsatz) × 100.",
   kpiGoNoGoRoi: "ROI % (Ampel) = (Netto-Gewinn nach PPC je Unit / Landed Cost je Unit) × 100.",
@@ -1785,7 +1785,8 @@ const state = {
     driverModal: null,
     costCategoryExpanded: {},
     chainExpanded: {},
-    cockpitVisualCollapsed: false,
+    cockpitVisualCollapsed: true,
+    sensitivitySimulationByProduct: {},
     validationSandboxDraft: null,
     validationSandboxActive: false,
     validationSandboxProductId: null,
@@ -1985,6 +1986,11 @@ const dom = {
   sensUnitsDown: document.getElementById("sensUnitsDown"),
   sensWorst: document.getElementById("sensWorst"),
   sensBest: document.getElementById("sensBest"),
+  sensSimPriceInput: document.getElementById("sensSimPriceInput"),
+  sensSimTacosInput: document.getElementById("sensSimTacosInput"),
+  sensSimUnitsInput: document.getElementById("sensSimUnitsInput"),
+  sensSimResetBtn: document.getElementById("sensSimResetBtn"),
+  sensSimInfo: document.getElementById("sensSimInfo"),
 };
 
 function uid() {
@@ -7676,7 +7682,7 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   result.validationSuggestedResidualItems = validationData.suggestedResidualItems;
   result.validationOpenTopResidualItems = validationData.openTopResidualItems;
   result.validationCheckedBlockIds = validationData.checkedResidualIds;
-  result.sensitivity = buildSensitivity(product, result.targetMarginPct);
+  result.sensitivity = buildSensitivity(product, result.targetMarginPct, scenario);
 
   return result;
 }
@@ -7927,22 +7933,48 @@ function buildGoNoGoTooltipText(launchDecision, metrics) {
   return lines.join("\n");
 }
 
-function buildSensitivity(product, targetMarginPct) {
-  const priceDown = calculateProduct(product, { priceFactor: 0.9 }, { includeDerived: false });
-  const tacosUp = calculateProduct(product, { tacosDelta: 2 }, { includeDerived: false });
-  const unitsDown = calculateProduct(product, { unitsFactor: 0.9 }, { includeDerived: false });
+function buildSensitivity(product, targetMarginPct, baseScenario = {}) {
+  const base = calculateProduct(product, baseScenario, { includeDerived: false });
+  const basePriceGross = num(base.priceGrossTarget, num(product?.basic?.priceGross, 0));
+  const baseUnits = Math.max(0, num(base.monthlyUnits, unitsMonthlyFromBasic(product?.basic ?? {})));
+  const baseTacos = num(base.tacosRate, 0);
+
+  const priceDown = calculateProduct(
+    product,
+    { ...baseScenario, priceGross: Math.max(0, basePriceGross * 0.9) },
+    { includeDerived: false },
+  );
+  const tacosUp = calculateProduct(
+    product,
+    { ...baseScenario, forceTacosRate: clamp(baseTacos + 2, 0, 100) },
+    { includeDerived: false },
+  );
+  const unitsDown = calculateProduct(
+    product,
+    { ...baseScenario, monthlyUnits: Math.max(0, baseUnits * 0.9) },
+    { includeDerived: false },
+  );
 
   const worst = calculateProduct(
     product,
-    { priceFactor: 0.9, tacosDelta: 2, unitsFactor: 0.9 },
+    {
+      ...baseScenario,
+      priceGross: Math.max(0, basePriceGross * 0.9),
+      forceTacosRate: clamp(baseTacos + 2, 0, 100),
+      monthlyUnits: Math.max(0, baseUnits * 0.9),
+    },
     { includeDerived: false },
   );
   const best = calculateProduct(
     product,
-    { priceFactor: 1.1, tacosDelta: -2, unitsFactor: 1.1 },
+    {
+      ...baseScenario,
+      priceGross: Math.max(0, basePriceGross * 1.1),
+      forceTacosRate: clamp(baseTacos - 2, 0, 100),
+      monthlyUnits: Math.max(0, baseUnits * 1.1),
+    },
     { includeDerived: false },
   );
-  const base = calculateProduct(product, {}, { includeDerived: false });
 
   const traffic = classifyTraffic(base, worst, targetMarginPct);
 
@@ -15472,9 +15504,9 @@ function renderValidationSandboxCompare(baselineMetrics, sandboxMetrics) {
       deltaPositiveIsGood: true,
     },
     {
-      label: "Deckungsbeitrag pro Stück",
-      base: baselineMetrics.db1Unit,
-      next: sandboxMetrics.db1Unit,
+      label: "Gewinn pro Stück",
+      base: baselineMetrics.monthlyUnits > 0 ? baselineMetrics.profitMonthly / baselineMetrics.monthlyUnits : 0,
+      next: sandboxMetrics.monthlyUnits > 0 ? sandboxMetrics.profitMonthly / sandboxMetrics.monthlyUnits : 0,
       format: "currency",
       suffix: "/ Unit",
       deltaPositiveIsGood: true,
@@ -16008,7 +16040,7 @@ function buildCockpitVisualPayload(metrics, stage = "quick", categories = null) 
       },
       {
         key: "tacos_up",
-        label: "TACoS +2%",
+        label: "TACoS +2 pp",
         value: num(sensitivity?.tacosUp?.profitMonthly, Number.NaN),
       },
       {
@@ -16117,13 +16149,14 @@ function renderCockpitVisuals(metrics, stage = "quick", prebuiltCategories = nul
 }
 
 function renderSelectedOutputs(product, metrics, stage = "quick") {
+  const profitPerUnit = metrics.monthlyUnits > 0 ? metrics.profitMonthly / metrics.monthlyUnits : 0;
   setKpi(dom.kpiRevenueGross, metrics.grossRevenueMonthly, "currency");
   setKpi(dom.kpiRevenueNet, metrics.netRevenueMonthly, "currency");
   setKpi(dom.kpiSellerboardMargin, metrics.sellerboardMarginPct, "percent");
   setKpi(dom.kpiNetMargin, metrics.netMarginPct, "percent");
   setKpi(dom.kpiShippingUnit, metrics.shippingUnit, "currency");
   setKpi(dom.kpiLandedUnit, metrics.landedUnit, "currency");
-  setKpi(dom.kpiDb1Unit, metrics.db1Unit, "currency");
+  setKpi(dom.kpiDb1Unit, profitPerUnit, "currency");
   setKpi(dom.kpiDb1Margin, metrics.db1MarginPct, "percent");
   setKpi(dom.kpiNetMarginBeforePpc, metrics.netMarginBeforePpcPct, "percent");
   setKpi(dom.kpiGoNoGoRoi, metrics.goNoGoRoiPct, "percent");
@@ -16949,6 +16982,119 @@ function renderComparison(metricsById = new Map()) {
   });
 }
 
+function getSensitivitySimulationDefaults(product, baseMetrics = null) {
+  const monthlyUnitsDefault = Math.max(0, num(unitsMonthlyFromBasic(product?.basic ?? {}), 0));
+  const fallbackMetrics = baseMetrics ?? calculateProduct(product);
+  return {
+    priceGross: Math.max(0, round2(num(product?.basic?.priceGross, 0))),
+    tacosRate: clamp(round2(num(fallbackMetrics?.tacosRate, 0)), 0, 100),
+    monthlyUnits: Math.max(0, roundInt(num(monthlyUnitsDefault, 0), 0)),
+  };
+}
+
+function ensureSensitivitySimulationState(product, baseMetrics = null) {
+  if (!product) {
+    return null;
+  }
+  if (!state.ui.sensitivitySimulationByProduct || typeof state.ui.sensitivitySimulationByProduct !== "object") {
+    state.ui.sensitivitySimulationByProduct = {};
+  }
+  const defaults = getSensitivitySimulationDefaults(product, baseMetrics);
+  const current = state.ui.sensitivitySimulationByProduct[product.id] ?? {};
+  const next = {
+    priceGross: Math.max(0, round2(num(current.priceGross, defaults.priceGross))),
+    tacosRate: clamp(round2(num(current.tacosRate, defaults.tacosRate)), 0, 100),
+    monthlyUnits: Math.max(0, roundInt(num(current.monthlyUnits, defaults.monthlyUnits), 0)),
+  };
+  state.ui.sensitivitySimulationByProduct[product.id] = next;
+  return { values: next, defaults };
+}
+
+function buildSensitivitySimulationScenario(product, baseMetrics = null) {
+  const sim = ensureSensitivitySimulationState(product, baseMetrics);
+  if (!sim) {
+    return null;
+  }
+  return {
+    priceGross: sim.values.priceGross,
+    forceTacosRate: sim.values.tacosRate,
+    monthlyUnits: sim.values.monthlyUnits,
+  };
+}
+
+function sensitivitySimulationDirty(values, defaults) {
+  const priceDirty = Math.abs(num(values?.priceGross, 0) - num(defaults?.priceGross, 0)) > 0.01;
+  const tacosDirty = Math.abs(num(values?.tacosRate, 0) - num(defaults?.tacosRate, 0)) > 0.01;
+  const unitsDirty = Math.abs(num(values?.monthlyUnits, 0) - num(defaults?.monthlyUnits, 0)) >= 1;
+  return priceDirty || tacosDirty || unitsDirty;
+}
+
+function renderSensitivitySimulationControls(product, baseMetrics) {
+  if (!product) {
+    return;
+  }
+  const sim = ensureSensitivitySimulationState(product, baseMetrics);
+  if (!sim) {
+    return;
+  }
+  if (dom.sensSimPriceInput) {
+    dom.sensSimPriceInput.value = String(round2(sim.values.priceGross));
+  }
+  if (dom.sensSimTacosInput) {
+    dom.sensSimTacosInput.value = String(round2(sim.values.tacosRate));
+  }
+  if (dom.sensSimUnitsInput) {
+    dom.sensSimUnitsInput.value = String(roundInt(sim.values.monthlyUnits, 0));
+  }
+  if (dom.sensSimResetBtn) {
+    dom.sensSimResetBtn.disabled = !sensitivitySimulationDirty(sim.values, sim.defaults);
+  }
+  if (dom.sensSimInfo) {
+    if (sensitivitySimulationDirty(sim.values, sim.defaults)) {
+      dom.sensSimInfo.textContent =
+        `Simulation aktiv (Basis fuer Sensitivitaet): Preis ${formatCurrency(sim.values.priceGross)} · TACoS ${formatPercent(sim.values.tacosRate)} · Absatz ${formatNumber(sim.values.monthlyUnits)} / Monat`;
+      dom.sensSimInfo.classList.remove("warn");
+    } else {
+      dom.sensSimInfo.textContent = "Simulation inaktiv (Basiswerte aus Produktdaten).";
+      dom.sensSimInfo.classList.remove("warn");
+    }
+  }
+}
+
+function updateSensitivitySimulationField(field, rawValue) {
+  const selected = getSelectedProduct();
+  if (!selected) {
+    return;
+  }
+  const baseMetrics = calculateProduct(selected);
+  const sim = ensureSensitivitySimulationState(selected, baseMetrics);
+  if (!sim) {
+    return;
+  }
+  if (field === "priceGross") {
+    sim.values.priceGross = Math.max(0, round2(num(rawValue, sim.values.priceGross)));
+  } else if (field === "tacosRate") {
+    sim.values.tacosRate = clamp(round2(num(rawValue, sim.values.tacosRate)), 0, 100);
+  } else if (field === "monthlyUnits") {
+    sim.values.monthlyUnits = Math.max(0, roundInt(num(rawValue, sim.values.monthlyUnits), 0));
+  }
+  state.ui.sensitivitySimulationByProduct[selected.id] = sim.values;
+  renderComputedViews();
+}
+
+function resetSensitivitySimulation() {
+  const selected = getSelectedProduct();
+  if (!selected) {
+    return;
+  }
+  const defaults = getSensitivitySimulationDefaults(selected, calculateProduct(selected));
+  if (!state.ui.sensitivitySimulationByProduct || typeof state.ui.sensitivitySimulationByProduct !== "object") {
+    state.ui.sensitivitySimulationByProduct = {};
+  }
+  state.ui.sensitivitySimulationByProduct[selected.id] = defaults;
+  renderComputedViews();
+}
+
 function renderSelectedProductPanels(metricsById = new Map()) {
   const product = getSelectedProduct();
   if (!product) {
@@ -16962,13 +17108,16 @@ function renderSelectedProductPanels(metricsById = new Map()) {
 
   renderFxStatus();
 
-  const metrics = metricsById.get(product.id) ?? calculateProduct(product);
+  const baselineMetrics = metricsById.get(product.id) ?? calculateProduct(product);
+  const simulationScenario = buildSensitivitySimulationScenario(product, baselineMetrics);
+  const metrics = simulationScenario ? calculateProduct(product, simulationScenario) : baselineMetrics;
   const resolved = metrics.resolved;
   const diagnostics = buildDefaultDiagnostics(product, metrics);
   const stageState = renderStagePanel(product, metrics);
   applyStageVisibility(product, stageState);
   renderDecisionBar(stageState.stage);
   renderSelectedOutputs(product, metrics, stageState.stage);
+  renderSensitivitySimulationControls(product, baselineMetrics);
   renderValidationPlayground(product, metrics);
   renderAssumedLabels(resolved.assumedLabels, diagnostics);
   renderLaunchHint(product, resolved);
@@ -17598,6 +17747,27 @@ function bindEvents() {
       }
       state.ui.validationSandboxDraft = createValidationSandboxDraftFromProduct(selected);
       renderComputedViews();
+    });
+  }
+
+  if (dom.sensSimPriceInput) {
+    const handler = () => updateSensitivitySimulationField("priceGross", dom.sensSimPriceInput.value);
+    dom.sensSimPriceInput.addEventListener("input", handler);
+    dom.sensSimPriceInput.addEventListener("change", handler);
+  }
+  if (dom.sensSimTacosInput) {
+    const handler = () => updateSensitivitySimulationField("tacosRate", dom.sensSimTacosInput.value);
+    dom.sensSimTacosInput.addEventListener("input", handler);
+    dom.sensSimTacosInput.addEventListener("change", handler);
+  }
+  if (dom.sensSimUnitsInput) {
+    const handler = () => updateSensitivitySimulationField("monthlyUnits", dom.sensSimUnitsInput.value);
+    dom.sensSimUnitsInput.addEventListener("input", handler);
+    dom.sensSimUnitsInput.addEventListener("change", handler);
+  }
+  if (dom.sensSimResetBtn) {
+    dom.sensSimResetBtn.addEventListener("click", () => {
+      resetSensitivitySimulation();
     });
   }
 

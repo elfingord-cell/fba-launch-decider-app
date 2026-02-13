@@ -403,8 +403,7 @@
     card.append(svg);
 
     const refNote = createNode("p", "cockpit-mini-hint");
-    const db1Text = Number.isFinite(num(kpis.db1Unit)) ? fmt.currency(num(kpis.db1Unit)) : "-";
-    refNote.textContent = `Referenz: Kosten/Unit ${fmt.currency(effectiveCostTotal)} · Gewinn/Unit ${fmt.currency(endValue)} · DB1 (Decision-Bar) ${db1Text}`;
+    refNote.textContent = `Referenz: Kosten/Unit ${fmt.currency(effectiveCostTotal)} · Gewinn/Unit ${fmt.currency(endValue)}`;
     card.append(refNote);
     return card;
   }
