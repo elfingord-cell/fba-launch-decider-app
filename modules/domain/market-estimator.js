@@ -7,6 +7,18 @@
   const INPUT_VIEWS = new Set(["quick", "pro"]);
   const LISTING_SCENARIOS = new Set(["new_listing", "existing_listing"]);
   const MARKET_MODES = new Set(["market_first"]);
+  const PRICING_POSTURES = new Set(["conservative", "premium"]);
+  const COMPETITOR_RELEVANCE = new Set(["high", "medium", "low"]);
+
+  const RELEVANCE_WEIGHTS = {
+    high: 1.0,
+    medium: 0.75,
+    low: 0.5,
+  };
+
+  const DIFF_FACTOR_MAP = [0.85, 1.0, 1.1, 1.2];
+  const PPC_FACTOR_MAP = [0.85, 1.0, 1.15];
+  const ASSET_FACTOR_MAP = [0.95, 1.05, 1.2, 1.35];
 
   function num(value, fallback) {
     const parsed = Number(value);
@@ -73,6 +85,17 @@
     };
   }
 
+  function defaultCompetitorTamRow(index = 0) {
+    return {
+      enabled: true,
+      label: `Top ${index + 1}`,
+      asin: "",
+      unitsMonthly: 0,
+      relevanceClass: "high",
+      comparable: true,
+    };
+  }
+
   function hasManualQuartiles(keyword) {
     if (!keyword || typeof keyword !== "object") {
       return false;
@@ -107,6 +130,19 @@
       top3SalesSharePct: clamp(num(source.top3SalesSharePct, base.top3SalesSharePct), 0, 100),
       tamCompetitorUnits: Math.max(0, round(num(source.tamCompetitorUnits, base.tamCompetitorUnits), 2)),
       amazonRetailTop10: Boolean(source.amazonRetailTop10),
+    };
+  }
+
+  function sanitizeCompetitorTamRow(rawRow, index) {
+    const source = rawRow && typeof rawRow === "object" ? rawRow : {};
+    const base = defaultCompetitorTamRow(index);
+    return {
+      enabled: source.enabled === undefined ? base.enabled : Boolean(source.enabled),
+      label: cleanString(source.label, base.label),
+      asin: cleanString(source.asin, ""),
+      unitsMonthly: Math.max(0, round(num(source.unitsMonthly, base.unitsMonthly), 2)),
+      relevanceClass: COMPETITOR_RELEVANCE.has(source.relevanceClass) ? source.relevanceClass : base.relevanceClass,
+      comparable: source.comparable === undefined ? true : Boolean(source.comparable),
     };
   }
 
@@ -226,28 +262,69 @@
     const unitType = UNIT_TYPES.has(source.unitType) ? source.unitType : "piece";
     const listingScenario = LISTING_SCENARIOS.has(source.listingScenario) ? source.listingScenario : "new_listing";
     const mode = MARKET_MODES.has(source.mode) ? source.mode : "market_first";
+    const pricingPosture = PRICING_POSTURES.has(source.pricingPosture) ? source.pricingPosture : "conservative";
 
-    const listingSignals = source.listingSignals && typeof source.listingSignals === "object" ? source.listingSignals : {};
     const allowances = source.allowances && typeof source.allowances === "object" ? source.allowances : {};
     const expectedReviews90d =
       source.expectedReviews90d !== undefined ? source.expectedReviews90d : source.ownReviews30d;
+
+    const legacySignals = source.listingSignals && typeof source.listingSignals === "object" ? source.listingSignals : {};
+    const hygieneSignalsRaw = source.hygieneSignals && typeof source.hygieneSignals === "object"
+      ? source.hygieneSignals
+      : legacySignals;
+    const positioningSignalsRaw = source.positioningSignals && typeof source.positioningSignals === "object"
+      ? source.positioningSignals
+      : {};
+
+    const existingListingReviews = Math.max(0, round(num(source.existingListingReviews, 0), 0));
+    const parsedAssetStrength = Number(source.listingAssetStrength);
+    const listingAssetStrength = Number.isFinite(parsedAssetStrength)
+      ? clamp(round(parsedAssetStrength, 0), 0, 3)
+      : listingScenario === "existing_listing" && existingListingReviews >= 500
+        ? 2
+        : 0;
+
+    const competitorTam = source.competitorTAM && typeof source.competitorTAM === "object" ? source.competitorTAM : {};
+    const topN = clamp(round(num(competitorTam.topN, 10), 0), 1, 10);
+    const rawRows = Array.isArray(competitorTam.rows) ? competitorTam.rows : [];
+    const rows = [];
+    for (let i = 0; i < topN; i += 1) {
+      rows.push(sanitizeCompetitorTamRow(rawRows[i], i));
+    }
+
+    const premiumRules = source.premiumRules && typeof source.premiumRules === "object" ? source.premiumRules : {};
+    const maxUpliftPct = clamp(num(premiumRules.maxUpliftPct, 25), 0, 25);
+
+    const hygieneSignals = {
+      bestImage: Boolean(hygieneSignalsRaw.bestImage),
+      imageSetInfographic: Boolean(hygieneSignalsRaw.imageSetInfographic),
+      aPlus: Boolean(hygieneSignalsRaw.aPlus),
+      uspCopy: Boolean(hygieneSignalsRaw.uspCopy),
+    };
 
     return {
       mode,
       inputView,
       unitType,
       unitsPerPack: Math.max(1, round(num(source.unitsPerPack, 1), 0)),
+      pricingPosture,
       differentiationScore: clamp(round(num(source.differentiationScore, 0), 0), 0, 3),
+      listingAssetStrength,
       ppcBudgetClass: clamp(round(num(source.ppcBudgetClass, 1), 0), 0, 2),
       listingScenario,
       expectedReviews90d: Math.max(0, round(num(expectedReviews90d, 0), 0)),
-      existingListingReviews: Math.max(0, round(num(source.existingListingReviews, 0), 0)),
+      existingListingReviews,
       targetPosition90d: targetPosition,
+      hygieneSignals,
       listingSignals: {
-        bestImage: Boolean(listingSignals.bestImage),
-        imageSetInfographic: Boolean(listingSignals.imageSetInfographic),
-        aPlus: Boolean(listingSignals.aPlus),
-        uspCopy: Boolean(listingSignals.uspCopy),
+        ...hygieneSignals,
+      },
+      positioningSignals: {
+        qualityPerception: Boolean(positioningSignalsRaw.qualityPerception),
+        featureDeltaVisible: Boolean(positioningSignalsRaw.featureDeltaVisible),
+        valueBundleDelta: Boolean(positioningSignalsRaw.valueBundleDelta),
+        trustProofDelta: Boolean(positioningSignalsRaw.trustProofDelta),
+        brandFitDelta: Boolean(positioningSignalsRaw.brandFitDelta),
       },
       economicsCheckEnabled: Boolean(source.economicsCheckEnabled),
       allowances: {
@@ -255,6 +332,13 @@
         ppcPct: nullableNumber(allowances.ppcPct, 0, 100),
         overheadPct: nullableNumber(allowances.overheadPct, 0, 100),
         targetMarginPct: nullableNumber(allowances.targetMarginPct, 0, 100),
+      },
+      competitorTAM: {
+        topN,
+        rows,
+      },
+      premiumRules: {
+        maxUpliftPct,
       },
       keywords,
       lastAppliedAt: source.lastAppliedAt ? String(source.lastAppliedAt) : null,
@@ -340,6 +424,111 @@
     return Math.min(Math.max(value, minValue), maxValue);
   }
 
+  function determineCompetitionHeadwind(primaryKeyword, dispersion) {
+    const medianReviews = num(primaryKeyword?.medianReviewsTop10, 0);
+    const top3Share = num(primaryKeyword?.top3SalesSharePct, 0);
+
+    if (top3Share >= 65 || dispersion <= 0.15) {
+      return { value: 0.55, band: "strong_dominance_tight" };
+    }
+    if (top3Share >= 55 || medianReviews >= 1000) {
+      return { value: 0.7, band: "dominant" };
+    }
+    if (top3Share >= 50 || dispersion <= 0.25) {
+      return { value: 0.85, band: "medium" };
+    }
+    return { value: 1.0, band: "open" };
+  }
+
+  function deriveTopComparableUnit(primaryKeyword, primaryAnchor) {
+    const sampleValues = sanitizeNumberList(primaryKeyword?.priceSamplesUnitGross);
+    if (sampleValues.length > 0) {
+      return Math.max(...sampleValues);
+    }
+    const p90 = num(primaryAnchor?.p90, 0);
+    const p75 = num(primaryAnchor?.p75, 0);
+    return Math.max(0, p90, p75);
+  }
+
+  function computeCompetitorTam(input, primaryKeyword) {
+    const topN = clamp(round(num(input?.competitorTAM?.topN, 10), 0), 1, 10);
+    const rows = Array.isArray(input?.competitorTAM?.rows) ? input.competitorTAM.rows : [];
+
+    const validRows = rows
+      .map((row, index) => ({
+        index,
+        enabled: Boolean(row?.enabled),
+        comparable: Boolean(row?.comparable),
+        unitsMonthly: Math.max(0, num(row?.unitsMonthly, 0)),
+        relevanceClass: COMPETITOR_RELEVANCE.has(row?.relevanceClass) ? row.relevanceClass : "high",
+        label: cleanString(row?.label, `Top ${index + 1}`),
+        asin: cleanString(row?.asin, ""),
+      }))
+      .filter((row) => row.enabled && row.comparable && row.unitsMonthly > 0)
+      .map((row) => {
+        const relevanceWeight = RELEVANCE_WEIGHTS[row.relevanceClass] ?? 1;
+        return {
+          ...row,
+          relevanceWeight,
+          unitsWeighted: row.unitsMonthly * relevanceWeight,
+        };
+      });
+
+    const coverage = topN > 0 ? validRows.length / topN : 0;
+
+    const weightedValues = validRows
+      .map((row) => num(row.unitsWeighted, 0))
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .sort((a, b) => a - b);
+
+    const weightedMedian = weightedValues.length > 0 ? quantileLinear(weightedValues, 0.5) : Number.NaN;
+
+    let trimmedOutlier = false;
+    let rowsUsed = [...validRows];
+    if (rowsUsed.length >= 8 && Number.isFinite(weightedMedian) && weightedMedian > 0) {
+      let maxIndex = -1;
+      let maxValue = -1;
+      rowsUsed.forEach((row, index) => {
+        if (row.unitsWeighted > maxValue) {
+          maxValue = row.unitsWeighted;
+          maxIndex = index;
+        }
+      });
+      if (maxIndex >= 0 && maxValue > weightedMedian * 3) {
+        rowsUsed = rowsUsed.filter((_, index) => index !== maxIndex);
+        trimmedOutlier = true;
+      }
+    }
+
+    let tamCompetitorRaw = rowsUsed.reduce((sum, row) => sum + Math.max(0, num(row.unitsWeighted, 0)), 0);
+    let source = "table";
+
+    if (!(tamCompetitorRaw > 0)) {
+      const legacyTotal = Math.max(0, num(primaryKeyword?.tamCompetitorUnits, 0));
+      if (legacyTotal > 0) {
+        tamCompetitorRaw = legacyTotal;
+        source = "legacy_total";
+      } else {
+        tamCompetitorRaw = Number.NaN;
+        source = "table";
+      }
+    }
+
+    const tamCompetitorAdjusted = tamCompetitorRaw > 0 ? tamCompetitorRaw * 0.75 : Number.NaN;
+
+    return {
+      source,
+      topN,
+      coverage,
+      validRows: validRows.length,
+      weightedMedian,
+      trimmedOutlier,
+      rowsUsed,
+      tamCompetitorRaw,
+      tamCompetitorAdjusted,
+    };
+  }
+
   function compute(rawInput, rawContext) {
     const input = sanitizeInput(rawInput);
     const context = sanitizeContext(rawContext);
@@ -377,16 +566,16 @@
       flags.add("INSUFFICIENT_PRIMARY_DATA");
     }
 
-    let basisPrice = Number.NaN;
+    let basisConservative = Number.NaN;
     if (competitiveness === "A") {
-      basisPrice = p50Pack * 0.98;
+      basisConservative = p50Pack * 0.98;
     } else if (competitiveness === "C") {
-      basisPrice = p25Pack * 0.97;
+      basisConservative = p25Pack * 0.97;
     } else {
-      basisPrice = p25Pack * 0.99;
+      basisConservative = p25Pack * 0.99;
     }
 
-    if (!(basisPrice > 0)) {
+    if (!(basisConservative > 0)) {
       flags.add("INSUFFICIENT_PRIMARY_DATA");
     }
 
@@ -395,9 +584,50 @@
     if (!(marketMin > 0)) {
       flags.add("INSUFFICIENT_PRIMARY_DATA");
     }
-    const startPrice = clampPrice(basisPrice, marketMin, marketMax);
-    const minPrice = marketMin;
-    const maxPrice = marketMax;
+
+    const startPriceConservative = clampPrice(basisConservative, marketMin, marketMax);
+
+    const topComparableUnit = deriveTopComparableUnit(primaryKeyword, primaryAnchor);
+    const topComparablePack = topComparableUnit > 0 ? topComparableUnit * unitsPerPack : Number.NaN;
+
+    const positioningSignalCount = [
+      input.positioningSignals.qualityPerception,
+      input.positioningSignals.featureDeltaVisible,
+      input.positioningSignals.valueBundleDelta,
+      input.positioningSignals.trustProofDelta,
+      input.positioningSignals.brandFitDelta,
+    ].filter(Boolean).length;
+    const positioningSignalScore = positioningSignalCount / 5;
+
+    const strengthRaw =
+      0.4 * (input.differentiationScore / 3) +
+      0.4 * (input.listingAssetStrength / 3) +
+      0.2 * positioningSignalScore;
+
+    const competitionHeadwind = determineCompetitionHeadwind(primaryKeyword, Number.isFinite(dispersion) ? dispersion : 0.2);
+    const maxUpliftPct = clamp(num(input.premiumRules?.maxUpliftPct, 25), 0, 25);
+    const premiumUpliftRaw = maxUpliftPct * strengthRaw * competitionHeadwind.value;
+    const premiumUpliftPct = clamp(premiumUpliftRaw, 0, maxUpliftPct);
+    if (premiumUpliftRaw > maxUpliftPct + 1e-9) {
+      flags.add("PREMIUM_UPLIFT_CAPPED");
+    }
+
+    const targetPriceRaw = topComparablePack > 0
+      ? topComparablePack * (1 + premiumUpliftPct / 100)
+      : Number.NaN;
+    const premiumHardCap = topComparablePack > 0 ? topComparablePack * 1.25 : Number.NaN;
+    if (Number.isFinite(targetPriceRaw) && Number.isFinite(premiumHardCap) && targetPriceRaw > premiumHardCap + 1e-9) {
+      flags.add("PREMIUM_UPLIFT_CAPPED");
+    }
+
+    const targetPrice = clampPrice(targetPriceRaw, marketMin, premiumHardCap);
+    const backupPrice = Number.isFinite(startPriceConservative)
+      ? Math.max(startPriceConservative, marketMin)
+      : marketMin;
+
+    const startPrice = input.pricingPosture === "premium"
+      ? targetPrice
+      : startPriceConservative;
 
     const effectiveOwnReviews = input.listingScenario === "existing_listing"
       ? input.existingListingReviews
@@ -415,29 +645,34 @@
       priceFactor = 0.85;
     }
 
-    const diffFactorMap = [0.85, 1.0, 1.1, 1.2];
-    const ppcFactorMap = [0.85, 1.0, 1.15];
-    const diffFactor = diffFactorMap[input.differentiationScore] ?? 1;
-    const ppcFactor = ppcFactorMap[input.ppcBudgetClass] ?? 1;
+    const diffFactor = DIFF_FACTOR_MAP[input.differentiationScore] ?? 1;
+    const ppcFactor = PPC_FACTOR_MAP[input.ppcBudgetClass] ?? 1;
+    const assetFactor = ASSET_FACTOR_MAP[input.listingAssetStrength] ?? 1;
 
     const baseSharePct = baseShareByClass(competitiveness);
-    const uncappedSharePct = baseSharePct * reviewFactor * priceFactor * diffFactor * ppcFactor;
+    const uncappedSharePct = baseSharePct * reviewFactor * priceFactor * diffFactor * ppcFactor * assetFactor;
     const sharePct = Math.min(5, uncappedSharePct);
     const capApplied = uncappedSharePct > 5;
     const shareRatio = sharePct / 100;
 
-    const competitorTamRaw = num(primaryKeyword.tamCompetitorUnits, 0);
-    const competitorTamAdjusted = competitorTamRaw > 0 ? competitorTamRaw * 0.75 : Number.NaN;
+    const competitorMethod = computeCompetitorTam(input, primaryKeyword);
+    if (competitorMethod.coverage < 0.5) {
+      flags.add("LOW_COMPETITOR_COVERAGE");
+    }
+    if (competitorMethod.source === "legacy_total") {
+      flags.add("COMPETITOR_TAM_FROM_LEGACY_TOTAL");
+    }
+
     const unitsCompetitorMethod =
-      Number.isFinite(competitorTamAdjusted) && competitorTamAdjusted > 0
-        ? competitorTamAdjusted * shareRatio
+      Number.isFinite(competitorMethod.tamCompetitorAdjusted) && competitorMethod.tamCompetitorAdjusted > 0
+        ? competitorMethod.tamCompetitorAdjusted * shareRatio
         : Number.NaN;
 
     const listingStrengthScore =
-      (input.listingSignals.bestImage ? 1 : 0) +
-      (input.listingSignals.imageSetInfographic ? 1 : 0) +
-      (input.listingSignals.aPlus ? 1 : 0) +
-      (input.listingSignals.uspCopy ? 1 : 0) +
+      (input.hygieneSignals.bestImage ? 1 : 0) +
+      (input.hygieneSignals.imageSetInfographic ? 1 : 0) +
+      (input.hygieneSignals.aPlus ? 1 : 0) +
+      (input.hygieneSignals.uspCopy ? 1 : 0) +
       (priceIndex <= 1 ? 1 : 0);
 
     const listingStrength =
@@ -535,6 +770,15 @@
       }
     }
 
+    const whyPrice = [];
+    if (input.pricingPosture === "premium") {
+      whyPrice.push("Premium-Strategie aktiv: Positionierung am Top-Marktanker mit Uplift-Regel.");
+      whyPrice.push(`Asset-Stärke ${input.listingAssetStrength}/3 und Differenzierung ${input.differentiationScore}/3 steuern den Uplift.`);
+      whyPrice.push(`Wettbewerbs-Gegenwind: ${competitionHeadwind.band}.`);
+    } else {
+      whyPrice.push("Konservative Strategie aktiv: Basispreis aus Marktklasse A/B/C, dann Korridor-Begrenzung.");
+    }
+
     return {
       input,
       context,
@@ -555,6 +799,15 @@
         dispersion,
       },
       competitiveness,
+      strategy: {
+        pricingPosture: input.pricingPosture,
+        listingAssetStrength: input.listingAssetStrength,
+        positioningSignalScore,
+        positioningSignalCount,
+        strengthRaw,
+        competitionHeadwind: competitionHeadwind.value,
+        competitionHeadwindBand: competitionHeadwind.band,
+      },
       allowances: {
         referralPct: context.referralPct,
         returnsPct,
@@ -564,14 +817,22 @@
         totalPct,
       },
       price: {
-        basisPrice,
+        basisPrice: basisConservative,
+        basisConservative,
         mvpPrice: breakEvenPrice,
         marketMin,
         highPriceCap,
         priceAnchorP50Pack: priceAnchor,
         startPrice,
-        minPrice,
-        maxPrice,
+        startPriceConservative,
+        targetPrice,
+        backupPrice,
+        topComparablePack,
+        premiumUpliftPct,
+        premiumUpliftRaw,
+        premiumHardCap,
+        minPrice: marketMin,
+        maxPrice: marketMax,
         capSource: capFromP90 ? "p90" : "p75",
       },
       share: {
@@ -583,6 +844,7 @@
         priceFactor,
         diffFactor,
         ppcFactor,
+        assetFactor,
         uncappedSharePct,
         capApplied,
         sharePct,
@@ -597,8 +859,15 @@
         tamKeywordsAdjusted,
       },
       competitorMethod: {
-        tamCompetitorRaw: competitorTamRaw,
-        tamCompetitorAdjusted: competitorTamAdjusted,
+        tamCompetitorRaw: competitorMethod.tamCompetitorRaw,
+        tamCompetitorAdjusted: competitorMethod.tamCompetitorAdjusted,
+        source: competitorMethod.source,
+        coverage: competitorMethod.coverage,
+        validRows: competitorMethod.validRows,
+        topN: competitorMethod.topN,
+        weightedMedian: competitorMethod.weightedMedian,
+        trimmedOutlier: competitorMethod.trimmedOutlier,
+        rowsUsed: competitorMethod.rowsUsed,
       },
       demand: {
         unitsCompetitorMethod,
@@ -608,9 +877,11 @@
       market: {
         competitiveness,
         startPrice,
+        targetPrice,
+        backupPrice,
         marketMin,
         marketMax,
-        basisPrice,
+        basisPrice: basisConservative,
         capSource: capFromP90 ? "p90" : "p75",
         dispersion,
         sharePct,
@@ -632,6 +903,7 @@
         mode: input.mode,
         inputView: input.inputView,
         primaryAnchorSource: primaryAnchor.source,
+        whyPrice,
       },
       flags: [...flags],
     };

@@ -142,6 +142,8 @@
     const cap = num(price.highPriceCap);
     const basis = num(price.basisPrice);
     const start = num(price.startPrice);
+    const target = num(price.targetPrice);
+    const backup = num(price.backupPrice);
     const p50 = num(price.priceAnchorP50Pack, num(result?.primaryKeyword?.p50Pack));
 
     if (!(marketMin > 0) || !(cap > 0) || !Number.isFinite(start)) {
@@ -151,7 +153,7 @@
       );
     }
 
-    const finitePoints = toFiniteValues([marketMin, cap, basis, start, p50]).filter((value) => value > 0);
+    const finitePoints = toFiniteValues([marketMin, cap, basis, start, target, backup, p50]).filter((value) => value > 0);
     const rawMin = Math.min(...finitePoints);
     const rawMax = Math.max(...finitePoints);
     const domainMin = Math.max(0, Math.min(rawMin * 0.85, marketMin * 0.85));
@@ -161,9 +163,10 @@
 
     const card = createNode("article", "market-estimator-chart-card");
     const head = createNode("div", "market-estimator-chart-head");
+    const postureLabel = result?.strategy?.pricingPosture === "premium" ? "inkl. Zielpreis + Backup" : "konservativer Startpreis";
     head.append(
       createNode("h6", "", "Preisposition im Marktkorridor"),
-      createNode("small", "", "Markt-Min bis Cap mit Startpreis-Marker"),
+      createNode("small", "", postureLabel),
     );
     card.append(head);
 
@@ -184,6 +187,8 @@
       { label: "Markt-Min", value: marketMin, className: "marker-min", radius: 2.2 },
       { label: "P50", value: p50, className: "marker-p50", radius: 2.2 },
       { label: "Basis", value: basis, className: "marker-basis", radius: 2.2 },
+      { label: "Backup", value: backup, className: "marker-backup", radius: 2.6 },
+      { label: "Ziel", value: target, className: "marker-target", radius: 2.8 },
       { label: "Start", value: start, className: "marker-start", radius: 3.2 },
       { label: "Cap", value: cap, className: "marker-cap", radius: 2.2 },
     ].filter((marker) => Number.isFinite(marker.value) && marker.value > 0);
@@ -199,6 +204,8 @@
     appendLegendItem(legend, "swatch-min", "Markt-Min", fmt.currency(marketMin));
     appendLegendItem(legend, "swatch-p50", "P50", Number.isFinite(p50) && p50 > 0 ? fmt.currency(p50) : "-");
     appendLegendItem(legend, "swatch-basis", "Basis", Number.isFinite(basis) && basis > 0 ? fmt.currency(basis) : "-");
+    appendLegendItem(legend, "swatch-backup", "Backup", Number.isFinite(backup) && backup > 0 ? fmt.currency(backup) : "-");
+    appendLegendItem(legend, "swatch-target", "Ziel", Number.isFinite(target) && target > 0 ? fmt.currency(target) : "-");
     appendLegendItem(legend, "swatch-start", "Start", fmt.currency(start));
     appendLegendItem(legend, "swatch-cap", "Cap", fmt.currency(cap));
     card.append(legend);
@@ -248,6 +255,7 @@
     const priceFactor = num(share.priceFactor, Number.NaN);
     const diffFactor = num(share.diffFactor, Number.NaN);
     const ppcFactor = num(share.ppcFactor, Number.NaN);
+    const assetFactor = num(share.assetFactor, Number.NaN);
     const sharePct = num(share.sharePct, Number.NaN);
     const uncappedSharePct = num(share.uncappedSharePct, Number.NaN);
     const capApplied = Boolean(share.capApplied);
@@ -263,7 +271,8 @@
     const afterPrice = afterReview * (Number.isFinite(priceFactor) ? priceFactor : 1);
     const afterDiff = afterPrice * (Number.isFinite(diffFactor) ? diffFactor : 1);
     const afterPpc = afterDiff * (Number.isFinite(ppcFactor) ? ppcFactor : 1);
-    const uncapped = Number.isFinite(uncappedSharePct) ? uncappedSharePct : afterPpc;
+    const afterAsset = afterPpc * (Number.isFinite(assetFactor) ? assetFactor : 1);
+    const uncapped = Number.isFinite(uncappedSharePct) ? uncappedSharePct : afterAsset;
     const maxValue = Math.max(1, uncapped, sharePct, 5);
 
     const card = createNode("article", "market-estimator-chart-card");
@@ -281,6 +290,7 @@
       createShareRow("Nach Preis", `x ${Number.isFinite(priceFactor) ? priceFactor.toFixed(2) : "-"}`, afterPrice, maxValue),
       createShareRow("Nach Differenzierung", `x ${Number.isFinite(diffFactor) ? diffFactor.toFixed(2) : "-"}`, afterDiff, maxValue),
       createShareRow("Nach PPC", `x ${Number.isFinite(ppcFactor) ? ppcFactor.toFixed(2) : "-"}`, afterPpc, maxValue),
+      createShareRow("Nach Listing-Asset", `x ${Number.isFinite(assetFactor) ? assetFactor.toFixed(2) : "-"}`, afterAsset, maxValue),
       createShareRow("Endwert (gecappt)", capApplied ? "Cap 5%" : "kein Cap", sharePct, maxValue, true),
     );
     card.append(rows);
@@ -340,6 +350,8 @@
     const keywordMethod = result?.keywordMethod ?? {};
     const demand = result?.demand ?? {};
     const share = result?.share ?? {};
+    const competitorCoverage = num(competitor.coverage, Number.NaN);
+    const competitorSource = String(competitor.source || "table");
 
     const unitsCompetitor = num(demand.unitsCompetitorMethod);
     const unitsKeyword = num(demand.unitsKeywordMethod);
@@ -356,11 +368,21 @@
 
     const card = createNode("article", "market-estimator-chart-card");
     const head = createNode("div", "market-estimator-chart-head");
+    const subtitle = competitorSource === "legacy_total"
+      ? "Competitor-Pfad nutzt Legacy-Gesamtwert"
+      : "Dual-Flow mit konservativen Haircuts";
     head.append(
       createNode("h6", "", "TAM-Pfad-Vergleich"),
-      createNode("small", "", "Dual-Flow mit konservativen Haircuts"),
+      createNode("small", "", subtitle),
     );
     card.append(head);
+
+    if (Number.isFinite(competitorCoverage)) {
+      const coverageChip = createNode("p", "market-estimator-chart-badge");
+      coverageChip.classList.add(competitorCoverage >= 0.5 ? "tone-good" : "tone-warn");
+      coverageChip.textContent = `Competitor-Coverage: ${(competitorCoverage * 100).toFixed(1)}%`;
+      card.append(coverageChip);
+    }
 
     const flowGrid = createNode("div", "market-estimator-flow-grid");
 
@@ -488,7 +510,7 @@
     const head = createNode("div", "market-estimator-chart-head");
     head.append(
       createNode("h6", "", "Keyword-Preisverteilung"),
-      createNode("small", "", "Mini-Boxplots je aktivem Keyword"),
+      createNode("small", "", "Mini-Boxplots je aktivem Keyword (Quick/Pro)"),
     );
     card.append(head);
 

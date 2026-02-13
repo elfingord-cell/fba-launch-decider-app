@@ -4280,6 +4280,10 @@ tbody tr:hover {
   font-family: "Space Grotesk", "Manrope", sans-serif;
 }
 
+.market-estimator-step {
+  border-color: color-mix(in srgb, var(--line) 72%, white);
+}
+
 .market-estimator-tabs {
   display: flex;
   gap: 6px;
@@ -4309,6 +4313,10 @@ tbody tr:hover {
   gap: 8px;
 }
 
+.market-estimator-strategy-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .market-estimator-check-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4325,6 +4333,101 @@ tbody tr:hover {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.market-estimator-subcard {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fcfcfa;
+  padding: 8px;
+  display: grid;
+  gap: 7px;
+}
+
+.market-estimator-subcard h6 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-why-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.market-estimator-why-list li {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.market-estimator-tam-topn-row {
+  max-width: 180px;
+}
+
+.market-estimator-tam-table {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 9px;
+  background: #fff;
+  overflow: auto;
+}
+
+.market-estimator-tam-row {
+  min-width: 830px;
+  display: grid;
+  grid-template-columns: 40px 56px 1.6fr 130px 120px 110px;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 62%, white);
+}
+
+.market-estimator-tam-row:last-child {
+  border-bottom: 0;
+}
+
+.market-estimator-tam-row-head {
+  background: #f8faf9;
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.market-estimator-tam-index {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.market-estimator-tam-cell-check {
+  display: flex;
+  justify-content: center;
+}
+
+.market-estimator-tam-cell-stack {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.market-estimator-tam-row input,
+.market-estimator-tam-row select {
+  min-height: 30px;
+}
+
+.market-estimator-tam-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.66rem;
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .market-estimator-keyword-card {
@@ -4593,6 +4696,18 @@ tbody tr:hover {
   stroke-width: 1.4;
 }
 
+.market-estimator-bullet .marker-target {
+  stroke: #1c6fa6;
+  fill: #1c6fa6;
+  stroke-width: 1.4;
+}
+
+.market-estimator-bullet .marker-backup {
+  stroke: #4f7f6e;
+  fill: #4f7f6e;
+  stroke-width: 1.2;
+}
+
 .market-estimator-bullet .marker-cap {
   stroke: #b37a05;
   fill: #b37a05;
@@ -4651,6 +4766,14 @@ tbody tr:hover {
 
 .market-estimator-chart-swatch.swatch-start {
   background: #1f8d5a;
+}
+
+.market-estimator-chart-swatch.swatch-target {
+  background: #1c6fa6;
+}
+
+.market-estimator-chart-swatch.swatch-backup {
+  background: #4f7f6e;
 }
 
 .market-estimator-chart-swatch.swatch-cap {
@@ -5411,6 +5534,10 @@ tbody tr:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .market-estimator-strategy-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .market-estimator-keyword-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5456,6 +5583,7 @@ tbody tr:hover {
   }
 
   .market-estimator-core-grid,
+  .market-estimator-strategy-grid,
   .market-estimator-allowance-grid,
   .market-estimator-result-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5658,6 +5786,7 @@ tbody tr:hover {
 
   .market-estimator-summary-grid,
   .market-estimator-core-grid,
+  .market-estimator-strategy-grid,
   .market-estimator-check-grid,
   .market-estimator-allowance-grid,
   .market-estimator-keyword-fields,
@@ -5671,6 +5800,10 @@ tbody tr:hover {
   .market-estimator-final-units {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .market-estimator-tam-cell-stack {
+    grid-template-columns: 1fr;
   }
 
   .shipping-pack-assistant-control-grid {
