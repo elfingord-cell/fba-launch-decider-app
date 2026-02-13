@@ -357,7 +357,7 @@
               <div class="quick-cost-head">
                 <h3>Validation Playground (Sandbox)</h3>
                 <p class="hint">
-                  Teste 8 Kernregler ohne Direktspeicherung. Erst mit „Übernehmen“ werden Werte ins Produkt übernommen.
+                  Teste 7 Kernregler ohne Direktspeicherung. Erst mit „Übernehmen“ werden Werte ins Produkt übernommen.
                 </p>
               </div>
               <div class="validation-playground-grid">
@@ -384,10 +384,6 @@
                 <label>
                   Retourenquote (%)
                   <input id="validationDraftReturnRate" data-validation-draft-path="assumptions.returns.returnRate" type="number" min="0" max="100" step="0.1" />
-                </label>
-                <label>
-                  Launchdauer (Monate)
-                  <input id="validationDraftHorizon" data-validation-draft-path="basic.horizonMonths" type="number" min="1" step="1" />
                 </label>
                 <label>
                   Listing-Service
@@ -463,10 +459,6 @@
                       <option value="month">Einheiten / Monat</option>
                       <option value="day">Einheiten / Tag</option>
                     </select>
-                  </label>
-                  <label>
-                    Betrachtungszeitraum (Monate)
-                    <input data-path="basic.horizonMonths" type="number" min="1" step="1" />
                   </label>
                   <label>
                     TACoS (QuickCheck, %)
@@ -578,10 +570,6 @@
                       <option value="fba">FBA</option>
                       <option value="fbm" disabled>FBM (v2)</option>
                     </select>
-                  </label>
-                  <label>
-                    Launch-Budget gesamt (EUR)
-                    <input data-path="basic.launchBudgetTotal" type="number" min="0" step="0.01" />
                   </label>
                   <label>
                     Listing-Service
@@ -802,29 +790,6 @@
                     <input data-path="assumptions.lifecycle.otherMonthlyCost" type="number" min="0" step="0.01" />
                   </div>
                 </label>
-                <label class="toggle-row">
-                  <input data-path="assumptions.launchSplit.enabled" type="checkbox" />
-                  <span>Launch-Budget aufteilen (Details)</span>
-                </label>
-                <div class="launch-split" id="launchSplitBox">
-                  <label>
-                    Listing/Fotos/A+ (EUR)
-                    <input data-path="assumptions.launchSplit.listing" type="number" min="0" step="0.01" />
-                  </label>
-                  <label>
-                    Amazon Vine (EUR)
-                    <input data-path="assumptions.launchSplit.vine" type="number" min="0" step="0.01" />
-                  </label>
-                  <label>
-                    Coupons/Discounts (EUR)
-                    <input data-path="assumptions.launchSplit.coupons" type="number" min="0" step="0.01" />
-                  </label>
-                  <label>
-                    Sonstige Launchkosten (EUR)
-                    <input data-path="assumptions.launchSplit.other" type="number" min="0" step="0.01" />
-                  </label>
-                  <p id="launchSplitHint" class="hint"></p>
-                </div>
               </section>
 
               <section id="advancedOpsSection">

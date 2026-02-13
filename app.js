@@ -47,7 +47,6 @@ const VALIDATION_PLAYGROUND_PATHS = [
   "basic.packHeightCm",
   "assumptions.ads.tacosRate",
   "assumptions.returns.returnRate",
-  "basic.horizonMonths",
   "basic.listingPackage",
 ];
 
@@ -66,7 +65,6 @@ const SETUP_WIZARD_FIELD_LABELS = window.AppSetupWizardUI?.FIELD_LABEL_BY_PATH ?
   "basic.marketplace": "Marketplace",
   "basic.listingPackage": "Listing-Service",
   "basic.launchCompetition": "Nischenwettbewerb",
-  "basic.launchBudgetTotal": "Launch-Budget gesamt",
 };
 
 const FALLBACK_SETUP_WIZARD_STEPS = [
@@ -109,10 +107,6 @@ const FALLBACK_SETUP_WIZARD_STEPS = [
       { path: "basic.marketplace" },
       { path: "basic.listingPackage" },
       { path: "basic.launchCompetition" },
-      {
-        path: "basic.launchBudgetTotal",
-        isFilled: (value) => Number.isFinite(num(value, NaN)) && num(value, 0) >= 0,
-      },
     ],
     nextHint: "EXW, Marketplace und Launch-Annahmen setzen.",
   },
@@ -746,9 +740,8 @@ const FIELD_HELP = {
   name: "Interner Produktname zur Vergleichbarkeit in der Multi-Produkt-Ansicht.",
   "basic.priceGross": "Brutto-Verkaufspreis in EUR (inkl. USt.). Netto = Brutto / (1 + USt).",
   "basic.category": "Kategorie steuert Defaults wie TACoS, Retouren, Referral Fee und Zielmarge.",
-  "basic.demandValue": "Absatzannahme je Tag oder Monat. Daraus werden Monats- und Zeitraum-Units berechnet.",
+  "basic.demandValue": "Absatzannahme je Tag oder Monat. Daraus werden Monats-Units berechnet.",
   "basic.demandBasis": "Wähle, ob die Absatzannahme pro Tag oder pro Monat gilt.",
-  "basic.horizonMonths": "Betrachtungszeitraum in Monaten; verteilt Launch-Kosten und bestimmt ROI/Payback.",
   "basic.netWeightG": "Produktgewicht netto in Gramm; relevant für Kartonisierung, FBA-Tier und Shipping.",
   "basic.packLengthCm": "Produktverpackung Länge in cm je Einheit (nicht Umkarton).",
   "basic.packWidthCm": "Produktverpackung Breite in cm je Einheit (nicht Umkarton).",
@@ -758,7 +751,6 @@ const FIELD_HELP = {
   "basic.exwUnit": "Einkaufspreis EXW in USD. Wird mit aktuellem USD→EUR Kurs umgerechnet.",
   "basic.marketplace": "Marktplatz setzt die lokale USt für Brutto→Netto Berechnung.",
   "basic.fulfillmentModel": "Fulfillment-Flag. v1 rechnet FBA.",
-  "basic.launchBudgetTotal": "Einmaliges Launch-Budget in EUR; wird auf Zeitraum amortisiert.",
   "basic.listingPackage": "Auswahl der Listing-Serviceklasse. Preise kommen aus globalen Settings.",
   "basic.launchCompetition": "Wettbewerbsniveau der Nische. Steuert Launch-Boost auf TACoS und Einführungspreis.",
 
@@ -785,11 +777,6 @@ const FIELD_HELP = {
 
   "assumptions.lifecycle.targetMarginPct": "Ziel-Nettomarge in %, für die Max-TACoS berechnet wird.",
   "assumptions.lifecycle.otherMonthlyCost": "Weitere monatliche Lifecycle-Kosten in EUR.",
-  "assumptions.launchSplit.enabled": "Aktiviert die Aufteilung des Launch-Budgets nach Kostenarten.",
-  "assumptions.launchSplit.listing": "Kosten für Listing/Fotos/A+ in EUR.",
-  "assumptions.launchSplit.vine": "Kosten für Amazon Vine in EUR.",
-  "assumptions.launchSplit.coupons": "Launch-Kosten für Coupons/Discounts in EUR.",
-  "assumptions.launchSplit.other": "Sonstige Launch-Kosten in EUR.",
   "assumptions.cartonization.manualEnabled": "Aktiviert eine manuelle Umkartonisierung (Packing-List Override).",
   "assumptions.cartonization.unitsPerCarton": "Manuelle Stück je Umkarton aus realer Packing List.",
   "assumptions.cartonization.cartonLengthCm": "Manuelle Umkarton-Länge in cm (optional).",
@@ -1104,8 +1091,8 @@ const KPI_HELP = {
   kpiTotalCostPerUnit: "Gesamtkosten/Unit = Gesamtkosten/Monat / Monatsabsatz.",
   kpiBreakEvenPrice: "Break-even Preis brutto: Preis, bei dem Gewinn netto/Monat = 0.",
   kpiMaxTacos: "Max TACoS: höchste Ads-Quote, bei der die Ziel-Nettomarge gerade noch erreicht wird.",
-  kpiProductRoi: "Produkt-ROI = Gewinn im Zeitraum / (Landed Kapital + Launch-Budget) × 100.",
-  kpiCashRoi: "Cash-ROI = Gewinn im Zeitraum / (Produktkapital + Launch) × 100.",
+  kpiProductRoi: "Produkt-ROI = Gewinn im Lifecycle-Zeitraum / (Landed Kapital + Setup/Lifecycle-Kapital) × 100.",
+  kpiCashRoi: "Cash-ROI = Gewinn im Lifecycle-Zeitraum / gebundenes Kapital × 100.",
   kpiPayback: "Payback (Monate) = initial gebundenes Kapital / Gewinn netto pro Monat.",
 };
 
@@ -1119,8 +1106,8 @@ const TABLE_HEADER_HELP = [
   "DB1 je Stück in EUR auf Netto-Basis.",
   "DB1-Marge in % vom Nettoverkaufspreis.",
   "Gewinn netto pro Monat in EUR nach allen 3 Kostenblöcken.",
-  "Produkt-ROI in % auf Waren- und Launch-Kapital.",
-  "Cash-ROI in % auf gebundenes Produkt- und Launch-Kapital.",
+  "Produkt-ROI in % auf Waren- und Setup/Lifecycle-Kapital.",
+  "Cash-ROI in % auf gebundenes Kapital.",
   "Payback-Zeit bis Kapitalrückfluss in Monaten.",
   "Brutto-Preis, bei dem Gewinn netto = 0.",
   "Maximal mögliche TACoS-Quote für die Zielmarge.",
@@ -1246,7 +1233,7 @@ const UI_HELP_TEXT = {
   "ui.product_shipping":
     "Produkt- und Versandparameter steuern Kartonisierung, Shipping und 3PL-Anteile je Unit.",
   "ui.purchase_launch":
-    "Einkauf, Amazon und Launch definieren EXW, Gebühren sowie Budgeteffekte auf Gewinn und Payback.",
+    "Einkauf, Amazon und Launch definieren EXW, Gebühren sowie Launch-/Lifecycle-Effekte auf Gewinn und Payback.",
 };
 
 const QUICK_BLOCK_SUMMARY = {
@@ -1255,7 +1242,7 @@ const QUICK_BLOCK_SUMMARY = {
   threepl: "Receiving, Lagerung, Outbound.",
   amazon: "Referral, FBA, Amazon-Lagerung.",
   ads_returns: "Ads, Retourenverlust, Handling.",
-  launch_lifecycle: "Listing, Launch-Budget, Ops.",
+  launch_lifecycle: "Listing, Launch-Boost, Ops.",
   overhead: "Leakage / Overhead.",
 };
 
@@ -1502,7 +1489,7 @@ const DERIVED_DRIVER_MAP = {
   },
   "derived.quick.blockLaunchCorePerUnit": {
     label: "Quick-Block Launch Core (EUR/Unit)",
-    help: "Quick-Hauptblock Launch Core aus Listing, Launch-Budget und Launch-Ops je Unit.",
+    help: "Quick-Hauptblock Launch Core aus Listing, Launch-Boost und Launch-Ops je Unit.",
     format: "currency",
     read: (metrics) => metrics.quickBlockLaunchCorePerUnit,
   },
@@ -2551,7 +2538,7 @@ function defaultProduct(index = 1) {
       category: "home",
       demandValue: 280,
       demandBasis: "month",
-      horizonMonths: 6,
+      horizonMonths: DEFAULT_SETTINGS.lifecycle.defaultMonths,
       netWeightG: 520,
       packLengthCm: 24,
       packWidthCm: 16,
@@ -6521,12 +6508,13 @@ function resolveAssumptions(product, settings = state.settings) {
   const launchProfile = launchProfiles[launchProfileKey] ?? launchProfiles.medium;
 
   const defaultTacos = clamp(category.tacosRate, 0, 100);
+  const defaultLifecycleMonths = clamp(roundInt(settings.lifecycle?.defaultMonths, 36), 1, 120);
   const launchWeeksFromProfileDefault = clamp(num(launchProfile.weeks, 6), 1, 24);
   const defaultLaunchMultiplier = GLOBAL_DEFAULTS.launchAdsMultiplier;
   const defaultLaunchMonths = Math.max(
     0.25,
     Math.min(
-      roundInt(basic.horizonMonths, 1),
+      defaultLifecycleMonths,
       launchWeeksFromProfileDefault / WEEKS_PER_MONTH_EQUIVALENT,
     ),
   );
@@ -6546,7 +6534,6 @@ function resolveAssumptions(product, settings = state.settings) {
   const defaultImportVatRate = clamp(GLOBAL_DEFAULTS.importVatRate, 0, 30);
   const defaultReferralRate = clamp(category.referralRate, 0, 25);
   const defaultTargetMargin = clamp(category.targetMarginPct, 0, 50);
-  const defaultLifecycleMonths = clamp(roundInt(settings.lifecycle?.defaultMonths, 36), 1, 120);
   const defaultListingPackageTotal =
     num(listingPackage.listingCreationEur) +
     num(listingPackage.imagesInfographicsEur) +
@@ -6771,7 +6758,7 @@ function resolveAssumptions(product, settings = state.settings) {
       assumptions.ads.launchMonths,
       defaultLaunchMonths,
       0.25,
-      Math.max(1, roundInt(basic.horizonMonths, 1)),
+      defaultLifecycleMonths,
     ),
 
     returnRate: resolveValue(
@@ -6902,10 +6889,8 @@ function resolveAssumptions(product, settings = state.settings) {
     defaultBase,
   };
 
-  resolved.launchBudgetEffective =
-    resolved.launchSplitEnabled && resolved.launchBudgetSplitTotal > 0
-      ? resolved.launchBudgetSplitTotal
-      : Math.max(0, num(basic.launchBudgetTotal));
+  // V4: Launch-Budget als eigener Kostenblock ist fachlich deaktiviert.
+  resolved.launchBudgetEffective = 0;
 
   resolved.assumedLabels = {
     "ads.tacosRate": assumedText(
@@ -7277,7 +7262,7 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     0,
     (scenario.monthlyUnits ?? unitsMonthlyFromBasic(basic)) * (scenario.unitsFactor ?? 1),
   );
-  const horizonMonths = Math.max(1, roundInt(basic.horizonMonths, 1));
+  const horizonMonths = Math.max(1, roundInt(resolved.lifecycleMonths, 1));
   const unitsHorizon = monthlyUnits * horizonMonths;
 
   const priceGrossBase = Math.max(0, num(basic.priceGross));
@@ -7389,7 +7374,12 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     100,
   );
 
+  const adsBaseUnit = priceGross * (tacosRate / 100);
+  const adsBaseMonthly = adsBaseUnit * monthlyUnits;
   const adsUnit = priceGross * (effectiveTacosRate / 100);
+  const adsMonthly = adsUnit * monthlyUnits;
+  const launchAdsIncrementMonthly = Math.max(0, adsMonthly - adsBaseMonthly);
+  const launchAdsIncrementUnit = monthlyUnits > 0 ? launchAdsIncrementMonthly / monthlyUnits : 0;
 
   const returnRate = resolved.returnRate / 100;
   const sellableShare = resolved.sellableShare / 100;
@@ -7400,7 +7390,7 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const returnHandlingUnit = returnRate * resolved.returnHandlingCost;
   const returnsUnit = returnRate * returnCostPerReturn;
 
-  const unitEconomicsUnit = landedUnit + referralFeeUnit + fba.fee + adsUnit + returnsUnit;
+  const unitEconomicsUnit = landedUnit + referralFeeUnit + fba.fee + adsBaseUnit + returnsUnit;
 
   const db1Unit = priceNet - unitEconomicsUnit;
   const db1MarginPct = priceNet > 0 ? (db1Unit / priceNet) * 100 : 0;
@@ -7412,21 +7402,17 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
 
   const block1Monthly = unitEconomicsUnit * monthlyUnits;
   const shippingMonthly = shippingUnit * monthlyUnits;
-  const adsMonthly = adsUnit * monthlyUnits;
   const returnsMonthly = returnsUnit * monthlyUnits;
   const referralMonthly = referralFeeUnit * monthlyUnits;
   const customsMonthly = customsUnit * monthlyUnits;
   const importVatCostMonthly = 0;
 
-  const launchAdsBaseUnit = priceGross * (tacosRate / 100);
-  const launchAdsIncrementMonthly = Math.max(0, (adsUnit - launchAdsBaseUnit) * monthlyUnits);
-
   const launchBudget = resolved.launchBudgetEffective;
   const listingPackageCost = resolved.listingPackageTotal;
   const listingUnit = unitsHorizon > 0 ? listingPackageCost / unitsHorizon : 0;
   const listingMonthly = listingPackageCost / resolved.lifecycleMonths;
-  const launchUnit = unitsHorizon > 0 ? launchBudget / unitsHorizon : 0;
-  const launchMonthly = launchBudget / horizonMonths;
+  const launchUnit = 0;
+  const launchMonthly = 0;
   const launchUnits = monthlyUnits * launchBoostMonths;
   const greetingCardTotal = extra.greetingCardPerLaunchUnitEur * launchUnits;
   const setupOneOffTotal =
@@ -7437,7 +7423,8 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const launchOpsUnit = unitsHorizon > 0 ? (greetingCardTotal + setupOneOffTotal) / unitsHorizon : 0;
   const launchOpsMonthly = (greetingCardTotal + setupOneOffTotal) / horizonMonths;
 
-  const lifecycleMonthly = launchMonthly + listingMonthly + launchOpsMonthly + resolved.otherMonthlyCost;
+  const lifecycleMonthly =
+    launchMonthly + listingMonthly + launchOpsMonthly + launchAdsIncrementMonthly + resolved.otherMonthlyCost;
   const block2Monthly = lifecycleMonthly;
 
   const leakageMonthly = netRevenueMonthly * (resolved.leakageRatePct / 100);
@@ -7456,8 +7443,8 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const quickBlockExwPerUnit = exwUnit;
   const quickBlockShippingTo3plPerUnit = shippingUnit + customsUnit + orderFixedPerUnit;
   const quickBlockThreePlPerUnit = threePlTotalPerUnit;
-  const quickBlockAmazonCorePerUnit = referralFeeUnit + adsUnit + fba.fee;
-  const quickBlockLaunchCorePerUnit = listingUnit + launchUnit + launchOpsUnit;
+  const quickBlockAmazonCorePerUnit = referralFeeUnit + adsBaseUnit + fba.fee;
+  const quickBlockLaunchCorePerUnit = listingUnit + launchUnit + launchOpsUnit + launchAdsIncrementUnit;
   const quickCoreCostPerUnit =
     quickBlockExwPerUnit +
     quickBlockShippingTo3plPerUnit +
@@ -7466,14 +7453,14 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     quickBlockLaunchCorePerUnit;
   const quickCoreCostMonthly = quickCoreCostPerUnit * monthlyUnits;
 
-  const investedCapital = landedUnit * unitsHorizon + launchBudget + listingPackageCost + setupOneOffTotal;
+  const investedCapital = landedUnit * unitsHorizon + listingPackageCost + setupOneOffTotal;
   const productRoiPct = investedCapital > 0 ? (profitHorizon / investedCapital) * 100 : 0;
 
   const importVatPrefinance = 0;
   const cashCapital = investedCapital;
   const cashRoiPct = cashCapital > 0 ? (profitHorizon / cashCapital) * 100 : 0;
 
-  const paybackBase = launchBudget + listingPackageCost + setupOneOffTotal + landedUnit * monthlyUnits;
+  const paybackBase = listingPackageCost + setupOneOffTotal + landedUnit * monthlyUnits;
   const paybackMonths = profitMonthly > 0 ? paybackBase / profitMonthly : null;
 
   const totalCostMonthly = block1Monthly + block2Monthly + block3Monthly;
@@ -7559,8 +7546,11 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
 
     tacosRate,
     effectiveTacosRate,
+    adsBaseUnit,
+    adsBaseMonthly,
     adsUnit,
     adsMonthly,
+    launchAdsIncrementUnit,
     launchAdsIncrementMonthly,
 
     returnRatePct: resolved.returnRate,
@@ -8751,18 +8741,16 @@ function buildStageImpactItems(metrics, stage) {
       pinned: true,
     },
     {
-      label: "Werbung/Ads inkl. Launch-Boost (EUR/Unit)",
-      value: formatCurrency(metrics.adsUnit),
-      impactMonthly: metrics.adsMonthly,
-      explain: "TACoS-basiert inkl. Launch-Boost-Profil.",
-      formula: "Ads/Unit = Brutto-Preis × effektiver TACoS%; effektiver TACoS berücksichtigt Launch-Boost.",
-      source: "User-Input TACoS + Kategorie-/Launch-Defaults.",
+      label: "Werbung/Ads laufend (ohne Launch-Boost) (EUR/Unit)",
+      value: formatCurrency(metrics.adsBaseUnit),
+      impactMonthly: metrics.adsBaseMonthly,
+      explain: "TACoS-basierte laufende Ads-Kosten ohne Launch-Boost-Anteil.",
+      formula: "Ads/Unit = Brutto-Preis × TACoS%.",
+      source: "User-Input TACoS + Kategorie-Defaults.",
       robustness: "Niedrig bis mittel (stark markt- und rankingabhängig).",
       driverPaths: [
         "assumptions.ads.tacosRate",
-        "assumptions.ads.launchMultiplier",
-        "assumptions.ads.launchMonths",
-        "basic.launchCompetition",
+        "basic.priceGross",
       ],
       pinned: true,
     },
@@ -8786,14 +8774,15 @@ function buildStageImpactItems(metrics, stage) {
       label: "Listing & Lifecycle (EUR/Unit)",
       value: formatCurrency(listingLifecycleUnit),
       impactMonthly: metrics.block2Monthly,
-      explain: "Amortisierte Listing-, Launch- und Lifecycle-Kosten pro Unit.",
+      explain: "Amortisierte Listing-, Launch-Boost- und Lifecycle-Kosten pro Unit.",
       formula: "Listing & Lifecycle/Unit = Block 2/Monat ÷ Monatsabsatz.",
-      source: "Global Listing/Lifecycle Settings + Launchbudget.",
+      source: "Global Listing/Lifecycle Settings + Launch-Profil.",
       robustness: "Mittel bis hoch.",
       driverPaths: [
-        "basic.launchBudgetTotal",
         "basic.listingPackage",
-        "basic.horizonMonths",
+        "assumptions.ads.launchMultiplier",
+        "assumptions.ads.launchMonths",
+        "basic.launchCompetition",
         "settings.lifecycle.defaultMonths",
         "assumptions.lifecycle.otherMonthlyCost",
       ],
@@ -8973,21 +8962,11 @@ function buildStageImpactItems(metrics, stage) {
       pinned: true,
     },
     {
-      label: "Launch-Budget / Monat",
-      value: formatCurrency(metrics.launchMonthly),
-      impactMonthly: metrics.launchMonthly,
-      explain: "Launchbudget amortisiert auf den Betrachtungszeitraum.",
-      formula: "Launch/Monat = Launchbudget gesamt / Betrachtungszeitraum (Monate).",
-      source: "User-Input + ggf. Launch-Split.",
-      robustness: "Hoch (direkte Budgetvorgabe).",
-      driverPaths: ["basic.launchBudgetTotal", "basic.horizonMonths"],
-    },
-    {
       label: "Launch Ops (Grußkarte + Setup) / Monat",
       value: formatCurrency(metrics.launchOpsMonthly),
       impactMonthly: metrics.launchOpsMonthly,
       explain: "Launch-Operationskosten inklusive Grußkarten und Einmalkosten.",
-      formula: "Launch Ops/Monat = (Grußkarten total + Setup total) / Betrachtungszeitraum.",
+      formula: "Launch Ops/Monat = (Grußkarten total + Setup total) / Lifecycle-Zeitraum.",
       source: "Global costDefaults oder Produkt-Override.",
       robustness: "Mittel bis hoch (teilweise volumenabhängig).",
       driverPaths: [
@@ -10326,15 +10305,15 @@ function buildCostCategoryData(metrics) {
           label: "Samples amortisiert (EUR/Unit)",
           valueRaw: setupSampleUnit,
           impactMonthly: setupSampleUnit * metrics.monthlyUnits,
-          explain: "Einmalige Sample-Kosten auf den Betrachtungszeitraum umgelegt.",
-          formula: "Samples/Unit = samples_per_product / Units im Zeitraum.",
+          explain: "Einmalige Sample-Kosten auf den globalen Lifecycle-Zeitraum umgelegt.",
+          formula: "Samples/Unit = samples_per_product / Units im Lifecycle-Zeitraum.",
           source: "Settings oder Produkt-Override.",
           robustness: "Hoch.",
           driverPaths: [
             "assumptions.extraCosts.overrideLaunchOpsGroup",
             "assumptions.extraCosts.samplesPerProductEur",
             "settings.costDefaults.samplesPerProductEur",
-            "basic.horizonMonths",
+            "settings.lifecycle.defaultMonths",
             "basic.demandValue",
             "basic.demandBasis",
           ],
@@ -10343,15 +10322,15 @@ function buildCostCategoryData(metrics) {
           label: "Tooling amortisiert (EUR/Unit)",
           valueRaw: setupToolingUnit,
           impactMonthly: setupToolingUnit * metrics.monthlyUnits,
-          explain: "Einmalige Tooling-Kosten auf den Zeitraum verteilt.",
-          formula: "Tooling/Unit = tooling_per_product / Units im Zeitraum.",
+          explain: "Einmalige Tooling-Kosten auf den globalen Lifecycle-Zeitraum verteilt.",
+          formula: "Tooling/Unit = tooling_per_product / Units im Lifecycle-Zeitraum.",
           source: "Settings oder Produkt-Override.",
           robustness: "Hoch.",
           driverPaths: [
             "assumptions.extraCosts.overrideLaunchOpsGroup",
             "assumptions.extraCosts.toolingPerProductEur",
             "settings.costDefaults.toolingPerProductEur",
-            "basic.horizonMonths",
+            "settings.lifecycle.defaultMonths",
             "basic.demandValue",
             "basic.demandBasis",
           ],
@@ -10360,15 +10339,15 @@ function buildCostCategoryData(metrics) {
           label: "Zertifikate amortisiert (EUR/Unit)",
           valueRaw: setupCertificatesUnit,
           impactMonthly: setupCertificatesUnit * metrics.monthlyUnits,
-          explain: "Compliance-/Zertifikatskosten auf den Zeitraum verteilt.",
-          formula: "Certificates/Unit = certificates_per_product / Units im Zeitraum.",
+          explain: "Compliance-/Zertifikatskosten auf den globalen Lifecycle-Zeitraum verteilt.",
+          formula: "Certificates/Unit = certificates_per_product / Units im Lifecycle-Zeitraum.",
           source: "Settings oder Produkt-Override.",
           robustness: "Hoch.",
           driverPaths: [
             "assumptions.extraCosts.overrideLaunchOpsGroup",
             "assumptions.extraCosts.certificatesPerProductEur",
             "settings.costDefaults.certificatesPerProductEur",
-            "basic.horizonMonths",
+            "settings.lifecycle.defaultMonths",
             "basic.demandValue",
             "basic.demandBasis",
           ],
@@ -10377,15 +10356,15 @@ function buildCostCategoryData(metrics) {
           label: "Inspection amortisiert (EUR/Unit)",
           valueRaw: setupInspectionUnit,
           impactMonthly: setupInspectionUnit * metrics.monthlyUnits,
-          explain: "Quality-Inspection-Kosten in China auf den Zeitraum verteilt.",
-          formula: "Inspection/Unit = inspection_per_product / Units im Zeitraum.",
+          explain: "Quality-Inspection-Kosten in China auf den globalen Lifecycle-Zeitraum verteilt.",
+          formula: "Inspection/Unit = inspection_per_product / Units im Lifecycle-Zeitraum.",
           source: "Settings oder Produkt-Override.",
           robustness: "Hoch.",
           driverPaths: [
             "assumptions.extraCosts.overrideLaunchOpsGroup",
             "assumptions.extraCosts.inspectionPerProductEur",
             "settings.costDefaults.inspectionPerProductEur",
-            "basic.horizonMonths",
+            "settings.lifecycle.defaultMonths",
             "basic.demandValue",
             "basic.demandBasis",
           ],
@@ -10744,18 +10723,16 @@ function buildCostCategoryData(metrics) {
       lines: [
         line({
           id: "quick_core.amazon.ads",
-          label: "Ads inkl. Launch-Boost (EUR/Unit)",
-          valueRaw: metrics.adsUnit,
-          impactMonthly: metrics.adsMonthly,
-          explain: "Werbekosten auf Brutto-Umsatzbasis inklusive Launch-Profil.",
-          formula: "Ads/Unit = gross_price × effective_TACoS.",
-          source: "Kategorie-Defaults + Launch-Profil + Overrides.",
+          label: "Ads laufend (ohne Launch-Boost) (EUR/Unit)",
+          valueRaw: metrics.adsBaseUnit,
+          impactMonthly: metrics.adsBaseMonthly,
+          explain: "Laufende Werbekosten auf Brutto-Umsatzbasis ohne Launch-Boost-Anteil.",
+          formula: "Ads base/Unit = gross_price × TACoS.",
+          source: "Kategorie-Defaults + Ads-Overrides.",
           robustness: "Niedrig bis mittel.",
           driverPaths: [
             "assumptions.ads.tacosRate",
-            "assumptions.ads.launchMultiplier",
-            "assumptions.ads.launchMonths",
-            "basic.launchCompetition",
+            "basic.priceGross",
           ],
         }),
         line({
@@ -10795,15 +10772,20 @@ function buildCostCategoryData(metrics) {
       collapsedRows: 4,
       lines: [
         line({
-          id: "quick_core.launch.budget",
-          label: "Launch-Budget amortisiert (EUR/Unit)",
-          valueRaw: metrics.launchUnit,
-          impactMonthly: metrics.launchMonthly,
-          explain: "Launchbudget über Betrachtungszeitraum verteilt.",
-          formula: "Launch/Unit = launch_budget_total / Units im Zeitraum.",
-          source: "Produktinput + optional Launch-Split.",
-          robustness: "Hoch.",
-          driverPaths: ["basic.launchBudgetTotal", "assumptions.launchSplit.enabled", "basic.horizonMonths"],
+          id: "quick_core.launch.ads_boost",
+          label: "Launch-Boost Ads (EUR/Unit)",
+          valueRaw: metrics.launchAdsIncrementUnit,
+          impactMonthly: metrics.launchAdsIncrementMonthly,
+          explain: "Zusätzlicher Ads-Anteil aus Launch-Profil gegenüber laufendem TACoS.",
+          formula: "Launch boost ads/Unit = (ads_with_boost - ads_base) / monthly_units.",
+          source: "Launch-Profil + Ads-Overrides.",
+          robustness: "Niedrig bis mittel.",
+          driverPaths: [
+            "assumptions.ads.launchMultiplier",
+            "assumptions.ads.launchMonths",
+            "basic.launchCompetition",
+            "assumptions.ads.tacosRate",
+          ],
         }),
         line({
           id: "quick_core.launch.listing",
@@ -10831,6 +10813,7 @@ function buildCostCategoryData(metrics) {
             "assumptions.extraCosts.toolingPerProductEur",
             "assumptions.extraCosts.certificatesPerProductEur",
             "assumptions.extraCosts.inspectionPerProductEur",
+            "settings.lifecycle.defaultMonths",
           ],
         }),
         line({
@@ -10843,10 +10826,12 @@ function buildCostCategoryData(metrics) {
           robustness: "Mittel.",
           isSummary: true,
           driverPaths: [
-            "basic.launchBudgetTotal",
             "basic.listingPackage",
             "assumptions.lifecycle.otherMonthlyCost",
-            "basic.horizonMonths",
+            "assumptions.ads.launchMultiplier",
+            "assumptions.ads.launchMonths",
+            "basic.launchCompetition",
+            "settings.lifecycle.defaultMonths",
           ],
           excludeFromCategoryTotal: true,
         }),
@@ -15080,8 +15065,8 @@ function buildCostBlockModalPayload(metrics, blockKey, contextStage = "quick") {
     return {
       title: "Amazon Core (Referral + TACoS + FBA) (EUR/Unit)",
       value: baseValue(metrics.quickBlockAmazonCorePerUnit),
-      explain: "Amazon-Kernkosten in der Wertschöpfung: Referral, Ads/TACoS und FBA Fulfillment.",
-      formula: "Amazon Core/Unit = referral + ads + fba.",
+      explain: "Amazon-Kernkosten in der Wertschöpfung: Referral, laufende Ads/TACoS und FBA Fulfillment.",
+      formula: "Amazon Core/Unit = referral + ads_base + fba.",
       source: "Amazon-Gebührenlogik + Kategorie-/Launch-Parameter + DE FBA Ratecard.",
       robustness: "Mittel bis hoch.",
       detailPreset: "amazon_core",
@@ -15089,8 +15074,6 @@ function buildCostBlockModalPayload(metrics, blockKey, contextStage = "quick") {
         "derived.quick.blockAmazonCorePerUnit",
         "assumptions.amazon.referralRate",
         "assumptions.ads.tacosRate",
-        "assumptions.ads.launchMultiplier",
-        "assumptions.ads.launchMonths",
         "assumptions.amazon.useManualFbaFee",
         "assumptions.amazon.manualFbaFee",
         "derived.amazon.fbaFeeSource",
@@ -15115,21 +15098,17 @@ function buildCostBlockModalPayload(metrics, blockKey, contextStage = "quick") {
     return {
       title: "Launch Core (EUR/Unit)",
       value: baseValue(metrics.quickBlockLaunchCorePerUnit),
-      explain: "Launch-Grundblock aus Listing, Launch-Budget und operativen Launch-Setups.",
-      formula: "Launch Core/Unit = listing_unit + launch_budget_unit + launch_ops_unit.",
+      explain: "Launch-Grundblock aus Listing, Launch-Boost und operativen Launch-Setups.",
+      formula: "Launch Core/Unit = listing_unit + launch_boost_ads_unit + launch_ops_unit.",
       source: "Listing-/Launch-Settings + Produktinput.",
       robustness: "Mittel.",
       driverPaths: [
         "derived.quick.blockLaunchCorePerUnit",
-        "basic.launchBudgetTotal",
         "basic.listingPackage",
-        "basic.horizonMonths",
         "basic.launchCompetition",
-        "assumptions.launchSplit.enabled",
-        "assumptions.launchSplit.listing",
-        "assumptions.launchSplit.vine",
-        "assumptions.launchSplit.coupons",
-        "assumptions.launchSplit.other",
+        "assumptions.ads.launchMultiplier",
+        "assumptions.ads.launchMonths",
+        "assumptions.ads.tacosRate",
         "assumptions.extraCosts.samplesPerProductEur",
         "assumptions.extraCosts.toolingPerProductEur",
         "assumptions.extraCosts.certificatesPerProductEur",
@@ -15431,9 +15410,6 @@ function createValidationSandboxDraftFromProduct(product) {
 function normalizeValidationDraftValue(path, rawValue) {
   if (STRING_PATHS.has(path)) {
     return String(rawValue ?? "");
-  }
-  if (path === "basic.horizonMonths") {
-    return Math.max(1, roundInt(rawValue, 1));
   }
   return Math.max(0, num(rawValue, 0));
 }
@@ -16241,24 +16217,12 @@ function renderAssumedLabels(assumedLabels, diagnostics = {}) {
 }
 
 function renderLaunchHint(product, resolved) {
-  const splitEnabled = Boolean(product.assumptions.launchSplit.enabled);
-  const splitTotal = resolved.launchBudgetSplitTotal;
-  const baseLaunch = num(product.basic.launchBudgetTotal);
+  if (!dom.launchSplitHint) {
+    return;
+  }
   const listingMonthly = resolved.listingPackageTotal / resolved.lifecycleMonths;
   const listingText = `Listing-Paket (${listingPackageLabel(resolved.listingPackageKey)}): ${formatCurrency(resolved.listingPackageTotal)} gesamt, ${formatCurrency(listingMonthly)}/Monat über ${formatNumber(resolved.lifecycleMonths)} Monate.`;
-
-  if (!splitEnabled) {
-    dom.launchSplitHint.textContent = `Aktiv: Pflichtfeld Launch-Budget (${formatCurrency(baseLaunch)}). ${listingText}`;
-    return;
-  }
-
-  if (splitTotal <= 0) {
-    dom.launchSplitHint.textContent =
-      `Launch-Split aktiviert, aber Summe = 0. Es wird auf Launch-Budget gesamt zurückgefallen. ${listingText}`;
-    return;
-  }
-
-  dom.launchSplitHint.textContent = `Launch-Split aktiv: ${formatCurrency(splitTotal)} (ersetzt Pflichtfeld-Wert). ${listingText}`;
+  dom.launchSplitHint.textContent = listingText;
 }
 
 function renderStagePanel(product, metrics) {
@@ -16668,11 +16632,13 @@ function syncControlStates(product) {
     manualFbaFeeInput.disabled = !manualFbaOverrideEnabled;
   });
 
-  const launchSplitEnabled = Boolean(getByPath(product, "assumptions.launchSplit.enabled"));
-  const launchSplitFields = dom.launchSplitBox.querySelectorAll("input[data-path]");
-  launchSplitFields.forEach((field) => {
-    field.disabled = !launchSplitEnabled;
-  });
+  if (dom.launchSplitBox) {
+    const launchSplitEnabled = Boolean(getByPath(product, "assumptions.launchSplit.enabled"));
+    const launchSplitFields = dom.launchSplitBox.querySelectorAll("input[data-path]");
+    launchSplitFields.forEach((field) => {
+      field.disabled = !launchSplitEnabled;
+    });
+  }
 
   const cartonManualEnabled = Boolean(getByPath(product, "assumptions.cartonization.manualEnabled"));
   document.querySelectorAll('[data-path="assumptions.cartonization.unitsPerCarton"], [data-path="assumptions.cartonization.cartonLengthCm"], [data-path="assumptions.cartonization.cartonWidthCm"], [data-path="assumptions.cartonization.cartonHeightCm"], [data-path="assumptions.cartonization.cartonGrossWeightKg"]').forEach((field) => {
@@ -17172,9 +17138,6 @@ function updateSelectedField(path, rawValue) {
   const nextValue = normalizeFieldValue(path, rawValue);
   setByPath(selected, path, nextValue);
 
-  if (path === "basic.horizonMonths") {
-    selected.basic.horizonMonths = clamp(roundInt(selected.basic.horizonMonths, 1), 1, 36);
-  }
   if (path === "basic.unitsPerOrder") {
     selected.basic.unitsPerOrder = Math.max(1, roundInt(selected.basic.unitsPerOrder, 1));
   }

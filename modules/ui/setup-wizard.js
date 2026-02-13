@@ -16,7 +16,6 @@
     "basic.marketplace": "Marketplace",
     "basic.listingPackage": "Listing-Service",
     "basic.launchCompetition": "Nischenwettbewerb",
-    "basic.launchBudgetTotal": "Launch-Budget gesamt",
   });
 
   function defaultIsFilled(value) {
@@ -27,10 +26,6 @@
       return value.trim().length > 0;
     }
     return Boolean(value);
-  }
-
-  function nonNegativeIsFilled(value) {
-    return Number.isFinite(Number(value)) && Number(value) >= 0;
   }
 
   function createDefaultSteps() {
@@ -74,7 +69,6 @@
           { path: "basic.marketplace" },
           { path: "basic.listingPackage" },
           { path: "basic.launchCompetition" },
-          { path: "basic.launchBudgetTotal", isFilled: nonNegativeIsFilled },
         ],
         nextHint: "EXW, Marketplace und Launch-Annahmen setzen.",
       },
