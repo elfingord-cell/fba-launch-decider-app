@@ -16019,6 +16019,14 @@ function buildCockpitVisualPayload(metrics, stage = "quick", categories = null) 
     ],
   };
 
+  const canonicalPriceNet = num(metrics?.priceNet, Number.NaN);
+  const canonicalTotalCostPerUnit = num(metrics?.totalCostPerUnit, Number.NaN);
+  const canonicalDb1Unit = num(metrics?.db1Unit, Number.NaN);
+  const canonicalProfitPerUnit =
+    num(metrics?.monthlyUnits, 0) > 0
+      ? num(metrics?.profitMonthly, Number.NaN) / num(metrics.monthlyUnits, 1)
+      : Number.NaN;
+
   const totalCostMonthly = Math.max(0, num(metrics?.totalCostMonthly, 0));
   const impactRows = categoryRows
     .flatMap((category) => {
@@ -16065,6 +16073,13 @@ function buildCockpitVisualPayload(metrics, stage = "quick", categories = null) 
       rows: paretoRows,
       totalCostMonthly,
       topN,
+    },
+    kpis: {
+      priceNet: canonicalPriceNet,
+      totalCostPerUnit: canonicalTotalCostPerUnit,
+      db1Unit: canonicalDb1Unit,
+      profitPerUnit: canonicalProfitPerUnit,
+      profitMonthly: num(metrics?.profitMonthly, Number.NaN),
     },
   };
 }

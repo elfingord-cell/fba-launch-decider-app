@@ -289,7 +289,7 @@
     return node;
   }
 
-  function extractCostSegments(payload, maxSegments = 4) {
+  function extractCostSegments(payload, maxSegments = 4, targetTotal = Number.NaN) {
     const blocks = Array.isArray(payload?.waterfall?.blocks) ? payload.waterfall.blocks : [];
     const rows = blocks
       .map((entry) => ({
@@ -298,19 +298,39 @@
       }))
       .filter((entry) => entry.value > 0)
       .sort((a, b) => b.value - a.value);
-    if (rows.length <= maxSegments) {
-      return rows;
+
+    const sourceRows = rows.length <= maxSegments
+      ? rows
+      : [
+        ...rows.slice(0, maxSegments - 1),
+        { label: "Sonstige", value: rows.slice(maxSegments - 1).reduce((sum, row) => sum + row.value, 0) },
+      ];
+
+    const sourceTotal = sourceRows.reduce((sum, row) => sum + row.value, 0);
+    if (Number.isFinite(targetTotal) && targetTotal > 0 && sourceTotal > 0) {
+      const scale = targetTotal / sourceTotal;
+      return sourceRows.map((row) => ({
+        ...row,
+        value: row.value * scale,
+      }));
     }
-    const top = rows.slice(0, maxSegments - 1);
-    const rest = rows.slice(maxSegments - 1).reduce((sum, row) => sum + row.value, 0);
-    return [...top, { label: "Sonstige", value: rest }];
+    return sourceRows;
   }
 
   function renderMiniWaterfallCard(payload, fmt) {
+    const kpis = payload?.kpis ?? {};
     const waterfall = payload?.waterfall ?? {};
-    const startValue = num(waterfall.startValue);
-    const endValue = num(waterfall.endValue);
-    const costs = extractCostSegments(payload, 4);
+    const startValue = Number.isFinite(num(kpis.priceNet)) ? num(kpis.priceNet) : num(waterfall.startValue);
+    const totalCostCanonical = Number.isFinite(num(kpis.totalCostPerUnit))
+      ? num(kpis.totalCostPerUnit)
+      : Number.NaN;
+    const costs = extractCostSegments(payload, 4, totalCostCanonical);
+    const derivedCostTotal = costs.reduce((sum, row) => sum + Math.max(0, num(row.value, 0)), 0);
+    const effectiveCostTotal = Number.isFinite(totalCostCanonical) ? totalCostCanonical : derivedCostTotal;
+    const endValueRaw = Number.isFinite(num(kpis.profitPerUnit))
+      ? num(kpis.profitPerUnit)
+      : startValue - effectiveCostTotal;
+    const endValue = Number.isFinite(endValueRaw) ? endValueRaw : startValue - effectiveCostTotal;
     if (!Number.isFinite(startValue) || !Number.isFinite(endValue) || costs.length === 0) {
       return noDataCard("Waterfall", "Keine belastbaren Umsatz/Kostenwerte.");
     }
@@ -319,7 +339,7 @@
     const head = createNode("header", "cockpit-chart-head");
     head.append(
       createNode("h6", "", "Waterfall (kompakt)"),
-      createNode("small", "", "Umsatz -> Kosten -> DB"),
+      createNode("small", "", "Netto-Umsatz -> Kosten/Unit -> Gewinn/Unit"),
     );
     card.append(head);
 
@@ -331,7 +351,7 @@
       bars.push({ label: cost.label, from: running, to: next, kind: "cost", raw: -cost.value });
       running = next;
     });
-    bars.push({ label: "DB", from: 0, to: endValue, kind: "end", raw: endValue });
+    bars.push({ label: "Gewinn", from: 0, to: endValue, kind: "end", raw: endValue });
 
     const allValues = bars.flatMap((entry) => [entry.from, entry.to]).filter((value) => Number.isFinite(value));
     const domainMin = Math.min(0, ...allValues);
@@ -381,12 +401,20 @@
     });
 
     card.append(svg);
+
+    const refNote = createNode("p", "cockpit-mini-hint");
+    const db1Text = Number.isFinite(num(kpis.db1Unit)) ? fmt.currency(num(kpis.db1Unit)) : "-";
+    refNote.textContent = `Referenz: Kosten/Unit ${fmt.currency(effectiveCostTotal)} · Gewinn/Unit ${fmt.currency(endValue)} · DB1 (Decision-Bar) ${db1Text}`;
+    card.append(refNote);
     return card;
   }
 
   function renderMiniPieCard(payload, fmt) {
-    const segments = extractCostSegments(payload, 5);
-    const total = segments.reduce((sum, entry) => sum + entry.value, 0);
+    const kpis = payload?.kpis ?? {};
+    const canonicalTotal = Number.isFinite(num(kpis.totalCostPerUnit)) ? num(kpis.totalCostPerUnit) : Number.NaN;
+    const segments = extractCostSegments(payload, 5, canonicalTotal);
+    const derivedTotal = segments.reduce((sum, entry) => sum + entry.value, 0);
+    const total = Number.isFinite(canonicalTotal) ? canonicalTotal : derivedTotal;
     if (!(total > 0)) {
       return noDataCard("Kostenmix", "Keine Kostensegmente vorhanden.");
     }
@@ -485,7 +513,7 @@
     const head = createNode("header", "cockpit-chart-head");
     head.append(
       createNode("h6", "", "Sensitivity (compact)"),
-      createNode("small", "", "Worst / Base / Best"),
+      createNode("small", "", "Gewinn / Monat"),
     );
     card.append(head);
 
@@ -520,6 +548,11 @@
       legend.append(item);
     });
     card.append(legend);
+
+    const explain = createNode("p", "cockpit-mini-hint");
+    explain.textContent =
+      "Abhängig von Stressannahmen: Preis -10%, TACoS +2pp, Absatz -10%. Worst kombiniert alle drei, Best ist die inverse Kombination.";
+    card.append(explain);
 
     return card;
   }

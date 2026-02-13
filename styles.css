@@ -1083,6 +1083,14 @@ body[data-page="settings"] .sidebar-actions {
   font-family: "Space Grotesk", "Manrope", sans-serif;
 }
 
+.cockpit-mini-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .kpi.compact {
   padding: 8px;
 }
