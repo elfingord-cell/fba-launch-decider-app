@@ -1781,6 +1781,8 @@ const state = {
     shippingPackLabDraft: null,
     shippingPackLabExpanded: false,
     shippingPackLabBaselineMetrics: null,
+    shippingPackLabBaselineCapturedAt: null,
+    shippingPackLabBaselineSummary: null,
     shippingPackLabSandboxMetrics: null,
     shippingPackLabApplySelection: {
       applyProductDims: false,
@@ -5988,6 +5990,8 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
   let estimatedCartonGrossWeightKg = estimatedAuto?.cartonGrossKg ?? (unitWeightKgGross * unitsPerCartonAuto);
   let manualDimensionsProvided = false;
   let manualWeightProvided = false;
+  let cartonDimsSource = "auto_estimated";
+  let cartonWeightSource = "auto_estimated";
   let cartonizationSource = "auto_hard_caps";
   let unitsPerCartonSelectionReason = unitsPerCartonAuto < unitsPerCartonCapCandidate
     ? "auto_cap_downshift_exact_fit"
@@ -6006,7 +6010,9 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
       estimatedCartonLengthCm = manualLengthCm;
       estimatedCartonWidthCm = manualWidthCm;
       estimatedCartonHeightCm = manualHeightCm;
+      cartonDimsSource = "manual_provided";
     } else {
+      cartonDimsSource = "auto_for_manual_units";
       const estimatedForManualUnits = estimateCartonForExactUnits({
         unitDims: [lengthCm, widthCm, heightCm],
         unitGrossKg: unitWeightKgGross,
@@ -6025,13 +6031,18 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
 
     if (manualWeightProvided) {
       estimatedCartonGrossWeightKg = manualGrossKg;
+      cartonWeightSource = "manual_provided";
     } else if (!Number.isFinite(estimatedCartonGrossWeightKg) || estimatedCartonGrossWeightKg <= 0) {
       estimatedCartonGrossWeightKg = unitsPerCartonAuto * unitWeightKgGross;
+      cartonWeightSource = "auto_estimated";
     }
     cartonizationSource = "manual_override";
     unitsPerCartonSelectionReason = "manual_override";
   }
   const unitsPerCartonDownshift = manualEnabled ? 0 : Math.max(0, unitsPerCartonCapCandidate - unitsPerCartonAuto);
+  const optimizationStatus = !manualEnabled
+    ? (unitsPerCartonDownshift > 0 ? "auto_downshift_exact_fit" : "auto_exact_fit")
+    : (manualDimensionsProvided && manualWeightProvided ? "manual_override_checked" : "manual_override_partial");
   const manualMaxUnitsByDimensions = manualDimensionsProvided
     ? maxUnitsByDimensionCap(
       [lengthCm, widthCm, heightCm],
@@ -6280,10 +6291,14 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     unitsPerCartonAuto,
     physicalCartonsCount,
     cartonsCount,
+    manualDimensionsProvided,
+    manualWeightProvided,
     estimatedCartonLengthCm,
     estimatedCartonWidthCm,
     estimatedCartonHeightCm,
     estimatedCartonGrossWeightKg,
+    cartonDimsSource,
+    cartonWeightSource,
     cartonVolumeCbm: cartonCbm,
     productVolumeInCartonCbm,
     voidVolumeCbm,
@@ -6292,6 +6307,7 @@ function calculateShippingDoorToDoor(product, settings = state.settings) {
     weightFillPct,
     cartonizationSource,
     cartonizationSourceLabel: cartonizationSourceLabel(cartonizationSource),
+    optimizationStatus,
     manualFitStatus,
     manualMaxUnitsByDimensions,
     manualFitHint,
@@ -10965,6 +10981,7 @@ function createEmptyMarketEstimatorResult(input, context, flags = []) {
       mvpPrice: Number.NaN,
       marketMin: Number.NaN,
       highPriceCap: Number.NaN,
+      priceAnchorP50Pack: Number.NaN,
       startPrice: Number.NaN,
       minPrice: Number.NaN,
       maxPrice: Number.NaN,
@@ -10979,6 +10996,8 @@ function createEmptyMarketEstimatorResult(input, context, flags = []) {
       priceFactor: 0,
       diffFactor: 0,
       ppcFactor: 0,
+      uncappedSharePct: 0,
+      capApplied: false,
       sharePct: 0,
     },
     keywordMethod: {
@@ -11757,6 +11776,24 @@ function createMarketEstimatorModalContent(selected, metrics) {
   });
   resultCard.appendChild(resultGrid);
 
+  const visualSection = document.createElement("section");
+  visualSection.className = "market-estimator-visual-section";
+  const visualTitle = document.createElement("h6");
+  visualTitle.textContent = "Visual Insights";
+  visualSection.appendChild(visualTitle);
+  const visualGrid = document.createElement("div");
+  visualGrid.className = "market-estimator-visual-grid";
+  if (window.AppMarketEstimatorCharts && typeof window.AppMarketEstimatorCharts.render === "function") {
+    window.AppMarketEstimatorCharts.render(visualGrid, result, { locale: "de-DE", currency: "EUR" });
+  } else {
+    const fallback = document.createElement("p");
+    fallback.className = "hint";
+    fallback.textContent = "Visualisierung nicht verfuegbar.";
+    visualGrid.appendChild(fallback);
+  }
+  visualSection.appendChild(visualGrid);
+  resultCard.appendChild(visualSection);
+
   const flags = Array.isArray(result?.flags) ? result.flags : [];
   const flagsTitle = document.createElement("p");
   flagsTitle.className = "hint";
@@ -11836,6 +11873,252 @@ function defaultShippingPackLabApplySelection() {
     applyProductDims: false,
     applyCartonOverride: false,
   };
+}
+
+function buildShippingPackLabBaselineSummary(metrics) {
+  const shipping = metrics?.shipping ?? {};
+  return {
+    modeLabel: shipping.cartonizationSource === "manual_override" ? "manuell" : "auto",
+    unitsPerCarton: num(shipping.unitsPerCartonAuto, 0),
+    physicalCartons: num(shipping.physicalCartonsCount, 0),
+    shipmentCbm: num(shipping.shipmentCbm, 0),
+    chargeableCbm: num(shipping.chargeableCbm, 0),
+  };
+}
+
+function captureShippingPackLabBaseline(selected, baselineMetrics, options = {}) {
+  if (!selected) {
+    return null;
+  }
+  const baseMetrics = baselineMetrics ?? calculateProduct(selected);
+  state.ui.shippingPackLabBaselineMetrics = baseMetrics;
+  state.ui.shippingPackLabBaselineCapturedAt = new Date().toISOString();
+  state.ui.shippingPackLabBaselineSummary = buildShippingPackLabBaselineSummary(baseMetrics);
+  if (options.resetDraft !== false) {
+    state.ui.shippingPackLabDraft = createShippingPackLabDraftFromProduct(selected, baseMetrics);
+  }
+  if (options.resetSandbox !== false) {
+    state.ui.shippingPackLabSandboxMetrics = null;
+  }
+  return baseMetrics;
+}
+
+function shippingPackSourceLabel(sourceKey) {
+  if (sourceKey === "manual_provided") {
+    return "manuell";
+  }
+  if (sourceKey === "auto_for_manual_units") {
+    return "auto für manuelle Stückzahl";
+  }
+  return "auto";
+}
+
+function shippingPackSourceTone(sourceKey) {
+  if (sourceKey === "manual_provided") {
+    return "manual";
+  }
+  if (sourceKey === "auto_for_manual_units") {
+    return "hybrid";
+  }
+  return "auto";
+}
+
+function shippingPackOptimizationStatusLabel(statusKey) {
+  if (statusKey === "auto_downshift_exact_fit") {
+    return "Auto mit Downshift";
+  }
+  if (statusKey === "manual_override_checked") {
+    return "Manueller Override (vollständig)";
+  }
+  if (statusKey === "manual_override_partial") {
+    return "Manueller Override (teilweise geschätzt)";
+  }
+  return "Auto exakt";
+}
+
+function shippingPackOptimizationStatusTone(statusKey, manualFitStatus) {
+  if (String(manualFitStatus).startsWith("warn")) {
+    return "warn";
+  }
+  if (statusKey === "auto_exact_fit" || statusKey === "manual_override_checked") {
+    return "good";
+  }
+  if (statusKey === "auto_downshift_exact_fit" || statusKey === "manual_override_partial") {
+    return "warn";
+  }
+  return "info";
+}
+
+function buildShippingPackHierarchyViewModel(selected, baselineMetrics, sandboxMetrics, draft) {
+  const baselineShipping = baselineMetrics?.shipping ?? {};
+  const sandboxShipping = sandboxMetrics?.shipping ?? {};
+  const rules = state.settings?.cartonRules ?? {};
+  const assumptionsCarton = selected?.assumptions?.cartonization ?? {};
+  const hasStoredManualValues = [
+    "unitsPerCarton",
+    "cartonLengthCm",
+    "cartonWidthCm",
+    "cartonHeightCm",
+    "cartonGrossWeightKg",
+  ].some((key) => num(assumptionsCarton[key], 0) > 0);
+
+  const unitsPerOrder = Math.max(1, num(sandboxShipping.unitsPerOrder, 1));
+  const modeKey = normalizeShippingMode(sandboxShipping.modeKey ?? sandboxShipping.transportMode);
+  const mainRunVariableUnit = num(sandboxShipping.mainRunVariable, 0) / unitsPerOrder;
+  const railVariableUnit = modeKey === "rail"
+    ? (
+      (num(sandboxShipping.originPerCbmEur, 0) * num(sandboxShipping.shipmentCbm, 0)) +
+      (num(sandboxShipping.deOncarriagePerCbmEur, 0) * num(sandboxShipping.shipmentCbm, 0))
+    ) / unitsPerOrder
+    : 0;
+  const threePlCartonBasedUnit =
+    num(sandboxMetrics?.threePlInboundPerUnit, 0) +
+    num(sandboxMetrics?.threePlOutboundServicePerUnit, 0) +
+    num(sandboxMetrics?.threePlCarrierPerUnit, 0);
+
+  const optimizationStatus = String(sandboxShipping.optimizationStatus || "auto_exact_fit");
+  const optimizationTone = shippingPackOptimizationStatusTone(optimizationStatus, sandboxShipping.manualFitStatus);
+  let optimizationDetail = "Auto-Kandidat passt geometrisch ohne Reduktion.";
+  if (optimizationStatus === "auto_downshift_exact_fit") {
+    optimizationDetail = `Auto-Kandidat wurde um ${formatNumber(num(sandboxShipping.unitsPerCartonDownshift, 0))} Stück reduziert, damit ein exaktes Raster (nx×ny×nz) möglich ist.`;
+  } else if (optimizationStatus === "manual_override_checked") {
+    optimizationDetail = "Manueller Override nutzt vollständige Maß- und Gewichtsangaben.";
+  } else if (optimizationStatus === "manual_override_partial") {
+    optimizationDetail = "Manueller Override ist aktiv, aber Maße und/oder Gewicht werden teilweise geschätzt.";
+  }
+
+  return {
+    baseline: {
+      capturedAt: state.ui.shippingPackLabBaselineCapturedAt,
+      modeLabel: baselineShipping.cartonizationSource === "manual_override" ? "manuell" : "auto",
+      unitsPerCarton: num(baselineShipping.unitsPerCartonAuto, 0),
+      physicalCartons: num(baselineShipping.physicalCartonsCount, 0),
+      shipmentCbm: num(baselineShipping.shipmentCbm, 0),
+      chargeableCbm: num(baselineShipping.chargeableCbm, 0),
+    },
+    inputSources: {
+      productDimsText: `${formatNumber(num(draft?.packLengthCm, 0))} × ${formatNumber(num(draft?.packWidthCm, 0))} × ${formatNumber(num(draft?.packHeightCm, 0))} cm`,
+      hardCapsText: `${formatNumber(num(rules.maxLengthCm, 0))} × ${formatNumber(num(rules.maxWidthCm, 0))} × ${formatNumber(num(rules.maxHeightCm, 0))} cm · ${formatNumber(num(rules.maxWeightKg, 0))} kg`,
+      manualOverrideProduct: Boolean(assumptionsCarton.manualEnabled),
+      hasStoredManualValues,
+      sandboxModeText: "What-if erzwingt temporär manuellen Override (nur im Lab).",
+    },
+    selection: {
+      unitsPerCartonCapCandidate: num(sandboxShipping.unitsPerCartonCapCandidate, 0),
+      unitsPerCartonAuto: num(sandboxShipping.unitsPerCartonAuto, 0),
+      unitsPerCartonDownshift: num(sandboxShipping.unitsPerCartonDownshift, 0),
+      selectionReason: cartonizationSelectionReasonLabel(sandboxShipping.unitsPerCartonSelectionReason),
+      cartonizationSourceLabel: sandboxShipping.cartonizationSourceLabel ?? cartonizationSourceLabel(sandboxShipping.cartonizationSource),
+      dimsSourceKey: sandboxShipping.cartonDimsSource || "auto_estimated",
+      weightSourceKey: sandboxShipping.cartonWeightSource || "auto_estimated",
+      optimizationStatus,
+      optimizationLabel: shippingPackOptimizationStatusLabel(optimizationStatus),
+      optimizationTone,
+      optimizationDetail,
+      manualFitLabel: shippingManualFitStatusLabel(sandboxShipping.manualFitStatus),
+      manualFitHint: sandboxShipping.manualFitHint,
+    },
+    costChain: {
+      unitsPerOrder,
+      physicalCartons: num(sandboxShipping.physicalCartonsCount, 0),
+      shipmentCbm: num(sandboxShipping.shipmentCbm, 0),
+      shipmentWeightKg: num(sandboxShipping.shipmentWeightKg, 0),
+      chargeableCbm: num(sandboxShipping.chargeableCbm, 0),
+      mainRunVariableUnit,
+      railVariableUnit,
+      threePlCartonBasedUnit,
+      shippingTo3plUnit: num(sandboxMetrics?.quickBlockShippingTo3plPerUnit, 0),
+    },
+  };
+}
+
+function renderShippingPackHierarchySection(vm) {
+  const section = document.createElement("section");
+  section.className = "shipping-pack-hierarchy";
+  const title = document.createElement("h5");
+  title.textContent = "Hierarchie (Was bedingt was?)";
+  section.appendChild(title);
+
+  const steps = document.createElement("div");
+  steps.className = "shipping-pack-hierarchy-steps";
+
+  const step1 = document.createElement("article");
+  step1.className = "hierarchy-step";
+  step1.innerHTML = `
+    <div class="hierarchy-step-head">
+      <h6>1) Aktive Quellen</h6>
+      <span class="status-badge tone-info">Input</span>
+    </div>
+    <ul class="hierarchy-list">
+      <li><span>Produktmaße (What-if)</span><strong>${vm.inputSources.productDimsText}</strong></li>
+      <li><span>Hard-Caps aus Settings</span><strong>${vm.inputSources.hardCapsText}</strong></li>
+      <li><span>Manueller Override im Produkt</span><strong>${vm.inputSources.manualOverrideProduct ? "aktiv" : "inaktiv"}</strong></li>
+    </ul>
+    <p class="hint">${vm.inputSources.sandboxModeText}</p>
+  `;
+  if (!vm.inputSources.manualOverrideProduct && vm.inputSources.hasStoredManualValues) {
+    const note = document.createElement("p");
+    note.className = "hint warn";
+    note.textContent = "Gespeicherte manuelle Umkartonwerte existieren, sind aber aktuell inaktiv.";
+    step1.appendChild(note);
+  }
+  steps.appendChild(step1);
+
+  const step2 = document.createElement("article");
+  step2.className = "hierarchy-step";
+  step2.innerHTML = `
+    <div class="hierarchy-step-head">
+      <h6>2) Kartonisierungsauswahl</h6>
+      <span class="status-badge tone-${vm.selection.optimizationTone}">${vm.selection.optimizationLabel}</span>
+    </div>
+    <div class="source-chip-row">
+      <span class="source-chip tone-${shippingPackSourceTone(vm.selection.dimsSourceKey)}">Quelle Umkartonmaß: ${shippingPackSourceLabel(vm.selection.dimsSourceKey)}</span>
+      <span class="source-chip tone-${shippingPackSourceTone(vm.selection.weightSourceKey)}">Quelle Umkartongewicht: ${shippingPackSourceLabel(vm.selection.weightSourceKey)}</span>
+    </div>
+    <ul class="hierarchy-list">
+      <li><span>Kandidat Stück je Umkarton</span><strong>${formatNumber(vm.selection.unitsPerCartonCapCandidate)}</strong></li>
+      <li><span>Stück je Umkarton (aktiv)</span><strong>${formatNumber(vm.selection.unitsPerCartonAuto)}</strong></li>
+      <li><span>Downshift</span><strong>${formatNumber(vm.selection.unitsPerCartonDownshift)}</strong></li>
+      <li><span>Auswahlgrund</span><strong>${vm.selection.selectionReason}</strong></li>
+      <li><span>Kartonisierung</span><strong>${vm.selection.cartonizationSourceLabel}</strong></li>
+      <li><span>Plausibilität manuell</span><strong>${vm.selection.manualFitLabel}</strong></li>
+    </ul>
+    <p class="hint">${vm.selection.optimizationDetail}</p>
+  `;
+  if (vm.selection.manualFitHint) {
+    const manualHint = document.createElement("p");
+    manualHint.className = `hint ${String(vm.selection.manualFitLabel).includes("Warnung") ? "warn" : ""}`;
+    manualHint.textContent = vm.selection.manualFitHint;
+    step2.appendChild(manualHint);
+  }
+  steps.appendChild(step2);
+
+  const step3 = document.createElement("article");
+  step3.className = "hierarchy-step";
+  step3.innerHTML = `
+    <div class="hierarchy-step-head">
+      <h6>3) Kostenwirkungskette</h6>
+      <span class="status-badge tone-info">Output</span>
+    </div>
+    <p class="hierarchy-chain">
+      Units/PO -> Kartons -> Shipment-CBM & Gewicht -> W/M-CBM -> variable Shipping-Kosten + kartonbasierte 3PL-Kosten
+    </p>
+    <ul class="hierarchy-list">
+      <li><span>Units pro PO</span><strong>${formatNumber(vm.costChain.unitsPerOrder)}</strong></li>
+      <li><span>Physische Kartons</span><strong>${formatNumber(vm.costChain.physicalCartons)}</strong></li>
+      <li><span>Sendungsvolumen</span><strong>${formatNumber(vm.costChain.shipmentCbm)} CBM</strong></li>
+      <li><span>Sendungsgewicht</span><strong>${formatNumber(vm.costChain.shipmentWeightKg)} kg</strong></li>
+      <li><span>Abrechnungsvolumen (W/M)</span><strong>${formatNumber(vm.costChain.chargeableCbm)} CBM</strong></li>
+      <li><span>Hauptlauf variabel / Unit</span><strong>${formatCurrency(vm.costChain.mainRunVariableUnit)}</strong></li>
+      <li><span>Rail Vor-/Nachlauf variabel / Unit</span><strong>${formatCurrency(vm.costChain.railVariableUnit)}</strong></li>
+      <li><span>3PL kartonbasiert / Unit</span><strong>${formatCurrency(vm.costChain.threePlCartonBasedUnit)}</strong></li>
+      <li><span>Shipping zu 3PL / Unit</span><strong>${formatCurrency(vm.costChain.shippingTo3plUnit)}</strong></li>
+    </ul>
+  `;
+  steps.appendChild(step3);
+
+  section.appendChild(steps);
+  return section;
 }
 
 function normalizeShippingPackLabDraft(rawDraft, selected, baselineMetrics) {
@@ -11974,14 +12257,20 @@ function ensureShippingPackLabSession(selected, baselineMetrics = null) {
     !state.ui.shippingPackLabDraft ||
     !state.ui.shippingPackLabBaselineMetrics;
   if (shouldReset) {
-    const baseMetrics = baselineMetrics ?? calculateProduct(selected);
     state.ui.shippingPackLabProductId = selected.id;
-    state.ui.shippingPackLabBaselineMetrics = baseMetrics;
-    state.ui.shippingPackLabDraft = createShippingPackLabDraftFromProduct(selected, baseMetrics);
-    state.ui.shippingPackLabSandboxMetrics = null;
+    captureShippingPackLabBaseline(selected, baselineMetrics ?? calculateProduct(selected), {
+      resetDraft: true,
+      resetSandbox: true,
+    });
     state.ui.shippingPackLabExpanded = false;
     state.ui.shippingPackLabApplySelection = defaultShippingPackLabApplySelection();
   } else {
+    if (!state.ui.shippingPackLabBaselineCapturedAt) {
+      state.ui.shippingPackLabBaselineCapturedAt = new Date().toISOString();
+    }
+    if (!state.ui.shippingPackLabBaselineSummary) {
+      state.ui.shippingPackLabBaselineSummary = buildShippingPackLabBaselineSummary(state.ui.shippingPackLabBaselineMetrics);
+    }
     state.ui.shippingPackLabDraft = normalizeShippingPackLabDraft(
       state.ui.shippingPackLabDraft,
       selected,
@@ -12112,9 +12401,10 @@ function applyShippingPackLabSelection(selected) {
   }
 
   saveProducts();
-  const baselineMetrics = calculateProduct(selected);
-  state.ui.shippingPackLabBaselineMetrics = baselineMetrics;
-  state.ui.shippingPackLabDraft = createShippingPackLabDraftFromProduct(selected, baselineMetrics);
+  const baselineMetrics = captureShippingPackLabBaseline(selected, calculateProduct(selected), {
+    resetDraft: true,
+    resetSandbox: false,
+  });
   state.ui.shippingPackLabSandboxMetrics = baselineMetrics;
   state.ui.shippingPackLabApplySelection = defaultShippingPackLabApplySelection();
   refreshAfterModalInput();
@@ -12130,6 +12420,8 @@ function openShippingPackAssistantModal() {
   state.ui.shippingPackLabProductId = null;
   state.ui.shippingPackLabDraft = null;
   state.ui.shippingPackLabBaselineMetrics = null;
+  state.ui.shippingPackLabBaselineCapturedAt = null;
+  state.ui.shippingPackLabBaselineSummary = null;
   state.ui.shippingPackLabSandboxMetrics = null;
   state.ui.shippingPackLabExpanded = false;
   state.ui.shippingPackLabApplySelection = defaultShippingPackLabApplySelection();
@@ -12221,6 +12513,38 @@ function createShippingPackAssistantModalContent(selected, baselineMetricsInput)
   `;
   head.append(headText, headTile);
   section.appendChild(head);
+
+  const baselineSection = document.createElement("section");
+  baselineSection.className = "shipping-pack-baseline-card";
+  const baselineHead = document.createElement("div");
+  baselineHead.className = "shipping-pack-baseline-head";
+  const baselineTitle = document.createElement("h5");
+  baselineTitle.textContent = "Baseline & Vergleich";
+  const baselineStamp = document.createElement("small");
+  baselineStamp.className = "hint";
+  baselineHead.append(baselineTitle, baselineStamp);
+  baselineSection.appendChild(baselineHead);
+  const baselineGrid = document.createElement("div");
+  baselineGrid.className = "shipping-pack-baseline-grid";
+  baselineSection.appendChild(baselineGrid);
+  const baselineHint = document.createElement("p");
+  baselineHint.className = "hint";
+  baselineHint.textContent = "Baseline ist fix beim Öffnen und bleibt stabil, bis du sie explizit neu lädst.";
+  baselineSection.appendChild(baselineHint);
+  const baselineActions = document.createElement("div");
+  baselineActions.className = "shipping-pack-baseline-actions";
+  const resetWhatIfBtn = document.createElement("button");
+  resetWhatIfBtn.type = "button";
+  resetWhatIfBtn.className = "btn btn-ghost";
+  resetWhatIfBtn.textContent = "What-if zurücksetzen";
+  baselineActions.appendChild(resetWhatIfBtn);
+  const reloadBaselineBtn = document.createElement("button");
+  reloadBaselineBtn.type = "button";
+  reloadBaselineBtn.className = "btn btn-ghost";
+  reloadBaselineBtn.textContent = "Baseline neu laden";
+  baselineActions.appendChild(reloadBaselineBtn);
+  baselineSection.appendChild(baselineActions);
+  section.appendChild(baselineSection);
 
   const workspace = document.createElement("div");
   workspace.className = `shipping-pack-assistant-workspace ${state.ui.shippingPackLabExpanded ? "is-expanded" : ""}`;
@@ -12316,11 +12640,17 @@ function createShippingPackAssistantModalContent(selected, baselineMetricsInput)
   workspace.append(previewPanel, controlPanel);
   section.appendChild(workspace);
 
+  const hierarchyHost = document.createElement("div");
+  section.appendChild(hierarchyHost);
+
   const impactSection = document.createElement("section");
   impactSection.className = "shipping-pack-assistant-impact-section";
   const impactTitle = document.createElement("h5");
   impactTitle.textContent = "Impact (Baseline vs. What-if)";
   impactSection.appendChild(impactTitle);
+  const impactContext = document.createElement("p");
+  impactContext.className = "hint";
+  impactSection.appendChild(impactContext);
 
   const totalGrid = document.createElement("div");
   totalGrid.className = "shipping-pack-assistant-total-grid";
@@ -12400,7 +12730,40 @@ function createShippingPackAssistantModalContent(selected, baselineMetricsInput)
     applyBtn.disabled = !(activeSelection.applyProductDims || activeSelection.applyCartonOverride);
   };
 
+  const renderBaselineOverview = () => {
+    const summary = state.ui.shippingPackLabBaselineSummary ?? buildShippingPackLabBaselineSummary(baselineMetrics);
+    const capturedAt = state.ui.shippingPackLabBaselineCapturedAt;
+    baselineStamp.textContent = `Baseline vom ${capturedAt ? formatDate(capturedAt) : "-"}`;
+    baselineGrid.innerHTML = "";
+    const entries = [
+      { label: "Quelle", value: "Aktueller gespeicherter Produktzustand" },
+      { label: "Modus", value: summary.modeLabel },
+      { label: "Stück je Umkarton (aktiv)", value: formatNumber(summary.unitsPerCarton) },
+      { label: "Physische Kartons", value: formatNumber(summary.physicalCartons) },
+      { label: "Sendungsvolumen", value: `${formatNumber(summary.shipmentCbm)} CBM` },
+      { label: "Abrechnungsvolumen (W/M)", value: `${formatNumber(summary.chargeableCbm)} CBM` },
+    ];
+    entries.forEach((entry) => {
+      const card = document.createElement("article");
+      card.className = "shipping-pack-baseline-item";
+      card.innerHTML = `<span>${entry.label}</span><strong>${entry.value}</strong>`;
+      baselineGrid.appendChild(card);
+    });
+  };
+
+  const renderHierarchy = () => {
+    const vm = buildShippingPackHierarchyViewModel(selected, baselineMetrics, sandboxMetrics, draft);
+    hierarchyHost.innerHTML = "";
+    hierarchyHost.appendChild(renderShippingPackHierarchySection(vm));
+  };
+
   const renderImpact = () => {
+    impactContext.textContent = `Diese Deltas sind gegen Baseline vom ${state.ui.shippingPackLabBaselineCapturedAt ? formatDate(state.ui.shippingPackLabBaselineCapturedAt) : "-"} gerechnet.`;
+    headTile.innerHTML = `
+      <span>Delta Kosten / Unit</span>
+      <strong>${formatSignedCurrency(impact.total.deltaTotalCostPerUnit)}</strong>
+      <small>Delta Profit / Monat: ${formatSignedCurrency(impact.total.deltaProfitMonthly)}</small>
+    `;
     totalCostCard.className = `shipping-pack-assistant-impact-card ${toneForDelta(impact.total.deltaTotalCostPerUnit, false)}`;
     totalCostCard.innerHTML = `
       <span>Gesamtkosten / Unit</span>
@@ -12465,18 +12828,39 @@ function createShippingPackAssistantModalContent(selected, baselineMetricsInput)
     );
   };
 
+  resetWhatIfBtn.addEventListener("click", () => {
+    state.ui.shippingPackLabDraft = createShippingPackLabDraftFromProduct(selected, baselineMetrics);
+    draft = state.ui.shippingPackLabDraft;
+    state.ui.shippingPackLabApplySelection = defaultShippingPackLabApplySelection();
+    updateComputed();
+  });
+
+  reloadBaselineBtn.addEventListener("click", () => {
+    baselineMetrics = captureShippingPackLabBaseline(selected, calculateProduct(selected), {
+      resetDraft: true,
+      resetSandbox: true,
+    });
+    draft = state.ui.shippingPackLabDraft;
+    state.ui.shippingPackLabApplySelection = defaultShippingPackLabApplySelection();
+    updateComputed();
+  });
+
   const updateComputed = () => {
     const recalculated = recalculateShippingPackLabSandboxMetrics(selected);
     if (recalculated) {
       sandboxMetrics = recalculated;
     }
     impact = computeShippingPackLabImpact(baselineMetrics, sandboxMetrics);
+    renderBaselineOverview();
     renderPreview();
+    renderHierarchy();
     renderImpact();
     updateApplyButtonState();
   };
 
+  renderBaselineOverview();
   renderPreview();
+  renderHierarchy();
   renderImpact();
   updateApplyButtonState();
   return section;

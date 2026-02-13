@@ -4006,6 +4006,462 @@ tbody tr:hover {
   font-weight: 700;
 }
 
+.market-estimator-visual-section {
+  display: grid;
+  gap: 8px;
+}
+
+.market-estimator-visual-section h6 {
+  margin: 0;
+  font-size: 0.74rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-visual-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.market-estimator-chart-card {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fcfcfb;
+  padding: 8px;
+  display: grid;
+  gap: 7px;
+}
+
+.market-estimator-chart-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.market-estimator-chart-head h6 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-chart-head small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.market-estimator-bullet {
+  width: 100%;
+  height: 82px;
+}
+
+.market-estimator-bullet .track {
+  fill: #f0f4f3;
+  stroke: color-mix(in srgb, var(--line) 70%, white);
+  stroke-width: 1;
+}
+
+.market-estimator-bullet .zone-low {
+  fill: #f6d8d4;
+}
+
+.market-estimator-bullet .zone-market {
+  fill: #dff2ea;
+}
+
+.market-estimator-bullet .zone-near-cap {
+  fill: #f8e7c3;
+}
+
+.market-estimator-bullet .marker-min {
+  stroke: #b95c4f;
+  fill: #b95c4f;
+  stroke-width: 1.2;
+}
+
+.market-estimator-bullet .marker-p50 {
+  stroke: #3d7c95;
+  fill: #3d7c95;
+  stroke-width: 1.2;
+}
+
+.market-estimator-bullet .marker-basis {
+  stroke: #65798f;
+  fill: #65798f;
+  stroke-width: 1.2;
+}
+
+.market-estimator-bullet .marker-start {
+  stroke: #1f8d5a;
+  fill: #1f8d5a;
+  stroke-width: 1.4;
+}
+
+.market-estimator-bullet .marker-cap {
+  stroke: #b37a05;
+  fill: #b37a05;
+  stroke-width: 1.2;
+}
+
+.market-estimator-chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 8px;
+}
+
+.market-estimator-chart-legend-item {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 8px;
+  background: #fff;
+  padding: 5px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.market-estimator-chart-legend-item strong {
+  margin-left: auto;
+  font-size: 0.66rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-chart-legend-label {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.market-estimator-chart-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.market-estimator-chart-swatch.swatch-min {
+  background: #b95c4f;
+}
+
+.market-estimator-chart-swatch.swatch-p50 {
+  background: #3d7c95;
+}
+
+.market-estimator-chart-swatch.swatch-basis {
+  background: #65798f;
+}
+
+.market-estimator-chart-swatch.swatch-start {
+  background: #1f8d5a;
+}
+
+.market-estimator-chart-swatch.swatch-cap {
+  background: #b37a05;
+}
+
+.market-estimator-chart-badge {
+  margin: 0;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  background: #f7faf9;
+  padding: 6px 7px;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.market-estimator-chart-badge.tone-good {
+  border-color: color-mix(in srgb, #9fd6bf 60%, white);
+  background: #effaf4;
+  color: #24674d;
+}
+
+.market-estimator-chart-badge.tone-warn {
+  border-color: color-mix(in srgb, #e2c18a 60%, white);
+  background: #fff8ea;
+  color: #7f620c;
+}
+
+.market-estimator-chart-badge.tone-danger {
+  border-color: color-mix(in srgb, #e4aaa3 60%, white);
+  background: #fff4f2;
+  color: #96453b;
+}
+
+.market-estimator-share-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.market-estimator-share-row {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 8px;
+  background: #fff;
+  padding: 5px 6px;
+  display: grid;
+  gap: 4px;
+}
+
+.market-estimator-share-row.is-final {
+  border-color: color-mix(in srgb, #b0ccf0 62%, white);
+  background: #f2f7ff;
+}
+
+.market-estimator-share-row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.market-estimator-share-row-head span {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.market-estimator-share-row-head small {
+  font-size: 0.62rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.market-estimator-share-bar-wrap {
+  height: 8px;
+  border-radius: 999px;
+  background: #e8eeeb;
+  overflow: hidden;
+}
+
+.market-estimator-share-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7eb8a0, #1f8d5a);
+}
+
+.market-estimator-share-row strong {
+  font-size: 0.66rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  justify-self: end;
+}
+
+.market-estimator-share-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.market-estimator-share-footer small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.market-estimator-chart-chip {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 999px;
+  background: #f7faf9;
+  padding: 2px 7px;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.market-estimator-chart-chip.tone-warn {
+  border-color: color-mix(in srgb, #e2c18a 60%, white);
+  background: #fff8ea;
+  color: #7f620c;
+}
+
+.market-estimator-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.market-estimator-flow-panel {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 9px;
+  background: #fff;
+  padding: 6px;
+  display: grid;
+  gap: 5px;
+}
+
+.market-estimator-flow-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.market-estimator-flow-panel-head strong {
+  font-size: 0.67rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-flow-panel-head small {
+  color: var(--muted);
+  font-size: 0.61rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.market-estimator-flow-list {
+  list-style: decimal;
+  margin: 0;
+  padding: 0 0 0 15px;
+  display: grid;
+  gap: 5px;
+}
+
+.market-estimator-flow-step {
+  display: grid;
+  gap: 3px;
+}
+
+.market-estimator-flow-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.market-estimator-flow-head span {
+  color: var(--muted);
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+
+.market-estimator-flow-head strong {
+  font-size: 0.64rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-flow-bar-wrap {
+  height: 7px;
+  border-radius: 999px;
+  background: #ecf1f0;
+  overflow: hidden;
+}
+
+.market-estimator-flow-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #92c6de, #3d7c95);
+}
+
+.market-estimator-final-units {
+  border: 1px solid color-mix(in srgb, #9ec8bc 58%, white);
+  border-radius: 8px;
+  background: #f2faf7;
+  padding: 6px 7px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.market-estimator-final-units-value {
+  display: grid;
+  gap: 2px;
+}
+
+.market-estimator-final-units-value span {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.market-estimator-final-units-value strong {
+  font-size: 0.73rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-final-units small {
+  color: #2d6455;
+  font-size: 0.63rem;
+  font-weight: 800;
+}
+
+.market-estimator-boxplot-list {
+  display: grid;
+  gap: 6px;
+}
+
+.market-estimator-boxplot-row {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+}
+
+.market-estimator-boxplot-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.market-estimator-boxplot-head strong {
+  font-size: 0.66rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-boxplot-head small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.market-estimator-boxplot {
+  width: 100%;
+  height: 38px;
+}
+
+.market-estimator-boxplot .range {
+  stroke: #92a5b1;
+  stroke-width: 1.3;
+}
+
+.market-estimator-boxplot .iqr {
+  fill: #d8eaf7;
+  stroke: #8db6d0;
+  stroke-width: 1;
+}
+
+.market-estimator-boxplot .median {
+  stroke: #2d6f92;
+  stroke-width: 1.5;
+}
+
+.market-estimator-boxplot .tick {
+  stroke: #7d8f9f;
+  stroke-width: 1.2;
+}
+
+.market-estimator-boxplot .sample {
+  fill: #647f91;
+}
+
+.market-estimator-boxplot .p90 {
+  stroke: #af7c16;
+  stroke-width: 1.2;
+}
+
+.market-estimator-boxplot-meta {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
 .shipping-pack-assistant-modal {
   display: grid;
   gap: 10px;
@@ -4052,6 +4508,206 @@ tbody tr:hover {
 .shipping-pack-assistant-tile small {
   color: var(--muted);
   font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.shipping-pack-baseline-card {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fff;
+  padding: 9px;
+  display: grid;
+  gap: 8px;
+}
+
+.shipping-pack-baseline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.shipping-pack-baseline-head h5 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.shipping-pack-baseline-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.shipping-pack-baseline-item {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 9px;
+  background: #fcfcfa;
+  padding: 7px;
+  display: grid;
+  gap: 3px;
+}
+
+.shipping-pack-baseline-item span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.shipping-pack-baseline-item strong {
+  font-size: 0.74rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.shipping-pack-baseline-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.shipping-pack-hierarchy {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fff;
+  padding: 9px;
+  display: grid;
+  gap: 8px;
+}
+
+.shipping-pack-hierarchy h5 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.shipping-pack-hierarchy-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.hierarchy-step {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 9px;
+  background: #fcfcfb;
+  padding: 8px;
+  display: grid;
+  gap: 7px;
+  align-content: start;
+}
+
+.hierarchy-step-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.hierarchy-step-head h6 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.status-badge {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: #f6f8fb;
+}
+
+.status-badge.tone-good {
+  border-color: color-mix(in srgb, #9fd6bf 60%, white);
+  background: #eef9f3;
+  color: #26684e;
+}
+
+.status-badge.tone-warn {
+  border-color: color-mix(in srgb, #e1c38f 60%, white);
+  background: #fff8ea;
+  color: #7a5d0a;
+}
+
+.status-badge.tone-info {
+  border-color: color-mix(in srgb, #a5c5e8 60%, white);
+  background: #eff5ff;
+  color: #315d8a;
+}
+
+.source-chip-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.source-chip {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: #f7faf9;
+}
+
+.source-chip.tone-auto {
+  border-color: color-mix(in srgb, #a5c5e8 60%, white);
+  background: #eff5ff;
+  color: #315d8a;
+}
+
+.source-chip.tone-manual {
+  border-color: color-mix(in srgb, #9fd6bf 60%, white);
+  background: #eef9f3;
+  color: #26684e;
+}
+
+.source-chip.tone-hybrid {
+  border-color: color-mix(in srgb, #e1c38f 60%, white);
+  background: #fff8ea;
+  color: #7a5d0a;
+}
+
+.hierarchy-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.hierarchy-list li {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 8px;
+  background: #fff;
+  padding: 5px 6px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.hierarchy-list li span {
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.hierarchy-list li strong {
+  font-size: 0.68rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+  text-align: right;
+}
+
+.hierarchy-chain {
+  margin: 0;
+  border: 1px dashed color-mix(in srgb, #b7cfe4 60%, white);
+  border-radius: 8px;
+  background: #f5f9ff;
+  padding: 6px 7px;
+  color: #315d8a;
+  font-size: 0.66rem;
   font-weight: 700;
 }
 
@@ -4311,12 +4967,20 @@ tbody tr:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .market-estimator-keyword-grid {
+  .market-estimator-keyword-grid,
+  .market-estimator-visual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .market-estimator-flow-grid,
+  .market-estimator-chart-legend {
     grid-template-columns: 1fr;
   }
 
   .shipping-pack-assistant-workspace,
   .shipping-pack-assistant-workspace.is-expanded,
+  .shipping-pack-baseline-grid,
+  .shipping-pack-hierarchy-steps,
   .shipping-pack-assistant-total-grid,
   .shipping-pack-assistant-driver-grid,
   .shipping-pack-assistant-apply-options {
@@ -4471,6 +5135,14 @@ tbody tr:hover {
     flex-direction: column;
   }
 
+  .shipping-pack-baseline-head {
+    flex-direction: column;
+  }
+
+  .shipping-pack-baseline-actions .btn {
+    width: 100%;
+  }
+
   .shipping-pack-assistant-tile {
     min-width: 0;
     width: 100%;
@@ -4481,8 +5153,16 @@ tbody tr:hover {
   .market-estimator-check-grid,
   .market-estimator-allowance-grid,
   .market-estimator-keyword-fields,
-  .market-estimator-result-grid {
+  .market-estimator-result-grid,
+  .market-estimator-visual-grid,
+  .market-estimator-flow-grid,
+  .market-estimator-chart-legend {
     grid-template-columns: 1fr;
+  }
+
+  .market-estimator-final-units {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .shipping-pack-assistant-control-grid {

@@ -421,7 +421,9 @@
     const ppcFactor = ppcFactorMap[input.ppcBudgetClass] ?? 1;
 
     const baseSharePct = baseShareByClass(competitiveness);
-    const sharePct = Math.min(5, baseSharePct * reviewFactor * priceFactor * diffFactor * ppcFactor);
+    const uncappedSharePct = baseSharePct * reviewFactor * priceFactor * diffFactor * ppcFactor;
+    const sharePct = Math.min(5, uncappedSharePct);
+    const capApplied = uncappedSharePct > 5;
     const shareRatio = sharePct / 100;
 
     const competitorTamRaw = num(primaryKeyword.tamCompetitorUnits, 0);
@@ -566,6 +568,7 @@
         mvpPrice: breakEvenPrice,
         marketMin,
         highPriceCap,
+        priceAnchorP50Pack: priceAnchor,
         startPrice,
         minPrice,
         maxPrice,
@@ -580,6 +583,8 @@
         priceFactor,
         diffFactor,
         ppcFactor,
+        uncappedSharePct,
+        capApplied,
         sharePct,
       },
       keywordMethod: {
