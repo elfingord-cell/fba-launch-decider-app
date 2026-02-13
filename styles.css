@@ -3695,6 +3695,32 @@ tbody tr:hover {
   gap: 10px;
 }
 
+.market-estimator-guide {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 9px;
+}
+
+.market-estimator-guide summary {
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-guide-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.market-estimator-guide-list li {
+  font-size: 0.7rem;
+  color: var(--ink);
+}
+
 .market-estimator-head {
   display: flex;
   justify-content: space-between;
@@ -3786,6 +3812,29 @@ tbody tr:hover {
   font-family: "Space Grotesk", "Manrope", sans-serif;
 }
 
+.market-estimator-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.market-estimator-tab {
+  border: 1px solid color-mix(in srgb, var(--line) 70%, white);
+  border-radius: 999px;
+  background: #f7f8fb;
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.market-estimator-tab.is-active {
+  background: color-mix(in srgb, var(--accent) 14%, white);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  color: color-mix(in srgb, var(--accent) 72%, #0f1713);
+}
+
 .market-estimator-core-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3800,7 +3849,7 @@ tbody tr:hover {
 
 .market-estimator-allowance-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -3841,6 +3890,16 @@ tbody tr:hover {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
+}
+
+.market-estimator-keyword-fields textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.market-estimator-inline-note {
+  margin: 0;
+  grid-column: 1 / -1;
 }
 
 .market-estimator-result-grid {
