@@ -14621,98 +14621,12 @@ function openValidationResidualModal(item) {
   });
 }
 
-function renderShippingModuleInline(metrics, stage = "quick") {
-  if (!dom.shippingModuleSection || !dom.shippingModuleCanvasHost || !dom.shippingModuleMeta || !dom.shippingModuleStatus) {
+function renderShippingModuleInline(_metrics, _stage = "quick") {
+  if (!dom.shippingModuleSection) {
     return;
   }
-  dom.shippingModuleSection.classList.remove("hidden");
-  const preview = metrics?.shipping?.layoutPreview ?? null;
-  if (!preview?.available) {
-    ensureShipping3dCleanup("inline");
-    dom.shippingModuleCanvasHost.innerHTML = "";
-    dom.shippingModuleCanvasHost.appendChild(
-      createShippingLayoutFallbackElement(metrics, "3D-Layoutdaten fehlen. Bitte Produkt- und Umkartonmaße prüfen."),
-    );
-    dom.shippingModuleMeta.textContent = "Orientierung: - · Raster: - · Platzierte Stücke: -";
-    dom.shippingModuleStatus.textContent = "2D-Fallback aktiv.";
-    return;
-  }
-
-  const orientationText = Array.isArray(preview.orientation) && preview.orientation.length === 3
-    ? `${formatNumber(preview.orientation[0])} × ${formatNumber(preview.orientation[1])} × ${formatNumber(preview.orientation[2])} cm`
-    : "-";
-  const cartonText = `${formatNumber(metrics.shipping.estimatedCartonLengthCm)} × ${formatNumber(metrics.shipping.estimatedCartonWidthCm)} × ${formatNumber(metrics.shipping.estimatedCartonHeightCm)} cm`;
-  dom.shippingModuleMeta.textContent =
-    `Umkarton: ${cartonText} · Produkt im Raster: ${orientationText} · Raster: ${formatNumber(preview.nx)} × ${formatNumber(preview.ny)} × ${formatNumber(preview.nz)} · Anzahl Produkte im Karton: ${formatNumber(preview.placedUnits)}`;
-
-  if (!(window.Packaging3D && typeof window.Packaging3D.buildViewModel === "function" && typeof window.Packaging3D.mount === "function")) {
-    ensureShipping3dCleanup("inline");
-    dom.shippingModuleCanvasHost.innerHTML = "";
-    dom.shippingModuleCanvasHost.appendChild(
-      createShippingLayoutFallbackElement(
-        metrics,
-        `Lokales 3D-Modul nicht verfügbar (${SHIPPING_3D_THREE_LOCAL}, ${SHIPPING_3D_ORBIT_LOCAL}).`,
-      ),
-    );
-    dom.shippingModuleStatus.textContent = "2D-Fallback aktiv.";
-    return;
-  }
-
-  const viewModel = window.Packaging3D.buildViewModel({
-    unitDimsCm: Array.isArray(preview.orientation) && preview.orientation.length === 3
-      ? preview.orientation
-      : [
-        Math.max(0.1, num(metrics.shipping.estimatedCartonLengthCm, 1)),
-        Math.max(0.1, num(metrics.shipping.estimatedCartonWidthCm, 1)),
-        Math.max(0.1, num(metrics.shipping.estimatedCartonHeightCm, 1)),
-      ],
-    cartonDimsCm: [
-      Math.max(0.1, num(metrics.shipping.estimatedCartonLengthCm, 1)),
-      Math.max(0.1, num(metrics.shipping.estimatedCartonWidthCm, 1)),
-      Math.max(0.1, num(metrics.shipping.estimatedCartonHeightCm, 1)),
-    ],
-    targetUnits: Math.max(1, roundInt(metrics.shipping.unitsPerCartonAuto, 1)),
-    outerBufferCm: Math.max(0, num(state.settings?.cartonRules?.outerBufferCm, 0)),
-    allowSixOrientations: true,
-    mode: "maximal",
-    renderLimit: SHIPPING_3D_MAX_RENDER_UNITS,
-  });
-
-  if (!viewModel?.layout?.available) {
-    ensureShipping3dCleanup("inline");
-    dom.shippingModuleCanvasHost.innerHTML = "";
-    dom.shippingModuleCanvasHost.appendChild(
-      createShippingLayoutFallbackElement(metrics, "3D-Layout konnte nicht berechnet werden. 2D-Fallback aktiv."),
-    );
-    dom.shippingModuleStatus.textContent = "2D-Fallback aktiv.";
-    return;
-  }
-
-  try {
-    ensureShipping3dCleanup("inline");
-    const result = window.Packaging3D.mount(dom.shippingModuleCanvasHost, viewModel, { scopeKey: "inline" });
-    if (result && typeof result.cleanup === "function") {
-      state.ui.shipping3dInlineCleanup = result.cleanup;
-    } else {
-      state.ui.shipping3dInlineCleanup = () => ensureShipping3dCleanup("inline");
-    }
-    const renderedUnits = Math.max(0, roundInt(result?.renderedUnits, 0));
-    const totalUnits = Math.max(0, roundInt(result?.totalUnits, viewModel.layout.placedUnits));
-    if (totalUnits > renderedUnits) {
-      dom.shippingModuleStatus.textContent =
-        `Visualisiert: ${formatNumber(renderedUnits)} von ${formatNumber(totalUnits)} Stück (Limit ${formatNumber(SHIPPING_3D_MAX_RENDER_UNITS)}).`;
-    } else {
-      dom.shippingModuleStatus.textContent = "3D-Packbild aktiv.";
-    }
-  } catch (error) {
-    console.error("Packaging3D inline render failed", error);
-    ensureShipping3dCleanup("inline");
-    dom.shippingModuleCanvasHost.innerHTML = "";
-    dom.shippingModuleCanvasHost.appendChild(
-      createShippingLayoutFallbackElement(metrics, "3D-Rendering nicht möglich. 2D-Fallback aktiv."),
-    );
-    dom.shippingModuleStatus.textContent = "2D-Fallback aktiv.";
-  }
+  ensureShipping3dCleanup("inline");
+  dom.shippingModuleSection.classList.add("hidden");
 }
 
 function renderShippingDetails(metrics) {
