@@ -7480,6 +7480,39 @@ function classifyLaunchDecision(metrics) {
   };
 }
 
+function goNoGoStatusLabel(status) {
+  if (status === "green") {
+    return "Grün";
+  }
+  if (status === "orange") {
+    return "Orange";
+  }
+  return "Rot";
+}
+
+function buildGoNoGoTooltipText(launchDecision, metrics) {
+  const decision = launchDecision ?? classifyLaunchDecision(metrics);
+  const thresholds = decision?.thresholds ?? {};
+  const lines = [
+    `Go/No-Go-Ampel: ${decision.label} (Score ${num(decision.score, 0)}/6)`,
+    "",
+    "Betroffene KPIs:",
+    `1) Netto-Marge nach PPC: ${formatPercent(metrics?.netMarginPct)} (${goNoGoStatusLabel(decision?.kpiStatus?.netMarginAfterPpc)}) · Min ${formatPercent(thresholds.minNetMarginPct)} · Target ${formatPercent(thresholds.targetNetMarginPct)}`,
+    `2) Marge vor PPC: ${formatPercent(metrics?.netMarginBeforePpcPct)} (${goNoGoStatusLabel(decision?.kpiStatus?.marginBeforePpc)}) · Min ${formatPercent(thresholds.minMarginBeforePpcPct)} · Target ${formatPercent(thresholds.targetMarginBeforePpcPct)}`,
+    `3) ROI (Unit-basiert): ${formatPercent(metrics?.goNoGoRoiPct)} (${goNoGoStatusLabel(decision?.kpiStatus?.roi)}) · Min ${formatPercent(thresholds.minRoiPct)} · Target ${formatPercent(thresholds.targetRoiPct)}`,
+  ];
+  if (decision?.flags?.missingKpi) {
+    lines.push("", "Sonderfall: Mindestens ein KPI fehlt/ist ungültig -> ROT.");
+  }
+  if (decision?.flags?.koNetMargin) {
+    lines.push("", "Sonderfall: K.O.-Regel ausgelöst (Netto-Marge nach PPC unter Minimum) -> ROT.");
+  }
+  if (decision?.text) {
+    lines.push("", `Kurzfazit: ${decision.text}`);
+  }
+  return lines.join("\n");
+}
+
 function buildSensitivity(product, targetMarginPct) {
   const priceDown = calculateProduct(product, { priceFactor: 0.9 }, { includeDerived: false });
   const tacosUp = calculateProduct(product, { tacosDelta: 2 }, { includeDerived: false });
@@ -13184,15 +13217,28 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
       return;
     }
     node.classList.remove("margin-good", "margin-mid", "margin-low");
+    const card = node.closest(".kpi");
+    if (card) {
+      card.classList.remove("kpi-traffic-good", "kpi-traffic-mid", "kpi-traffic-low");
+    }
     if (status === "green") {
       node.classList.add("margin-good");
+      if (card) {
+        card.classList.add("kpi-traffic-good");
+      }
       return;
     }
     if (status === "orange") {
       node.classList.add("margin-mid");
+      if (card) {
+        card.classList.add("kpi-traffic-mid");
+      }
       return;
     }
     node.classList.add("margin-low");
+    if (card) {
+      card.classList.add("kpi-traffic-low");
+    }
   };
   applyKpiTrafficClass(dom.kpiNetMargin, launchDecision.kpiStatus.netMarginAfterPpc);
   applyKpiTrafficClass(dom.kpiNetMarginBeforePpc, launchDecision.kpiStatus.marginBeforePpc);
@@ -13214,7 +13260,7 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
   if (dom.trafficLight) {
     dom.trafficLight.className = `traffic-badge traffic-${launchDecision.color}`;
     dom.trafficLight.textContent = launchDecision.label;
-    dom.trafficLight.title = `Go/No-Go-Ampel (3 KPI): ${launchDecision.text}`;
+    dom.trafficLight.title = buildGoNoGoTooltipText(launchDecision, metrics);
   }
 
   applyDriverFocus(state.ui.focusedDriverPaths, state.ui.focusedDriverLabel);
