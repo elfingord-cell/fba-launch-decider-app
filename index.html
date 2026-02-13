@@ -423,9 +423,14 @@
                       </span>
                       <h3>1) Markt & Absatz</h3>
                     </div>
-                    <button type="button" class="info-trigger" data-help-key="ui.market_absatz" aria-label="Hilfe zu Markt und Absatz" aria-expanded="false">
-                      i
-                    </button>
+                    <div class="form-section-actions">
+                      <button id="marketEstimatorOpenBtn" type="button" class="btn btn-ghost btn-inline-market-estimator">
+                        Pricing/Absatz-Assistent
+                      </button>
+                      <button type="button" class="info-trigger" data-help-key="ui.market_absatz" aria-label="Hilfe zu Markt und Absatz" aria-expanded="false">
+                        i
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <p class="form-section-subtitle">Lege Preis, Kategorie und Nachfrage als Start für den QuickCheck fest.</p>
@@ -1042,6 +1047,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="modules/packaging3d.js"></script>
     <script src="modules/domain/shipping.js"></script>
+    <script src="modules/domain/market-estimator.js"></script>
     <script src="modules/ui/tooltips.js"></script>
     <script src="modules/ui/shipping-dashboard.js"></script>
     <script src="modules/ui/setup-wizard.js"></script>
