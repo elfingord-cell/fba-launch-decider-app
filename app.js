@@ -684,6 +684,17 @@ const MARKET_ESTIMATOR_TARGET_POSITIONS = ["1_3", "4_10", "11_20", "21_40"];
 const MARKET_ESTIMATOR_UNIT_TYPES = ["piece", "capsule", "ml_100", "gram_100", "meter2", "other"];
 const MARKET_ESTIMATOR_INPUT_VIEWS = ["quick", "pro"];
 const MARKET_ESTIMATOR_LISTING_SCENARIOS = ["new_listing", "existing_listing"];
+const SHIPPING_PACK_ASSISTANT_DRIVER_PATHS = [
+  "basic.packLengthCm",
+  "basic.packWidthCm",
+  "basic.packHeightCm",
+  "assumptions.cartonization.manualEnabled",
+  "assumptions.cartonization.unitsPerCarton",
+  "assumptions.cartonization.cartonLengthCm",
+  "assumptions.cartonization.cartonWidthCm",
+  "assumptions.cartonization.cartonHeightCm",
+];
+const SHIPPING_PACK_3D_SCOPE_LAB = "shipping_pack_lab";
 const MARKET_ESTIMATOR_UNIT_TYPE_LABELS = {
   piece: "EUR/Stueck",
   capsule: "EUR/Kapsel",
@@ -1216,6 +1227,8 @@ const UI_HELP_TEXT = {
     "Markt & Absatz legt den Nachfrage- und Preisrahmen fest und bestimmt direkt Umsatz, Marge und ROI.",
   "ui.market_estimator":
     "Optionales Modul fuer konservative Marktpreis-/Absatzschaetzung (Quick/Pro + Mini-Guide). Uebernahme nur auf Klick.",
+  "ui.shipping_pack_assistant":
+    "Optionales What-if-Lab fuer Kartonisierung: Produkt- und Umkartonmaeße testen, 3D ansehen, Kostenwirkung vergleichen.",
   "ui.product_shipping":
     "Produkt- und Versandparameter steuern Kartonisierung, Shipping und 3PL-Anteile je Unit.",
   "ui.purchase_launch":
@@ -1764,6 +1777,16 @@ const state = {
     validationSandboxMetrics: null,
     shipping3dCleanup: null,
     shipping3dInlineCleanup: null,
+    shipping3dLabCleanup: null,
+    shippingPackLabDraft: null,
+    shippingPackLabExpanded: false,
+    shippingPackLabBaselineMetrics: null,
+    shippingPackLabSandboxMetrics: null,
+    shippingPackLabApplySelection: {
+      applyProductDims: false,
+      applyCartonOverride: false,
+    },
+    shippingPackLabProductId: null,
     setupWizard: {
       activeStep: "market_absatz",
       stepStatus: {},
@@ -1787,6 +1810,7 @@ const dom = {
   stageGateStatus: document.getElementById("stageGateStatus"),
   stageWarning: document.getElementById("stageWarning"),
   marketEstimatorOpenBtn: document.getElementById("marketEstimatorOpenBtn"),
+  shippingPackAssistantOpenBtn: document.getElementById("shippingPackAssistantOpenBtn"),
   quickStagePanel: document.getElementById("quickStagePanel"),
   validationStagePanel: document.getElementById("validationStagePanel"),
   validationPlaygroundPanel: document.getElementById("validationPlaygroundPanel"),
@@ -1907,6 +1931,7 @@ const dom = {
   compareCard: document.getElementById("compareCard"),
   productWorkspace: document.getElementById("productWorkspace"),
   driverModal: document.getElementById("driverModal"),
+  driverModalCard: document.querySelector("#driverModal .modal-card"),
   driverModalTitle: document.getElementById("driverModalTitle"),
   driverModalSubtitle: document.getElementById("driverModalSubtitle"),
   driverModalFields: document.getElementById("driverModalFields"),
@@ -2149,6 +2174,10 @@ function cartonizationProductPaths() {
     "assumptions.cartonization.cartonHeightCm",
     "assumptions.cartonization.cartonGrossWeightKg",
   ];
+}
+
+function shippingPackAssistantDriverPaths() {
+  return [...SHIPPING_PACK_ASSISTANT_DRIVER_PATHS];
 }
 
 function robustnessLabel(score) {
@@ -8844,12 +8873,20 @@ function ensureShipping3dCleanup(scopeKey = "driver_modal") {
     state.ui.shipping3dInlineCleanup = null;
     return;
   }
+  if (scopeKey === SHIPPING_PACK_3D_SCOPE_LAB) {
+    state.ui.shipping3dLabCleanup = null;
+    return;
+  }
   state.ui.shipping3dCleanup = null;
 }
 
 function closeDriverModal() {
   ensureShipping3dCleanup();
+  ensureShipping3dCleanup(SHIPPING_PACK_3D_SCOPE_LAB);
   state.ui.driverModal = null;
+  if (dom.driverModalCard) {
+    dom.driverModalCard.classList.remove("modal-card-xxl");
+  }
   if (dom.driverModal) {
     dom.driverModal.classList.add("hidden");
   }
@@ -9408,6 +9445,10 @@ function renderDriverModal() {
   }
   if (!state.ui.driverModal) {
     ensureShipping3dCleanup();
+    ensureShipping3dCleanup(SHIPPING_PACK_3D_SCOPE_LAB);
+    if (dom.driverModalCard) {
+      dom.driverModalCard.classList.remove("modal-card-xxl");
+    }
     dom.driverModal.classList.add("hidden");
     return;
   }
@@ -9424,11 +9465,23 @@ function renderDriverModal() {
     .filter((item) => Boolean(item))
     .join(" · ");
   ensureShipping3dCleanup();
+  ensureShipping3dCleanup(SHIPPING_PACK_3D_SCOPE_LAB);
+  if (dom.driverModalCard) {
+    const isXxl =
+      state.ui.driverModal.detailPreset === "shipping_pack_assistant" &&
+      Boolean(state.ui.shippingPackLabExpanded);
+    dom.driverModalCard.classList.toggle("modal-card-xxl", isXxl);
+  }
   dom.driverModalFields.innerHTML = "";
 
   const modalMetrics = calculateProduct(selected);
   const modalDiagnostics = buildDefaultDiagnostics(selected, modalMetrics);
   const driverPaths = normalizeDriverPathsForModal(state.ui.driverModal.driverPaths, selected);
+
+  if (state.ui.driverModal.detailPreset === "shipping_pack_assistant") {
+    dom.driverModalFields.appendChild(createShippingPackAssistantModalContent(selected, modalMetrics));
+    return;
+  }
 
   const summaryGrid = document.createElement("section");
   summaryGrid.className = "modal-summary-grid";
@@ -11778,6 +11831,657 @@ function createMarketEstimatorModalContent(selected, metrics) {
   return section;
 }
 
+function defaultShippingPackLabApplySelection() {
+  return {
+    applyProductDims: false,
+    applyCartonOverride: false,
+  };
+}
+
+function normalizeShippingPackLabDraft(rawDraft, selected, baselineMetrics) {
+  const source = rawDraft && typeof rawDraft === "object" ? rawDraft : {};
+  const fallbackShipping = baselineMetrics?.shipping ?? {};
+  const fallbackCarton = selected?.assumptions?.cartonization ?? {};
+
+  const packLengthCm = Math.max(
+    0.1,
+    num(
+      source.packLengthCm,
+      num(selected?.basic?.packLengthCm, 0.1),
+    ),
+  );
+  const packWidthCm = Math.max(
+    0.1,
+    num(
+      source.packWidthCm,
+      num(selected?.basic?.packWidthCm, 0.1),
+    ),
+  );
+  const packHeightCm = Math.max(
+    0.1,
+    num(
+      source.packHeightCm,
+      num(selected?.basic?.packHeightCm, 0.1),
+    ),
+  );
+  const unitsPerCarton = Math.max(
+    1,
+    roundInt(
+      source.unitsPerCarton,
+      num(fallbackCarton.unitsPerCarton, num(fallbackShipping.unitsPerCartonAuto, 1)),
+    ),
+  );
+  const cartonLengthCm = Math.max(
+    0.1,
+    num(
+      source.cartonLengthCm,
+      num(fallbackCarton.cartonLengthCm, num(fallbackShipping.estimatedCartonLengthCm, packLengthCm)),
+    ),
+  );
+  const cartonWidthCm = Math.max(
+    0.1,
+    num(
+      source.cartonWidthCm,
+      num(fallbackCarton.cartonWidthCm, num(fallbackShipping.estimatedCartonWidthCm, packWidthCm)),
+    ),
+  );
+  const cartonHeightCm = Math.max(
+    0.1,
+    num(
+      source.cartonHeightCm,
+      num(fallbackCarton.cartonHeightCm, num(fallbackShipping.estimatedCartonHeightCm, packHeightCm)),
+    ),
+  );
+  const cartonGrossWeightKg = Math.max(
+    0,
+    num(
+      source.cartonGrossWeightKg,
+      num(fallbackCarton.cartonGrossWeightKg, 0),
+    ),
+  );
+
+  return {
+    packLengthCm,
+    packWidthCm,
+    packHeightCm,
+    cartonLengthCm,
+    cartonWidthCm,
+    cartonHeightCm,
+    unitsPerCarton,
+    cartonGrossWeightKg,
+  };
+}
+
+function createShippingPackLabDraftFromProduct(selected, baselineMetrics) {
+  if (!selected) {
+    return normalizeShippingPackLabDraft({}, null, baselineMetrics);
+  }
+  const shipping = baselineMetrics?.shipping ?? {};
+  const cartonization = selected.assumptions?.cartonization ?? {};
+  const manualDimsAvailable =
+    num(cartonization.cartonLengthCm, 0) > 0 &&
+    num(cartonization.cartonWidthCm, 0) > 0 &&
+    num(cartonization.cartonHeightCm, 0) > 0;
+  return normalizeShippingPackLabDraft(
+    {
+      packLengthCm: num(selected.basic?.packLengthCm, 0),
+      packWidthCm: num(selected.basic?.packWidthCm, 0),
+      packHeightCm: num(selected.basic?.packHeightCm, 0),
+      unitsPerCarton: cartonization.manualEnabled
+        ? num(cartonization.unitsPerCarton, num(shipping.unitsPerCartonAuto, 1))
+        : num(shipping.unitsPerCartonAuto, num(cartonization.unitsPerCarton, 1)),
+      cartonLengthCm: manualDimsAvailable
+        ? num(cartonization.cartonLengthCm, num(shipping.estimatedCartonLengthCm, 0))
+        : num(shipping.estimatedCartonLengthCm, num(selected.basic?.packLengthCm, 0)),
+      cartonWidthCm: manualDimsAvailable
+        ? num(cartonization.cartonWidthCm, num(shipping.estimatedCartonWidthCm, 0))
+        : num(shipping.estimatedCartonWidthCm, num(selected.basic?.packWidthCm, 0)),
+      cartonHeightCm: manualDimsAvailable
+        ? num(cartonization.cartonHeightCm, num(shipping.estimatedCartonHeightCm, 0))
+        : num(shipping.estimatedCartonHeightCm, num(selected.basic?.packHeightCm, 0)),
+      cartonGrossWeightKg: num(cartonization.cartonGrossWeightKg, 0),
+    },
+    selected,
+    baselineMetrics,
+  );
+}
+
+function createShippingPackLabSandboxProduct(selected, draft, baselineMetrics = null) {
+  const sandbox = deepClone(selected);
+  const normalizedDraft = normalizeShippingPackLabDraft(
+    draft,
+    selected,
+    baselineMetrics ?? state.ui.shippingPackLabBaselineMetrics ?? calculateProduct(selected),
+  );
+  sandbox.basic.packLengthCm = normalizedDraft.packLengthCm;
+  sandbox.basic.packWidthCm = normalizedDraft.packWidthCm;
+  sandbox.basic.packHeightCm = normalizedDraft.packHeightCm;
+  sandbox.assumptions.cartonization.manualEnabled = true;
+  sandbox.assumptions.cartonization.unitsPerCarton = normalizedDraft.unitsPerCarton;
+  sandbox.assumptions.cartonization.cartonLengthCm = normalizedDraft.cartonLengthCm;
+  sandbox.assumptions.cartonization.cartonWidthCm = normalizedDraft.cartonWidthCm;
+  sandbox.assumptions.cartonization.cartonHeightCm = normalizedDraft.cartonHeightCm;
+  sandbox.assumptions.cartonization.cartonGrossWeightKg = Math.max(0, num(normalizedDraft.cartonGrossWeightKg, 0));
+  return sandbox;
+}
+
+function ensureShippingPackLabSession(selected, baselineMetrics = null) {
+  if (!selected) {
+    return null;
+  }
+  const shouldReset =
+    state.ui.shippingPackLabProductId !== selected.id ||
+    !state.ui.shippingPackLabDraft ||
+    !state.ui.shippingPackLabBaselineMetrics;
+  if (shouldReset) {
+    const baseMetrics = baselineMetrics ?? calculateProduct(selected);
+    state.ui.shippingPackLabProductId = selected.id;
+    state.ui.shippingPackLabBaselineMetrics = baseMetrics;
+    state.ui.shippingPackLabDraft = createShippingPackLabDraftFromProduct(selected, baseMetrics);
+    state.ui.shippingPackLabSandboxMetrics = null;
+    state.ui.shippingPackLabExpanded = false;
+    state.ui.shippingPackLabApplySelection = defaultShippingPackLabApplySelection();
+  } else {
+    state.ui.shippingPackLabDraft = normalizeShippingPackLabDraft(
+      state.ui.shippingPackLabDraft,
+      selected,
+      state.ui.shippingPackLabBaselineMetrics,
+    );
+  }
+  return {
+    baselineMetrics: state.ui.shippingPackLabBaselineMetrics,
+    draft: state.ui.shippingPackLabDraft,
+  };
+}
+
+function recalculateShippingPackLabSandboxMetrics(selected) {
+  if (!selected || !state.ui.shippingPackLabDraft) {
+    return null;
+  }
+  const baselineMetrics = state.ui.shippingPackLabBaselineMetrics ?? calculateProduct(selected);
+  const draft = normalizeShippingPackLabDraft(state.ui.shippingPackLabDraft, selected, baselineMetrics);
+  state.ui.shippingPackLabDraft = draft;
+  const sandboxProduct = createShippingPackLabSandboxProduct(selected, draft, baselineMetrics);
+  const sandboxMetrics = calculateProduct(sandboxProduct);
+  state.ui.shippingPackLabSandboxMetrics = sandboxMetrics;
+  return sandboxMetrics;
+}
+
+function shippingPackLabVolumeVariableBreakdown(shipping) {
+  const units = Math.max(1, num(shipping?.unitsPerOrder, 1));
+  const mode = normalizeShippingMode(shipping?.modeKey ?? shipping?.transportMode);
+  const mainRunVariableUnit = num(shipping?.mainRunVariable, 0) / units;
+  const originVariableUnit = mode === "rail"
+    ? (num(shipping?.originPerCbmEur, 0) * num(shipping?.shipmentCbm, 0)) / units
+    : 0;
+  const oncarriageVariableUnit = mode === "rail"
+    ? (num(shipping?.deOncarriagePerCbmEur, 0) * num(shipping?.shipmentCbm, 0)) / units
+    : 0;
+  return {
+    mode,
+    mainRunVariableUnit,
+    originVariableUnit,
+    oncarriageVariableUnit,
+    totalUnit: mainRunVariableUnit + originVariableUnit + oncarriageVariableUnit,
+  };
+}
+
+function computeShippingPackLabImpact(baselineMetrics, sandboxMetrics) {
+  const baseline = baselineMetrics ?? {};
+  const sandbox = sandboxMetrics ?? {};
+  const baselineShipping = baseline.shipping ?? {};
+  const sandboxShipping = sandbox.shipping ?? {};
+
+  const baselineThreePlCartonBased =
+    num(baseline.threePlInboundPerUnit, 0) +
+    num(baseline.threePlOutboundServicePerUnit, 0) +
+    num(baseline.threePlCarrierPerUnit, 0);
+  const sandboxThreePlCartonBased =
+    num(sandbox.threePlInboundPerUnit, 0) +
+    num(sandbox.threePlOutboundServicePerUnit, 0) +
+    num(sandbox.threePlCarrierPerUnit, 0);
+
+  const baselineVolume = shippingPackLabVolumeVariableBreakdown(baselineShipping);
+  const sandboxVolume = shippingPackLabVolumeVariableBreakdown(sandboxShipping);
+
+  const deltaTotalCostPerUnit = num(sandbox.totalCostPerUnit, 0) - num(baseline.totalCostPerUnit, 0);
+  const deltaProfitMonthly = num(sandbox.profitMonthly, 0) - num(baseline.profitMonthly, 0);
+  const deltaShippingTo3plUnit =
+    num(sandbox.quickBlockShippingTo3plPerUnit, 0) - num(baseline.quickBlockShippingTo3plPerUnit, 0);
+  const deltaShippingUnit = num(sandbox.shipping?.shippingPerUnit, 0) - num(baseline.shipping?.shippingPerUnit, 0);
+
+  return {
+    total: {
+      deltaTotalCostPerUnit,
+      deltaProfitMonthly,
+      deltaShippingTo3plUnit,
+      deltaShippingUnit,
+    },
+    cartons: {
+      deltaPhysicalCartons: num(sandboxShipping.physicalCartonsCount, 0) - num(baselineShipping.physicalCartonsCount, 0),
+      deltaThreePlInboundPerUnit: num(sandbox.threePlInboundPerUnit, 0) - num(baseline.threePlInboundPerUnit, 0),
+      deltaThreePlOutboundServicePerUnit:
+        num(sandbox.threePlOutboundServicePerUnit, 0) - num(baseline.threePlOutboundServicePerUnit, 0),
+      deltaThreePlCarrierPerUnit: num(sandbox.threePlCarrierPerUnit, 0) - num(baseline.threePlCarrierPerUnit, 0),
+      deltaThreePlCartonBasedPerUnit: sandboxThreePlCartonBased - baselineThreePlCartonBased,
+    },
+    volume: {
+      deltaShipmentCbm: num(sandboxShipping.shipmentCbm, 0) - num(baselineShipping.shipmentCbm, 0),
+      deltaChargeableCbm: num(sandboxShipping.chargeableCbm, 0) - num(baselineShipping.chargeableCbm, 0),
+      deltaMainRunVariableUnit: sandboxVolume.mainRunVariableUnit - baselineVolume.mainRunVariableUnit,
+      deltaRailVariableUnit:
+        (sandboxVolume.originVariableUnit + sandboxVolume.oncarriageVariableUnit) -
+        (baselineVolume.originVariableUnit + baselineVolume.oncarriageVariableUnit),
+      deltaVolumeVariableShippingUnit: sandboxVolume.totalUnit - baselineVolume.totalUnit,
+    },
+  };
+}
+
+function applyShippingPackLabSelection(selected) {
+  if (!selected || !state.ui.shippingPackLabDraft) {
+    return false;
+  }
+  const selection = state.ui.shippingPackLabApplySelection ?? defaultShippingPackLabApplySelection();
+  const draft = normalizeShippingPackLabDraft(
+    state.ui.shippingPackLabDraft,
+    selected,
+    state.ui.shippingPackLabBaselineMetrics ?? calculateProduct(selected),
+  );
+
+  let changed = false;
+  if (selection.applyProductDims) {
+    selected.basic.packLengthCm = draft.packLengthCm;
+    selected.basic.packWidthCm = draft.packWidthCm;
+    selected.basic.packHeightCm = draft.packHeightCm;
+    changed = true;
+  }
+  if (selection.applyCartonOverride) {
+    selected.assumptions.cartonization.manualEnabled = true;
+    selected.assumptions.cartonization.unitsPerCarton = draft.unitsPerCarton;
+    selected.assumptions.cartonization.cartonLengthCm = draft.cartonLengthCm;
+    selected.assumptions.cartonization.cartonWidthCm = draft.cartonWidthCm;
+    selected.assumptions.cartonization.cartonHeightCm = draft.cartonHeightCm;
+    selected.assumptions.cartonization.cartonGrossWeightKg = Math.max(
+      0,
+      num(draft.cartonGrossWeightKg, num(selected.assumptions.cartonization.cartonGrossWeightKg, 0)),
+    );
+    changed = true;
+  }
+  if (!changed) {
+    return false;
+  }
+
+  saveProducts();
+  const baselineMetrics = calculateProduct(selected);
+  state.ui.shippingPackLabBaselineMetrics = baselineMetrics;
+  state.ui.shippingPackLabDraft = createShippingPackLabDraftFromProduct(selected, baselineMetrics);
+  state.ui.shippingPackLabSandboxMetrics = baselineMetrics;
+  state.ui.shippingPackLabApplySelection = defaultShippingPackLabApplySelection();
+  refreshAfterModalInput();
+  return true;
+}
+
+function openShippingPackAssistantModal() {
+  const selected = getSelectedProduct();
+  if (!selected) {
+    return;
+  }
+  const baselineMetrics = calculateProduct(selected);
+  state.ui.shippingPackLabProductId = null;
+  state.ui.shippingPackLabDraft = null;
+  state.ui.shippingPackLabBaselineMetrics = null;
+  state.ui.shippingPackLabSandboxMetrics = null;
+  state.ui.shippingPackLabExpanded = false;
+  state.ui.shippingPackLabApplySelection = defaultShippingPackLabApplySelection();
+  ensureShippingPackLabSession(selected, baselineMetrics);
+  const sandboxMetrics = recalculateShippingPackLabSandboxMetrics(selected) ?? baselineMetrics;
+  const impact = computeShippingPackLabImpact(baselineMetrics, sandboxMetrics);
+  openDriverModal({
+    title: "Shipping-Kartonisierungs-Assistent",
+    value: [
+      `Delta Kosten/Unit ${formatCurrency(num(impact?.total?.deltaTotalCostPerUnit, 0))}`,
+      `Delta Profit/Monat ${formatCurrency(num(impact?.total?.deltaProfitMonthly, 0))}`,
+    ].join(" · "),
+    explain:
+      "Temporäres What-if-Lab für Produktmaße, Umkartonmaße und Stück je Umkarton. Persistenz nur per expliziter Übernahme.",
+    formula:
+      "Sandbox-Produkt mit manuellem Umkarton-Override -> Kostenvergleich gegen Baseline (Gesamt + Treibergruppen Kartons/Volumen).",
+    source: "Interne Shipping-/3PL-Kostenlogik (ohne Änderung der Kernformeln).",
+    robustness: "Mittel bis hoch (deterministische Delta-Rechnung).",
+    detailPreset: "shipping_pack_assistant",
+    driverPaths: shippingPackAssistantDriverPaths(),
+  });
+}
+
+function createShippingPackAssistantModalContent(selected, baselineMetricsInput) {
+  const section = document.createElement("section");
+  section.className = "shipping-pack-assistant-modal";
+
+  if (!selected) {
+    const empty = document.createElement("p");
+    empty.className = "hint warn";
+    empty.textContent = "Kein Produkt ausgewaehlt.";
+    section.appendChild(empty);
+    return section;
+  }
+
+  const session = ensureShippingPackLabSession(selected, baselineMetricsInput ?? calculateProduct(selected));
+  if (!session) {
+    return section;
+  }
+  let baselineMetrics = session.baselineMetrics;
+  let draft = normalizeShippingPackLabDraft(session.draft, selected, baselineMetrics);
+  state.ui.shippingPackLabDraft = draft;
+  let sandboxMetrics = recalculateShippingPackLabSandboxMetrics(selected) ?? baselineMetrics;
+  let impact = computeShippingPackLabImpact(baselineMetrics, sandboxMetrics);
+
+  const formatSignedCurrency = (value) => {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+    if (Math.abs(value) <= 0.000001) {
+      return formatCurrency(0);
+    }
+    return `${value > 0 ? "+" : "-"}${formatCurrency(Math.abs(value))}`;
+  };
+  const formatSignedNumber = (value, suffix = "") => {
+    if (!Number.isFinite(value)) {
+      return "-";
+    }
+    if (Math.abs(value) <= 0.000001) {
+      return `0${suffix ? ` ${suffix}` : ""}`;
+    }
+    return `${value > 0 ? "+" : "-"}${formatNumber(Math.abs(value))}${suffix ? ` ${suffix}` : ""}`;
+  };
+  const toneForDelta = (value, positiveIsGood = true) => {
+    const delta = num(value, 0);
+    if (Math.abs(delta) <= 0.000001) {
+      return "is-neutral";
+    }
+    const isGood = positiveIsGood ? delta > 0 : delta < 0;
+    return isGood ? "is-good" : "is-bad";
+  };
+
+  const head = document.createElement("div");
+  head.className = "shipping-pack-assistant-head";
+  const headText = document.createElement("div");
+  const title = document.createElement("h4");
+  title.textContent = "Shipping-Kartonisierungs-Assistent";
+  const subtitle = document.createElement("p");
+  subtitle.className = "hint";
+  subtitle.textContent =
+    "Markt- und Margenlogik bleiben unverändert. Hier testest du nur Kartonisierung als What-if, bis du explizit übernimmst.";
+  headText.append(title, subtitle);
+  const headTile = document.createElement("article");
+  headTile.className = "shipping-pack-assistant-tile";
+  headTile.innerHTML = `
+    <span>Delta Kosten / Unit</span>
+    <strong>${formatSignedCurrency(impact.total.deltaTotalCostPerUnit)}</strong>
+    <small>Delta Profit / Monat: ${formatSignedCurrency(impact.total.deltaProfitMonthly)}</small>
+  `;
+  head.append(headText, headTile);
+  section.appendChild(head);
+
+  const workspace = document.createElement("div");
+  workspace.className = `shipping-pack-assistant-workspace ${state.ui.shippingPackLabExpanded ? "is-expanded" : ""}`;
+
+  const previewPanel = document.createElement("article");
+  previewPanel.className = "shipping-pack-assistant-preview-panel";
+  const previewHead = document.createElement("div");
+  previewHead.className = "shipping-pack-assistant-preview-head";
+  const previewTitle = document.createElement("h5");
+  previewTitle.textContent = "3D-Kartonisierung (What-if)";
+  const previewHint = document.createElement("p");
+  previewHint.className = "hint";
+  previewHint.textContent = "Drehbar. Gewicht bleibt read-only, Maße und Stück je Umkarton sind editierbar.";
+  const expandBtn = document.createElement("button");
+  expandBtn.type = "button";
+  expandBtn.className = "btn btn-ghost";
+  expandBtn.textContent = state.ui.shippingPackLabExpanded ? "Normalansicht" : "Vergrößern";
+  expandBtn.addEventListener("click", () => {
+    state.ui.shippingPackLabExpanded = !state.ui.shippingPackLabExpanded;
+    renderDriverModal();
+  });
+  previewHead.append(previewTitle, expandBtn);
+  previewPanel.append(previewHead, previewHint);
+  const previewHost = document.createElement("div");
+  previewHost.className = "shipping-pack-assistant-preview-host";
+  previewPanel.appendChild(previewHost);
+
+  const controlPanel = document.createElement("article");
+  controlPanel.className = "shipping-pack-assistant-control-panel";
+  const controlTitle = document.createElement("h5");
+  controlTitle.textContent = "What-if Eingaben";
+  controlPanel.appendChild(controlTitle);
+  const controlGrid = document.createElement("div");
+  controlGrid.className = "shipping-pack-assistant-control-grid";
+  controlPanel.appendChild(controlGrid);
+
+  const makeNumberField = (labelText, key, options = {}) => {
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = String(options.step ?? 0.1);
+    if (options.min !== undefined) {
+      input.min = String(options.min);
+    }
+    if (options.max !== undefined) {
+      input.max = String(options.max);
+    }
+    input.value = String(num(draft[key], options.min ?? 0));
+    if (options.readOnly) {
+      input.disabled = true;
+    }
+    const commit = () => {
+      const parsed = Number(input.value);
+      if (!Number.isFinite(parsed)) {
+        return;
+      }
+      draft[key] = parsed;
+      state.ui.shippingPackLabDraft = normalizeShippingPackLabDraft(draft, selected, baselineMetrics);
+      draft = state.ui.shippingPackLabDraft;
+      updateComputed();
+    };
+    if (!options.readOnly) {
+      input.addEventListener("input", commit);
+      input.addEventListener("change", commit);
+    }
+    label.appendChild(input);
+    if (options.hint) {
+      const hint = document.createElement("small");
+      hint.textContent = options.hint;
+      label.appendChild(hint);
+    }
+    controlGrid.appendChild(label);
+    return input;
+  };
+
+  makeNumberField("Produkt Länge (cm)", "packLengthCm", { min: 0.1, step: 0.1 });
+  makeNumberField("Produkt Breite (cm)", "packWidthCm", { min: 0.1, step: 0.1 });
+  makeNumberField("Produkt Höhe (cm)", "packHeightCm", { min: 0.1, step: 0.1 });
+  makeNumberField("Umkarton Länge (cm)", "cartonLengthCm", { min: 0.1, step: 0.1 });
+  makeNumberField("Umkarton Breite (cm)", "cartonWidthCm", { min: 0.1, step: 0.1 });
+  makeNumberField("Umkarton Höhe (cm)", "cartonHeightCm", { min: 0.1, step: 0.1 });
+  makeNumberField("Stück je Umkarton", "unitsPerCarton", { min: 1, step: 1 });
+  makeNumberField("Umkarton-Bruttogewicht (kg, read-only)", "cartonGrossWeightKg", {
+    min: 0,
+    step: 0.1,
+    readOnly: true,
+    hint: num(draft.cartonGrossWeightKg, 0) > 0
+      ? "Manueller Wert aus Produktdaten (nicht editierbar im Lab)."
+      : "Kein manueller Wert gesetzt: Shipping nutzt Auto-Gewichtsschätzung.",
+  });
+
+  workspace.append(previewPanel, controlPanel);
+  section.appendChild(workspace);
+
+  const impactSection = document.createElement("section");
+  impactSection.className = "shipping-pack-assistant-impact-section";
+  const impactTitle = document.createElement("h5");
+  impactTitle.textContent = "Impact (Baseline vs. What-if)";
+  impactSection.appendChild(impactTitle);
+
+  const totalGrid = document.createElement("div");
+  totalGrid.className = "shipping-pack-assistant-total-grid";
+  const totalCostCard = document.createElement("article");
+  totalCostCard.className = "shipping-pack-assistant-impact-card";
+  const totalProfitCard = document.createElement("article");
+  totalProfitCard.className = "shipping-pack-assistant-impact-card";
+  const totalShippingCard = document.createElement("article");
+  totalShippingCard.className = "shipping-pack-assistant-impact-card";
+  totalGrid.append(totalCostCard, totalProfitCard, totalShippingCard);
+  impactSection.appendChild(totalGrid);
+
+  const driverGrid = document.createElement("div");
+  driverGrid.className = "shipping-pack-assistant-driver-grid";
+  const cartonsCard = document.createElement("article");
+  cartonsCard.className = "shipping-pack-assistant-driver-card";
+  const volumeCard = document.createElement("article");
+  volumeCard.className = "shipping-pack-assistant-driver-card";
+  driverGrid.append(cartonsCard, volumeCard);
+  impactSection.appendChild(driverGrid);
+  section.appendChild(impactSection);
+
+  const applySection = document.createElement("section");
+  applySection.className = "shipping-pack-assistant-apply";
+  const applyTitle = document.createElement("h5");
+  applyTitle.textContent = "Übernehmen";
+  applySection.appendChild(applyTitle);
+  const applyHint = document.createElement("p");
+  applyHint.className = "hint";
+  applyHint.textContent = "Nichts wird gespeichert, bis du eine Auswahl setzt und auf Übernehmen klickst.";
+  applySection.appendChild(applyHint);
+
+  const applyOptions = document.createElement("div");
+  applyOptions.className = "shipping-pack-assistant-apply-options";
+  const selection = state.ui.shippingPackLabApplySelection ?? defaultShippingPackLabApplySelection();
+  const makeApplyCheckbox = (labelText, key) => {
+    const wrap = document.createElement("label");
+    wrap.className = "toggle-row";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = Boolean(selection[key]);
+    input.addEventListener("change", () => {
+      state.ui.shippingPackLabApplySelection = {
+        ...(state.ui.shippingPackLabApplySelection ?? defaultShippingPackLabApplySelection()),
+        [key]: input.checked,
+      };
+      updateApplyButtonState();
+    });
+    const text = document.createElement("span");
+    text.textContent = labelText;
+    wrap.append(input, text);
+    applyOptions.appendChild(wrap);
+  };
+  makeApplyCheckbox("Produktmaße übernehmen", "applyProductDims");
+  makeApplyCheckbox("Umkarton-Override übernehmen", "applyCartonOverride");
+  applySection.appendChild(applyOptions);
+
+  const actionRow = document.createElement("div");
+  actionRow.className = "modal-actions";
+  const applyBtn = document.createElement("button");
+  applyBtn.type = "button";
+  applyBtn.className = "btn btn-primary";
+  applyBtn.textContent = "Auswahl übernehmen";
+  applyBtn.addEventListener("click", () => {
+    const applied = applyShippingPackLabSelection(selected);
+    if (!applied) {
+      return;
+    }
+    renderDriverModal();
+  });
+  actionRow.appendChild(applyBtn);
+  applySection.appendChild(actionRow);
+  section.appendChild(applySection);
+
+  const updateApplyButtonState = () => {
+    const activeSelection = state.ui.shippingPackLabApplySelection ?? defaultShippingPackLabApplySelection();
+    applyBtn.disabled = !(activeSelection.applyProductDims || activeSelection.applyCartonOverride);
+  };
+
+  const renderImpact = () => {
+    totalCostCard.className = `shipping-pack-assistant-impact-card ${toneForDelta(impact.total.deltaTotalCostPerUnit, false)}`;
+    totalCostCard.innerHTML = `
+      <span>Gesamtkosten / Unit</span>
+      <strong>${formatCurrency(num(sandboxMetrics.totalCostPerUnit, 0))}</strong>
+      <small>Baseline ${formatCurrency(num(baselineMetrics.totalCostPerUnit, 0))} · Delta ${formatSignedCurrency(impact.total.deltaTotalCostPerUnit)}</small>
+    `;
+
+    totalProfitCard.className = `shipping-pack-assistant-impact-card ${toneForDelta(impact.total.deltaProfitMonthly, true)}`;
+    totalProfitCard.innerHTML = `
+      <span>Gewinn / Monat</span>
+      <strong>${formatCurrency(num(sandboxMetrics.profitMonthly, 0))}</strong>
+      <small>Baseline ${formatCurrency(num(baselineMetrics.profitMonthly, 0))} · Delta ${formatSignedCurrency(impact.total.deltaProfitMonthly)}</small>
+    `;
+
+    totalShippingCard.className = `shipping-pack-assistant-impact-card ${toneForDelta(impact.total.deltaShippingTo3plUnit, false)}`;
+    totalShippingCard.innerHTML = `
+      <span>Shipping zu 3PL / Unit</span>
+      <strong>${formatCurrency(num(sandboxMetrics.quickBlockShippingTo3plPerUnit, 0))}</strong>
+      <small>Delta ${formatSignedCurrency(impact.total.deltaShippingTo3plUnit)} · D2D Delta ${formatSignedCurrency(impact.total.deltaShippingUnit)}</small>
+    `;
+
+    cartonsCard.innerHTML = `
+      <h6>Kartons (Treibergruppe)</h6>
+      <p class="hint">Fokus: physische Kartons und kartonbasierte 3PL-Blöcke.</p>
+      <ul class="shipping-pack-assistant-driver-list">
+        <li><span>Kartons physisch</span><strong>${formatSignedNumber(impact.cartons.deltaPhysicalCartons)}</strong></li>
+        <li><span>3PL kartonbasiert / Unit</span><strong>${formatSignedCurrency(impact.cartons.deltaThreePlCartonBasedPerUnit)}</strong></li>
+        <li><span>Inbound / Unit</span><strong>${formatSignedCurrency(impact.cartons.deltaThreePlInboundPerUnit)}</strong></li>
+        <li><span>Outbound-Service / Unit</span><strong>${formatSignedCurrency(impact.cartons.deltaThreePlOutboundServicePerUnit)}</strong></li>
+        <li><span>Carrier / Unit</span><strong>${formatSignedCurrency(impact.cartons.deltaThreePlCarrierPerUnit)}</strong></li>
+      </ul>
+    `;
+
+    volumeCard.innerHTML = `
+      <h6>Volumen (Treibergruppe)</h6>
+      <p class="hint">Fokus: Shipment-/W/M-CBM und volumengebundene Shipping-Anteile.</p>
+      <ul class="shipping-pack-assistant-driver-list">
+        <li><span>Sendungsvolumen (CBM)</span><strong>${formatSignedNumber(impact.volume.deltaShipmentCbm, "CBM")}</strong></li>
+        <li><span>Abrechnungsvolumen (W/M)</span><strong>${formatSignedNumber(impact.volume.deltaChargeableCbm, "CBM")}</strong></li>
+        <li><span>Hauptlauf variabel / Unit</span><strong>${formatSignedCurrency(impact.volume.deltaMainRunVariableUnit)}</strong></li>
+        <li><span>Rail Vor-/Nachlauf variabel / Unit</span><strong>${formatSignedCurrency(impact.volume.deltaRailVariableUnit)}</strong></li>
+        <li><span>Volumenanteil Shipping gesamt / Unit</span><strong>${formatSignedCurrency(impact.volume.deltaVolumeVariableShippingUnit)}</strong></li>
+      </ul>
+    `;
+  };
+
+  const renderPreview = () => {
+    previewHost.innerHTML = "";
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.textContent =
+      `Umkarton aktuell: ${formatNumber(num(sandboxMetrics.shipping.estimatedCartonLengthCm, 0))} × ` +
+      `${formatNumber(num(sandboxMetrics.shipping.estimatedCartonWidthCm, 0))} × ` +
+      `${formatNumber(num(sandboxMetrics.shipping.estimatedCartonHeightCm, 0))} cm · ` +
+      `${formatNumber(num(sandboxMetrics.shipping.unitsPerCartonAuto, 0))} Stück`;
+    previewHost.appendChild(note);
+    previewHost.appendChild(
+      createShippingLayout3dElement(sandboxMetrics, {
+        scopeKey: SHIPPING_PACK_3D_SCOPE_LAB,
+        compact: !state.ui.shippingPackLabExpanded,
+      }),
+    );
+  };
+
+  const updateComputed = () => {
+    const recalculated = recalculateShippingPackLabSandboxMetrics(selected);
+    if (recalculated) {
+      sandboxMetrics = recalculated;
+    }
+    impact = computeShippingPackLabImpact(baselineMetrics, sandboxMetrics);
+    renderPreview();
+    renderImpact();
+    updateApplyButtonState();
+  };
+
+  renderPreview();
+  renderImpact();
+  updateApplyButtonState();
+  return section;
+}
+
 function createAmazonCoreModalContent(metrics) {
   const section = document.createElement("section");
   section.className = "amazon-core-modal";
@@ -12275,13 +12979,15 @@ function buildShippingLayout3dScene(container, metrics) {
   };
 }
 
-function createShippingLayout3dElement(metrics) {
+function createShippingLayout3dElement(metrics, options = {}) {
+  const scopeKey = typeof options.scopeKey === "string" ? options.scopeKey : "driver_modal";
+  const compact = Boolean(options.compact);
   const wrapper = document.createElement("div");
-  wrapper.className = "shipping-layout-3d-wrap";
+  wrapper.className = `shipping-layout-3d-wrap ${compact ? "is-compact" : ""}`.trim();
   wrapper.title = tooltipForMetric("shipping.layout_preview", "");
 
   const canvasHost = document.createElement("div");
-  canvasHost.className = "shipping-layout-3d-canvas";
+  canvasHost.className = `shipping-layout-3d-canvas ${compact ? "is-compact" : ""}`.trim();
   const status = document.createElement("p");
   status.className = "hint";
   status.textContent = "3D-Packbild wird geladen ...";
@@ -12312,8 +13018,20 @@ function createShippingLayout3dElement(metrics) {
 
   wrapper.append(canvasHost, meta, legend);
 
+  const assignCleanupHandle = (cleanupFn) => {
+    if (scopeKey === "inline") {
+      state.ui.shipping3dInlineCleanup = cleanupFn;
+      return;
+    }
+    if (scopeKey === SHIPPING_PACK_3D_SCOPE_LAB) {
+      state.ui.shipping3dLabCleanup = cleanupFn;
+      return;
+    }
+    state.ui.shipping3dCleanup = cleanupFn;
+  };
+
   const fallbackTo2d = (reason) => {
-    ensureShipping3dCleanup("driver_modal");
+    ensureShipping3dCleanup(scopeKey);
     canvasHost.innerHTML = "";
     canvasHost.appendChild(createShippingLayoutFallbackElement(metrics, reason));
   };
@@ -12358,12 +13076,12 @@ function createShippingLayout3dElement(metrics) {
   }
 
   try {
-    ensureShipping3dCleanup("driver_modal");
-    const result = window.Packaging3D.mount(canvasHost, viewModel, { scopeKey: "driver_modal" });
+    ensureShipping3dCleanup(scopeKey);
+    const result = window.Packaging3D.mount(canvasHost, viewModel, { scopeKey });
     if (result && typeof result.cleanup === "function") {
-      state.ui.shipping3dCleanup = result.cleanup;
+      assignCleanupHandle(result.cleanup);
     } else {
-      state.ui.shipping3dCleanup = () => ensureShipping3dCleanup("driver_modal");
+      assignCleanupHandle(() => ensureShipping3dCleanup(scopeKey));
     }
     const renderedUnits = Math.max(0, roundInt(result?.renderedUnits, 0));
     const totalUnits = Math.max(0, roundInt(result?.totalUnits, viewModel.layout.placedUnits));
@@ -12461,7 +13179,7 @@ function createShippingDashboardModalContent(metrics, options = {}) {
       ? window.AppShippingDashboardUI.prepareDashboardModel(metrics, options, { shippingModeLabel })
       : {
         contextStage: options.contextStage ?? "quick",
-        show3dPackImage: options.show3dPackImage ?? !((options.contextStage ?? "quick") === "quick" || (options.contextStage ?? "quick") === "validation"),
+        show3dPackImage: options.show3dPackImage ?? true,
         modeLabel: metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.transportMode),
         bridge:
           window.AppShippingDomain && typeof window.AppShippingDomain.buildShippingBridgeModel === "function"
@@ -12711,20 +13429,38 @@ function createShippingDashboardModalContent(metrics, options = {}) {
   cartonPanel.appendChild(cartonDetails);
 
   if (show3dPackImage) {
-    const layoutDetails = document.createElement("details");
-    layoutDetails.className = "shipping-detail-toggle";
-    layoutDetails.innerHTML = "<summary>Packbild (3D, drehbar)</summary>";
-    const layoutBody = document.createElement("div");
-    layoutBody.className = "shipping-detail-body";
+    const previewTile = document.createElement("div");
+    previewTile.className = "shipping-pack-assistant-preview-tile";
+    const tileHead = document.createElement("div");
+    tileHead.className = "shipping-pack-assistant-preview-tile-head";
+    const tileTitle = document.createElement("strong");
+    tileTitle.textContent = "Packbild (3D, kompakt)";
+    const tileHint = document.createElement("small");
+    tileHint.textContent = "Unter Kartonisierung bleibt die kompakte 3D-Vorschau aktiv.";
+    tileHead.append(tileTitle, tileHint);
+    previewTile.appendChild(tileHead);
+
     const volumeHint = document.createElement("p");
+    volumeHint.className = "hint";
     const freeVolumePct = clamp(100 - num(metrics.shipping.volumeFillPct, 0), 0, 100);
     volumeHint.innerHTML =
       `<strong>Freies Volumen:</strong> ${formatNumber(metrics.shipping.voidVolumeLiters)} L (${formatNumber(metrics.shipping.voidVolumeCbm)} CBM) · ` +
       `<strong>Luftanteil:</strong> ${formatPercent(freeVolumePct)}`;
-    layoutBody.appendChild(volumeHint);
-    layoutBody.appendChild(createShippingLayout3dElement(metrics));
-    layoutDetails.appendChild(layoutBody);
-    cartonPanel.appendChild(layoutDetails);
+    previewTile.appendChild(volumeHint);
+    previewTile.appendChild(createShippingLayout3dElement(metrics, { compact: true }));
+
+    const actionRow = document.createElement("div");
+    actionRow.className = "shipping-pack-assistant-preview-actions";
+    const openAssistantBtn = document.createElement("button");
+    openAssistantBtn.type = "button";
+    openAssistantBtn.className = "btn btn-ghost";
+    openAssistantBtn.textContent = "Im Assistenten öffnen";
+    openAssistantBtn.addEventListener("click", () => {
+      openShippingPackAssistantModal();
+    });
+    actionRow.appendChild(openAssistantBtn);
+    previewTile.appendChild(actionRow);
+    cartonPanel.appendChild(previewTile);
   }
 
   mainGrid.appendChild(cartonPanel);
@@ -13889,13 +14625,6 @@ function renderShippingModuleInline(metrics, stage = "quick") {
   if (!dom.shippingModuleSection || !dom.shippingModuleCanvasHost || !dom.shippingModuleMeta || !dom.shippingModuleStatus) {
     return;
   }
-
-  if (stage === "quick" || stage === "validation") {
-    ensureShipping3dCleanup("inline");
-    dom.shippingModuleSection.classList.add("hidden");
-    return;
-  }
-
   dom.shippingModuleSection.classList.remove("hidden");
   const preview = metrics?.shipping?.layoutPreview ?? null;
   if (!preview?.available) {
@@ -15421,6 +16150,9 @@ function applyMouseoverHelp() {
   if (dom.marketEstimatorOpenBtn) {
     dom.marketEstimatorOpenBtn.title = helpTextByKey("ui.market_estimator");
   }
+  if (dom.shippingPackAssistantOpenBtn) {
+    dom.shippingPackAssistantOpenBtn.title = helpTextByKey("ui.shipping_pack_assistant");
+  }
   if (dom.toggleAllKpisBtn) {
     const selected = getSelectedProduct();
     const isValidation = selected ? getProductStage(selected) === "validation" : false;
@@ -15691,6 +16423,11 @@ function bindEvents() {
   if (dom.marketEstimatorOpenBtn) {
     dom.marketEstimatorOpenBtn.addEventListener("click", () => {
       openMarketEstimatorModal();
+    });
+  }
+  if (dom.shippingPackAssistantOpenBtn) {
+    dom.shippingPackAssistantOpenBtn.addEventListener("click", () => {
+      openShippingPackAssistantModal();
     });
   }
 

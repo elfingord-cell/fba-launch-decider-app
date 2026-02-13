@@ -11,7 +11,7 @@
 
   function prepareDashboardModel(metrics, options, deps) {
     const contextStage = options?.contextStage || "quick";
-    const show3dPackImage = options?.show3dPackImage ?? !(contextStage === "quick" || contextStage === "validation");
+    const show3dPackImage = options?.show3dPackImage ?? true;
 
     const shippingModeLabel = typeof deps?.shippingModeLabel === "function"
       ? deps.shippingModeLabel
