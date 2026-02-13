@@ -444,6 +444,14 @@ const DEFAULT_SETTINGS = {
       },
     },
   },
+  goNoGoThresholds: {
+    targetNetMarginPct: 20,
+    minNetMarginPct: 10,
+    targetMarginBeforePpcPct: 30,
+    minMarginBeforePpcPct: 25,
+    targetRoiPct: 100,
+    minRoiPct: 50,
+  },
   threePl: {
     receivingPerCartonSortedEur: 3.5,
     receivingPerCartonMixedEur: 8.99,
@@ -768,6 +776,12 @@ const SETTINGS_HELP = {
   "tax.vatRates.FR": "MwSt-Satz für Marketplace FR in Prozent.",
   "tax.vatRates.IT": "MwSt-Satz für Marketplace IT in Prozent.",
   "tax.vatRates.ES": "MwSt-Satz für Marketplace ES in Prozent.",
+  "goNoGoThresholds.targetNetMarginPct": "Zielwert für Netto-Marge nach PPC in % (2 Punkte ab diesem Wert).",
+  "goNoGoThresholds.minNetMarginPct": "Mindestwert für Netto-Marge nach PPC in % (harte K.O.-Grenze, darunter Rot).",
+  "goNoGoThresholds.targetMarginBeforePpcPct": "Zielwert für Marge vor PPC in % (2 Punkte ab diesem Wert).",
+  "goNoGoThresholds.minMarginBeforePpcPct": "Mindestwert für Marge vor PPC in % (1 Punkt ab diesem Wert).",
+  "goNoGoThresholds.targetRoiPct": "Zielwert für ROI in % (2 Punkte ab diesem Wert).",
+  "goNoGoThresholds.minRoiPct": "Mindestwert für ROI in % (1 Punkt ab diesem Wert).",
   "shipping12m.modes.sea_lcl.rateEurPerCbm": "12-Monats-Durchschnitt: Sea LCL variabler Tarif in EUR pro CBM (W/M).",
   "shipping12m.modes.sea_lcl.originFixedEurPerShipment": "12-Monats-Durchschnitt: Sea LCL Vorlauf-Fixkosten je Shipment in EUR.",
   "shipping12m.modes.sea_lcl.destinationFixedEurPerShipment": "12-Monats-Durchschnitt: Sea LCL Hauptlauf-Fixkosten je Shipment in EUR.",
@@ -1015,12 +1029,13 @@ const KPI_HELP = {
   kpiRevenueNet: "Netto-Umsatz/Monat = Verkaufspreis netto × Monatsabsatz.",
   kpiSellerboardMargin:
     "Sellerboard-Marge % = (Gewinn vor Overhead / Brutto-Umsatz) × 100. Overhead = produktunabhängige Fixkosten.",
-  kpiNetMargin: "Netto-Marge % = Gewinn netto / Netto-Umsatz × 100. Zielbereich: > 20%.",
+  kpiNetMargin: "Netto-Marge nach PPC % = (Netto-Gewinn nach PPC / Netto-Umsatz) × 100.",
   kpiShippingUnit: "Door-to-door Shipping je Unit als 12-Monats-Durchschnitt (ein Richtwert).",
   kpiLandedUnit: "Landed je Unit = EXW(EUR) + Shipping + Zoll.",
   kpiDb1Unit: "DB1/Stück = Nettoverkaufspreis - Unit Economics je Stück (Landed, Amazon, Ads, Retouren).",
   kpiDb1Margin: "DB1-Marge % = DB1/Stück / Nettoverkaufspreis × 100.",
-  kpiNetMarginBeforePpc: "Nettomarge vor PPC % = (Gewinn netto/Monat + Ads/Monat) / Netto-Umsatz/Monat × 100.",
+  kpiNetMarginBeforePpc: "Marge vor PPC % = (Deckungsbeitrag vor PPC / Netto-Umsatz) × 100.",
+  kpiGoNoGoRoi: "ROI % (Ampel) = (Netto-Gewinn nach PPC je Unit / Landed Cost je Unit) × 100.",
   kpiGrossProfitMonthly: "Gewinn brutto/Monat = DB1/Stück × Monatsabsatz (vor Block 2 und 3).",
   kpiProfitMonthly: "Gewinn netto/Monat = Gewinn brutto/Monat - Launch/Lifecycle - Leakage.",
   kpiTotalCostMonthly: "Gesamtkosten/Monat = Block 1 (Unit Economics) + Block 2 (Launch/Lifecycle) + Block 3 (Leakage).",
@@ -1047,7 +1062,7 @@ const TABLE_HEADER_HELP = [
   "Payback-Zeit bis Kapitalrückfluss in Monaten.",
   "Brutto-Preis, bei dem Gewinn netto = 0.",
   "Maximal mögliche TACoS-Quote für die Zielmarge.",
-  "Sensitivitätsampel auf Basis Worst-Case.",
+  "Go/No-Go-Ampel auf Basis von 3 KPI-Thresholds (Netto-Marge nach PPC, Marge vor PPC, ROI).",
   "Worst/Best Gewinn netto pro Monat aus Sensitivität.",
 ];
 
@@ -1867,6 +1882,7 @@ const dom = {
   kpiDb1Unit: document.getElementById("kpiDb1Unit"),
   kpiDb1Margin: document.getElementById("kpiDb1Margin"),
   kpiNetMarginBeforePpc: document.getElementById("kpiNetMarginBeforePpc"),
+  kpiGoNoGoRoi: document.getElementById("kpiGoNoGoRoi"),
   kpiGrossProfitMonthly: document.getElementById("kpiGrossProfitMonthly"),
   kpiProfitMonthly: document.getElementById("kpiProfitMonthly"),
   kpiTotalCostMonthly: document.getElementById("kpiTotalCostMonthly"),
@@ -2352,6 +2368,13 @@ function ensureLifecycleSettings(rawLifecycle) {
   return base;
 }
 
+function ensureGoNoGoThresholdsSettings(rawThresholds) {
+  return {
+    ...deepClone(DEFAULT_SETTINGS.goNoGoThresholds),
+    ...(rawThresholds && typeof rawThresholds === "object" ? rawThresholds : {}),
+  };
+}
+
 function ensureCostDefaults(rawCostDefaults) {
   return {
     ...deepClone(DEFAULT_SETTINGS.costDefaults),
@@ -2608,6 +2631,7 @@ function applyCartonPreset(preset, settings) {
 function sanitizeSettings(settings) {
   settings.shipping12m = ensureShipping12mSettings(settings.shipping12m);
   settings.amazonFba = ensureAmazonFbaSettings(settings.amazonFba);
+  settings.goNoGoThresholds = ensureGoNoGoThresholdsSettings(settings.goNoGoThresholds);
 
   settings.tax.fallbackUsdToEur = clamp(num(settings.tax.fallbackUsdToEur, DEFAULT_USD_TO_EUR), 0.2, 2);
   settings.tax.customsDutyRatePct = clamp(num(settings.tax.customsDutyRatePct, GLOBAL_DEFAULTS.importCustomsDutyRate), 0, 40);
@@ -2780,6 +2804,22 @@ function sanitizeSettings(settings) {
     );
     profile.startPriceDiscountPct = clamp(num(profile.startPriceDiscountPct, 0), 0, 60);
   });
+
+  settings.goNoGoThresholds.targetNetMarginPct = clamp(num(settings.goNoGoThresholds.targetNetMarginPct, 20), -200, 500);
+  settings.goNoGoThresholds.minNetMarginPct = clamp(num(settings.goNoGoThresholds.minNetMarginPct, 10), -200, 500);
+  if (settings.goNoGoThresholds.targetNetMarginPct < settings.goNoGoThresholds.minNetMarginPct) {
+    settings.goNoGoThresholds.targetNetMarginPct = settings.goNoGoThresholds.minNetMarginPct;
+  }
+  settings.goNoGoThresholds.targetMarginBeforePpcPct = clamp(num(settings.goNoGoThresholds.targetMarginBeforePpcPct, 30), -200, 500);
+  settings.goNoGoThresholds.minMarginBeforePpcPct = clamp(num(settings.goNoGoThresholds.minMarginBeforePpcPct, 25), -200, 500);
+  if (settings.goNoGoThresholds.targetMarginBeforePpcPct < settings.goNoGoThresholds.minMarginBeforePpcPct) {
+    settings.goNoGoThresholds.targetMarginBeforePpcPct = settings.goNoGoThresholds.minMarginBeforePpcPct;
+  }
+  settings.goNoGoThresholds.targetRoiPct = clamp(num(settings.goNoGoThresholds.targetRoiPct, 100), -200, 500);
+  settings.goNoGoThresholds.minRoiPct = clamp(num(settings.goNoGoThresholds.minRoiPct, 50), -200, 500);
+  if (settings.goNoGoThresholds.targetRoiPct < settings.goNoGoThresholds.minRoiPct) {
+    settings.goNoGoThresholds.targetRoiPct = settings.goNoGoThresholds.minRoiPct;
+  }
 
   settings.threePl.receivingPerCartonSortedEur = clamp(num(settings.threePl.receivingPerCartonSortedEur, 0), 0, 200);
   settings.threePl.receivingPerCartonMixedEur = clamp(num(settings.threePl.receivingPerCartonMixedEur, 0), 0, 200);
@@ -3044,6 +3084,7 @@ function loadSettingsLocal() {
       },
       categoryDefaults: ensureCategoryDefaults(parsed?.categoryDefaults),
       lifecycle: ensureLifecycleSettings(parsed?.lifecycle),
+      goNoGoThresholds: ensureGoNoGoThresholdsSettings(parsed?.goNoGoThresholds),
       threePl: ensureThreePlSettings(parsed?.threePl, parsed?.costDefaults),
       costDefaults: ensureCostDefaults(parsed?.costDefaults),
     };
@@ -7000,6 +7041,8 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
   const netMarginPct = netRevenueMonthly > 0 ? (profitMonthly / netRevenueMonthly) * 100 : 0;
   const netMarginBeforePpcPct = netRevenueMonthly > 0 ? ((profitMonthly + adsMonthly) / netRevenueMonthly) * 100 : 0;
   const sellerboardMarginPct = grossRevenueMonthly > 0 ? (profitBeforeOverheadMonthly / grossRevenueMonthly) * 100 : 0;
+  const netProfitAfterPpcPerUnit = monthlyUnits > 0 ? profitMonthly / monthlyUnits : Number.NaN;
+  const goNoGoRoiPct = landedUnit > 0 ? (netProfitAfterPpcPerUnit / landedUnit) * 100 : Number.NaN;
 
   const quickBlockExwPerUnit = exwUnit;
   const quickBlockShippingTo3plPerUnit = shippingUnit + customsUnit + orderFixedPerUnit;
@@ -7183,6 +7226,8 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
     profitBeforeOverheadMonthly,
     netMarginPct,
     netMarginBeforePpcPct,
+    netProfitAfterPpcPerUnit,
+    goNoGoRoiPct,
     sellerboardMarginPct,
     profitHorizon,
 
@@ -7194,6 +7239,8 @@ function calculateProduct(product, scenario = {}, options = { includeDerived: tr
 
     targetMarginPct: resolved.targetMarginPct,
   };
+
+  result.goNoGoDecision = evaluateGoNoGoTraffic(result, effectiveSettings?.goNoGoThresholds);
 
   if (!options.includeDerived) {
     return result;
@@ -7329,30 +7376,107 @@ function classifyTraffic(baseMetrics, worstMetrics, targetMarginPct) {
   };
 }
 
-function classifyLaunchDecision(metrics) {
-  const netMargin = num(metrics.netMarginPct, 0);
-  const db1 = num(metrics.db1Unit, 0);
-
-  if (netMargin > 20 && db1 > 0) {
-    return {
-      color: "green",
-      label: "GO",
-      text: "Netto-Marge > 20% und DB1/Stück > 0.",
-    };
+function evaluateGoNoGoTraffic(metrics, thresholds) {
+  const fallbackThresholds = DEFAULT_SETTINGS.goNoGoThresholds;
+  const sourceThresholds = thresholds && typeof thresholds === "object"
+    ? thresholds
+    : (state.settings?.goNoGoThresholds ?? fallbackThresholds);
+  const resolvedThresholds = {
+    targetNetMarginPct: num(sourceThresholds.targetNetMarginPct, fallbackThresholds.targetNetMarginPct),
+    minNetMarginPct: num(sourceThresholds.minNetMarginPct, fallbackThresholds.minNetMarginPct),
+    targetMarginBeforePpcPct: num(sourceThresholds.targetMarginBeforePpcPct, fallbackThresholds.targetMarginBeforePpcPct),
+    minMarginBeforePpcPct: num(sourceThresholds.minMarginBeforePpcPct, fallbackThresholds.minMarginBeforePpcPct),
+    targetRoiPct: num(sourceThresholds.targetRoiPct, fallbackThresholds.targetRoiPct),
+    minRoiPct: num(sourceThresholds.minRoiPct, fallbackThresholds.minRoiPct),
+  };
+  if (resolvedThresholds.targetNetMarginPct < resolvedThresholds.minNetMarginPct) {
+    resolvedThresholds.targetNetMarginPct = resolvedThresholds.minNetMarginPct;
+  }
+  if (resolvedThresholds.targetMarginBeforePpcPct < resolvedThresholds.minMarginBeforePpcPct) {
+    resolvedThresholds.targetMarginBeforePpcPct = resolvedThresholds.minMarginBeforePpcPct;
+  }
+  if (resolvedThresholds.targetRoiPct < resolvedThresholds.minRoiPct) {
+    resolvedThresholds.targetRoiPct = resolvedThresholds.minRoiPct;
   }
 
-  if (netMargin < 15 || db1 <= 0) {
-    return {
-      color: "red",
-      label: "NO-GO",
-      text: "Netto-Marge < 15% oder DB1/Stück ≤ 0.",
-    };
+  const netMarginAfterPpc = metrics?.netMarginPct;
+  const marginBeforePpc = metrics?.netMarginBeforePpcPct;
+  const roiPct = metrics?.goNoGoRoiPct;
+
+  const scoreForKpi = (value, minThreshold, targetThreshold) => {
+    if (!Number.isFinite(value)) {
+      return { points: 0, status: "red" };
+    }
+    if (value >= targetThreshold) {
+      return { points: 2, status: "green" };
+    }
+    if (value >= minThreshold) {
+      return { points: 1, status: "orange" };
+    }
+    return { points: 0, status: "red" };
+  };
+
+  const netMarginScore = scoreForKpi(netMarginAfterPpc, resolvedThresholds.minNetMarginPct, resolvedThresholds.targetNetMarginPct);
+  const marginBeforeScore = scoreForKpi(
+    marginBeforePpc,
+    resolvedThresholds.minMarginBeforePpcPct,
+    resolvedThresholds.targetMarginBeforePpcPct,
+  );
+  const roiScore = scoreForKpi(roiPct, resolvedThresholds.minRoiPct, resolvedThresholds.targetRoiPct);
+
+  const missingKpi = !Number.isFinite(netMarginAfterPpc) || !Number.isFinite(marginBeforePpc) || !Number.isFinite(roiPct);
+  const score = netMarginScore.points + marginBeforeScore.points + roiScore.points;
+  const koNetMargin = !missingKpi && netMarginAfterPpc < resolvedThresholds.minNetMarginPct;
+
+  let color = "red";
+  if (!missingKpi && !koNetMargin) {
+    if (score >= 5) {
+      color = "green";
+    } else if (score >= 3) {
+      color = "orange";
+    }
+  }
+
+  let text = `Score ${score}/6.`;
+  if (missingKpi) {
+    text = "Mindestens einer der drei KPI-Werte fehlt oder ist ungültig. Ergebnis rot.";
+  } else if (koNetMargin) {
+    text = `K.O.-Regel aktiv: Netto-Marge nach PPC (${formatPercent(netMarginAfterPpc)}) < Mindestwert (${formatPercent(resolvedThresholds.minNetMarginPct)}).`;
+  } else if (color === "green") {
+    text = `Score ${score}/6 erreicht die grüne Zone (>= 5).`;
+  } else if (color === "orange") {
+    text = `Score ${score}/6 liegt in der orangen Zone (3-4).`;
+  } else {
+    text = `Score ${score}/6 liegt in der roten Zone (<= 2).`;
   }
 
   return {
-    color: "yellow",
-    label: "WATCH",
-    text: "Netto-Marge 15-20% oder DB1 knapp positiv.",
+    color,
+    score,
+    kpiStatus: {
+      netMarginAfterPpc: netMarginScore.status,
+      marginBeforePpc: marginBeforeScore.status,
+      roi: roiScore.status,
+    },
+    flags: {
+      missingKpi,
+      koNetMargin,
+    },
+    text,
+    thresholds: resolvedThresholds,
+  };
+}
+
+function classifyLaunchDecision(metrics) {
+  const evaluation = metrics?.goNoGoDecision ?? evaluateGoNoGoTraffic(metrics, state.settings?.goNoGoThresholds);
+  const label = evaluation.color === "green"
+    ? "GRÜN"
+    : evaluation.color === "orange"
+      ? "ORANGE"
+      : "ROT";
+  return {
+    ...evaluation,
+    label,
   };
 }
 
@@ -7939,6 +8063,9 @@ function getPathHelp(path) {
 
 function settingsSectionIdFromPath(settingsPath) {
   const prefixed = settingsPath.startsWith("settings.") ? settingsPath : `settings.${settingsPath}`;
+  if (prefixed.startsWith("settings.goNoGoThresholds.")) {
+    return "settingsDecisionSection";
+  }
   if (prefixed.startsWith("settings.tax.")) {
     return "settingsTaxSection";
   }
@@ -13028,6 +13155,7 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
   setKpi(dom.kpiDb1Unit, metrics.db1Unit, "currency");
   setKpi(dom.kpiDb1Margin, metrics.db1MarginPct, "percent");
   setKpi(dom.kpiNetMarginBeforePpc, metrics.netMarginBeforePpcPct, "percent");
+  setKpi(dom.kpiGoNoGoRoi, metrics.goNoGoRoiPct, "percent");
   setKpi(dom.kpiGrossProfitMonthly, metrics.grossProfitMonthly, "currency");
   setKpi(dom.kpiProfitMonthly, metrics.profitMonthly, "currency");
   setKpi(dom.kpiTotalCostMonthly, metrics.totalCostMonthly, "currency");
@@ -13050,27 +13178,25 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
   } else if (dom.validationStagePanel) {
     dom.validationStagePanel.classList.add("hidden");
   }
-  if (dom.kpiNetMargin) {
-    dom.kpiNetMargin.classList.remove("margin-good", "margin-mid", "margin-low");
-    if (metrics.netMarginPct > 20) {
-      dom.kpiNetMargin.classList.add("margin-good");
-    } else if (metrics.netMarginPct >= 15) {
-      dom.kpiNetMargin.classList.add("margin-mid");
-    } else {
-      dom.kpiNetMargin.classList.add("margin-low");
+  const launchDecision = classifyLaunchDecision(metrics);
+  const applyKpiTrafficClass = (node, status) => {
+    if (!node) {
+      return;
     }
-  }
-
-  if (dom.kpiNetMarginBeforePpc) {
-    dom.kpiNetMarginBeforePpc.classList.remove("margin-good", "margin-mid", "margin-low");
-    if (metrics.netMarginBeforePpcPct > 20) {
-      dom.kpiNetMarginBeforePpc.classList.add("margin-good");
-    } else if (metrics.netMarginBeforePpcPct >= 15) {
-      dom.kpiNetMarginBeforePpc.classList.add("margin-mid");
-    } else {
-      dom.kpiNetMarginBeforePpc.classList.add("margin-low");
+    node.classList.remove("margin-good", "margin-mid", "margin-low");
+    if (status === "green") {
+      node.classList.add("margin-good");
+      return;
     }
-  }
+    if (status === "orange") {
+      node.classList.add("margin-mid");
+      return;
+    }
+    node.classList.add("margin-low");
+  };
+  applyKpiTrafficClass(dom.kpiNetMargin, launchDecision.kpiStatus.netMarginAfterPpc);
+  applyKpiTrafficClass(dom.kpiNetMarginBeforePpc, launchDecision.kpiStatus.marginBeforePpc);
+  applyKpiTrafficClass(dom.kpiGoNoGoRoi, launchDecision.kpiStatus.roi);
 
   renderShippingModuleInline(metrics, stage);
   renderShippingDetails(metrics);
@@ -13085,11 +13211,10 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
   setKpi(dom.sensWorst, metrics.sensitivity.worst.profitMonthly, "currency");
   setKpi(dom.sensBest, metrics.sensitivity.best.profitMonthly, "currency");
 
-  const launchDecision = classifyLaunchDecision(metrics);
   if (dom.trafficLight) {
     dom.trafficLight.className = `traffic-badge traffic-${launchDecision.color}`;
     dom.trafficLight.textContent = launchDecision.label;
-    dom.trafficLight.title = `Launch-Entscheidung: ${launchDecision.text}`;
+    dom.trafficLight.title = `Go/No-Go-Ampel (3 KPI): ${launchDecision.text}`;
   }
 
   applyDriverFocus(state.ui.focusedDriverPaths, state.ui.focusedDriverLabel);
@@ -13699,6 +13824,9 @@ function renderInputs(product) {
   });
 
   dom.compareSort.value = state.ui.compareSort;
+  if (state.ui.compareFilter === "yellow") {
+    state.ui.compareFilter = "orange";
+  }
   dom.compareFilter.value = state.ui.compareFilter;
   applySoftLocksToUI();
 }
@@ -13769,15 +13897,16 @@ function renderComparison(metricsById = new Map()) {
     metrics: metricsById.get(product.id) ?? calculateProduct(product),
   }));
 
-  const filter = state.ui.compareFilter;
+  const filter = state.ui.compareFilter === "yellow" ? "orange" : state.ui.compareFilter;
   const filtered = rows.filter((row) => {
+    const goNoGo = row.metrics.goNoGoDecision ?? evaluateGoNoGoTraffic(row.metrics, state.settings?.goNoGoThresholds);
     if (filter === "all") {
       return true;
     }
     if (filter === "profit") {
       return row.metrics.profitMonthly > 0;
     }
-    return row.metrics.sensitivity.traffic.color === filter;
+    return goNoGo.color === filter;
   });
 
   const sortKey = state.ui.compareSort;
@@ -13808,8 +13937,9 @@ function renderComparison(metricsById = new Map()) {
   filtered.forEach((row) => {
     const tr = document.createElement("tr");
 
-    const trafficClass = row.metrics.sensitivity.traffic.color;
-    const trafficBadge = `<span class="badge ${trafficClass === "yellow" ? "yellow" : trafficClass === "red" ? "red" : ""}">${row.metrics.sensitivity.traffic.label}</span>`;
+    const goNoGo = row.metrics.goNoGoDecision ?? evaluateGoNoGoTraffic(row.metrics, state.settings?.goNoGoThresholds);
+    const badgeToneClass = goNoGo.color === "red" ? "red" : goNoGo.color === "orange" ? "orange" : "";
+    const trafficBadge = `<span class="badge ${badgeToneClass}">${goNoGo.color === "green" ? "Grün" : goNoGo.color === "orange" ? "Orange" : "Rot"}</span>`;
 
     tr.innerHTML = `
       <td><button class="link-btn" data-select-product="${row.product.id}">${row.product.name}</button></td>

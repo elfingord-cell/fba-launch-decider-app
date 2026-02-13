@@ -149,7 +149,7 @@
                     </span>
                     <div class="section-title-copy">
                       <h2>Decision-Bar</h2>
-                      <p>Wichtigste KPIs für Go/Watch/No-Go auf einen Blick.</p>
+                      <p>3-KPI Go/No-Go-Ampel (Grün/Orange/Rot) auf einen Blick.</p>
                     </div>
                   </div>
                   <button type="button" class="info-trigger" data-help-key="ui.decision_bar" aria-label="Hilfe zur Decision-Bar" aria-expanded="false">
@@ -159,10 +159,13 @@
               </div>
               <div class="decision-head-actions">
                 <button id="toggleAllKpisBtn" type="button" class="btn btn-ghost">Alle KPIs anzeigen</button>
-                <div id="trafficLight" class="traffic-badge traffic-neutral">NO-GO</div>
+                <div id="trafficLight" class="traffic-badge traffic-neutral">ROT</div>
               </div>
             </div>
             <div class="decision-primary-grid">
+              <article class="kpi" data-kpi="kpiNetMargin"><span>Netto-Marge nach PPC %</span><strong id="kpiNetMargin">-</strong></article>
+              <article class="kpi" data-kpi="kpiNetMarginBeforePpc"><span>Marge vor PPC %</span><strong id="kpiNetMarginBeforePpc">-</strong></article>
+              <article class="kpi" data-kpi="kpiGoNoGoRoi"><span>ROI % (Ampel, Unit-basiert)</span><strong id="kpiGoNoGoRoi">-</strong></article>
               <article class="kpi" data-kpi="kpiSellerboardMargin"><span>Sellerboard-Marge % (brutto)</span><strong id="kpiSellerboardMargin">-</strong></article>
               <article class="kpi" data-kpi="kpiTotalCostPerUnit"><span>Kosten pro Stück (EUR)</span><strong id="kpiTotalCostPerUnit">-</strong></article>
               <article class="kpi" data-kpi="kpiDb1Unit"><span>Deckungsbeitrag pro Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
@@ -171,9 +174,7 @@
             </div>
             <div id="decisionSecondaryWrap" class="decision-secondary-wrap hidden">
               <div class="decision-secondary-grid">
-                <article class="kpi compact" data-kpi="kpiNetMargin"><span>Netto-Marge %</span><strong id="kpiNetMargin">-</strong></article>
                 <article class="kpi compact" data-kpi="kpiDb1Margin"><span>DB1-Marge %</span><strong id="kpiDb1Margin">-</strong></article>
-                <article class="kpi compact" data-kpi="kpiNetMarginBeforePpc"><span>Nettomarge vor PPC %</span><strong id="kpiNetMarginBeforePpc">-</strong></article>
                 <article class="kpi compact" data-kpi="kpiTotalCostMonthly"><span>Gesamtkosten / Monat (EUR)</span><strong id="kpiTotalCostMonthly">-</strong></article>
                 <article class="kpi compact" data-kpi="kpiRevenueNet"><span>Umsatz / Monat (EUR netto)</span><strong id="kpiRevenueNet">-</strong></article>
                 <article class="kpi compact" data-kpi="kpiShippingUnit"><span>Shipping D2D / Unit (EUR)</span><strong id="kpiShippingUnit">-</strong></article>
@@ -978,7 +979,7 @@
               <select id="compareFilter">
                 <option value="all">Alle</option>
                 <option value="green">Ampel Grün</option>
-                <option value="yellow">Ampel Gelb</option>
+                <option value="orange">Ampel Orange</option>
                 <option value="red">Ampel Rot</option>
                 <option value="profit">Nur profitabel</option>
               </select>

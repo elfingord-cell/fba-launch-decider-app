@@ -2828,6 +2828,12 @@ body[data-page="settings"] #settingsLifecycleSection .launch-week-chip-value {
   border-color: #efd59f;
 }
 
+.traffic-orange {
+  background: #fff8ea;
+  color: #8a6100;
+  border-color: #efd59f;
+}
+
 .traffic-red {
   background: #fff3f1;
   color: #9d362e;
@@ -3381,6 +3387,12 @@ tbody tr:hover {
 }
 
 .badge.yellow {
+  border-color: #eed9aa;
+  background: #fff9eb;
+  color: #8d6100;
+}
+
+.badge.orange {
   border-color: #eed9aa;
   background: #fff9eb;
   color: #8d6100;
