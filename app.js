@@ -1859,6 +1859,8 @@ const dom = {
   comparisonBody: document.getElementById("comparisonBody"),
   trafficLight: document.getElementById("trafficLight"),
   driverFocusHint: document.getElementById("driverFocusHint"),
+  cockpitVisualCard: document.getElementById("cockpitVisualCard"),
+  cockpitVisualGrid: document.getElementById("cockpitVisualGrid"),
   outputsCard: document.getElementById("outputsCard"),
   shippingQuickCard: document.getElementById("shippingQuickCard"),
   shippingModuleSection: document.getElementById("shippingModuleSection"),
@@ -3586,6 +3588,51 @@ function applySoftLocksToUI() {
   });
 }
 
+function normalizePresenceEntries(rawEntries) {
+  if (Array.isArray(rawEntries)) {
+    return rawEntries;
+  }
+  if (rawEntries && typeof rawEntries === "object") {
+    if (Array.isArray(rawEntries.metas)) {
+      return rawEntries.metas;
+    }
+    if (Array.isArray(rawEntries.entries)) {
+      return rawEntries.entries;
+    }
+  }
+  return [];
+}
+
+function presenceFieldKey(entry) {
+  const candidate =
+    entry?.fieldKey ??
+    entry?.payload?.fieldKey ??
+    entry?.presence?.fieldKey ??
+    entry?.state?.fieldKey ??
+    null;
+  return String(candidate ?? "").trim();
+}
+
+function presenceUserId(entry) {
+  const candidate =
+    entry?.userId ??
+    entry?.payload?.userId ??
+    entry?.presence?.userId ??
+    entry?.state?.userId ??
+    null;
+  return String(candidate ?? "").trim();
+}
+
+function presenceUserEmail(entry) {
+  const candidate =
+    entry?.userEmail ??
+    entry?.payload?.userEmail ??
+    entry?.presence?.userEmail ??
+    entry?.state?.userEmail ??
+    null;
+  return String(candidate ?? "").trim();
+}
+
 function refreshPresenceLocksFromChannel() {
   const channel = state.realtime.channel;
   if (!channel || typeof channel.presenceState !== "function") {
@@ -3595,20 +3642,21 @@ function refreshPresenceLocksFromChannel() {
   }
   const nextEditingByField = {};
   const presenceState = channel.presenceState();
-  Object.values(presenceState).forEach((entries) => {
-    if (!Array.isArray(entries)) {
-      return;
-    }
+  Object.values(presenceState ?? {}).forEach((rawEntries) => {
+    const entries = normalizePresenceEntries(rawEntries);
     entries.forEach((entry) => {
-      const fieldKey = String(entry?.fieldKey ?? "").trim();
+      const fieldKey = presenceFieldKey(entry);
       if (!fieldKey) {
         return;
       }
-      const userId = String(entry?.userId ?? "");
-      if (userId && userId === state.session.userId) {
+      const userId = presenceUserId(entry);
+      const userEmail = presenceUserEmail(entry);
+      if (
+        (userId && userId === state.session.userId) ||
+        (userEmail && userEmail === state.session.userEmail)
+      ) {
         return;
       }
-      const userEmail = String(entry?.userEmail ?? "").trim();
       if (!nextEditingByField[fieldKey]) {
         nextEditingByField[fieldKey] = userEmail || "Kollege";
       }
@@ -3632,6 +3680,8 @@ async function trackPresenceField(fieldKey) {
     });
   } catch (error) {
     console.error("Realtime presence track failed", error);
+  } finally {
+    refreshPresenceLocksFromChannel();
   }
 }
 
@@ -11172,7 +11222,7 @@ function openMarketEstimatorModal() {
     title: "Pricing/Absatz-Assistent",
     value: valueBits.join(" · "),
     explain: "Konservative Marktpreis-/Absatzschaetzung (DE) auf Basis deiner SERP- und Keyword-Daten.",
-    formula: "Startpreis = Clamp(Basispreis, Markt-Min, Cap) · Forecast = min(Competitor-Methode, Keyword-Methode).",
+    formula: "Startpreis wird zwischen Markt-Min und Preisobergrenze begrenzt · Forecast nimmt konservativ den kleineren TAM-Pfad.",
     source: "Eigene Wettbewerbs-/Keyword-Eingaben. Wirtschaftlichkeitscheck optional und getrennt.",
     robustness: "Mittel (Tool-Schaetzung mit konservativen Haircuts).",
     detailPreset: "market_estimator",
@@ -11307,21 +11357,32 @@ function createMarketEstimatorModalContent(selected, metrics) {
   const coreGrid = document.createElement("div");
   coreGrid.className = "market-estimator-core-grid";
 
-  const appendSelectField = (container, labelText, path, options, value, fieldType = "string") => {
+  const appendSelectField = (container, labelText, path, selectOptions, value, fieldType = "string", config = {}) => {
     const label = document.createElement("label");
     label.textContent = labelText;
+    if (config.help) {
+      label.title = config.help;
+    }
     const control = document.createElement("select");
-    options.forEach((entry) => {
+    selectOptions.forEach((entry) => {
       const option = document.createElement("option");
       option.value = entry.value;
       option.textContent = entry.label;
       control.appendChild(option);
     });
+    if (config.help) {
+      control.title = config.help;
+    }
     control.value = String(value ?? "");
     control.addEventListener("change", () => {
       handleFieldChange(path, control.value, { type: fieldType });
     });
     label.appendChild(control);
+    if (config.hint) {
+      const hint = document.createElement("small");
+      hint.textContent = config.hint;
+      label.appendChild(hint);
+    }
     container.appendChild(label);
     return control;
   };
@@ -11334,6 +11395,10 @@ function createMarketEstimatorModalContent(selected, metrics) {
     control.value = value === null || value === undefined ? "" : String(value);
     control.disabled = Boolean(options.disabled);
     control.placeholder = options.placeholder ?? "";
+    if (options.help) {
+      label.title = options.help;
+      control.title = options.help;
+    }
     control.addEventListener("change", () => {
       handleFieldChange(path, control.value, { type: options.type ?? "string" });
     });
@@ -11355,10 +11420,19 @@ function createMarketEstimatorModalContent(selected, metrics) {
     control.value = value === null || value === undefined ? "" : String(value);
     control.disabled = Boolean(options.disabled);
     control.placeholder = options.placeholder ?? "";
+    if (options.help) {
+      label.title = options.help;
+      control.title = options.help;
+    }
     control.addEventListener("change", () => {
       handleFieldChange(path, control.value, { type: "string" });
     });
     label.appendChild(control);
+    if (options.hint) {
+      const hint = document.createElement("small");
+      hint.textContent = options.hint;
+      label.appendChild(hint);
+    }
     container.appendChild(label);
     return control;
   };
@@ -11378,6 +11452,10 @@ function createMarketEstimatorModalContent(selected, metrics) {
     control.placeholder = options.placeholder ?? "";
     control.value = value === null || value === undefined ? "" : String(value);
     control.disabled = Boolean(options.disabled);
+    if (options.help) {
+      label.title = options.help;
+      control.title = options.help;
+    }
     control.addEventListener("change", () => {
       handleFieldChange(path, control.value, { type: options.nullable ? "nullable_number" : "number" });
     });
@@ -11398,30 +11476,58 @@ function createMarketEstimatorModalContent(selected, metrics) {
     control.type = "checkbox";
     control.checked = Boolean(checkedValue);
     control.disabled = Boolean(options.disabled);
+    if (options.help) {
+      wrap.title = options.help;
+      control.title = options.help;
+    }
     control.addEventListener("change", () => {
       handleFieldChange(path, control.checked, { type: "checkbox" });
     });
     const text = document.createElement("span");
     text.textContent = labelText;
+    if (options.help) {
+      text.title = options.help;
+    }
     wrap.append(control, text);
     container.appendChild(wrap);
+    if (options.hint) {
+      const hint = document.createElement("small");
+      hint.className = "market-estimator-toggle-hint";
+      hint.textContent = options.hint;
+      container.appendChild(hint);
+    }
     return control;
   };
 
   appendSelectField(
     coreGrid,
-    "Einheitstyp",
+    "Einheitstyp (dein Produkt)",
     "unitType",
     MARKET_ESTIMATOR_UNIT_TYPES.map((entry) => ({ value: entry, label: MARKET_ESTIMATOR_UNIT_TYPE_LABELS[entry] ?? entry })),
     estimatorState.unitType,
+    "string",
+    {
+      hint: "Vergleichsbasis fuer den Marktpreis (pro funktionaler Einheit).",
+      help: "Beispiel: Supplements oft EUR/Kapsel, Pflege oft EUR/100 ml. Wettbewerberpreise sollten auf dieselbe Einheit normiert sein.",
+    },
   );
-  appendNumberField(coreGrid, "Einheiten pro Pack", "unitsPerPack", estimatorState.unitsPerPack, { min: 1, step: 1 });
+  appendNumberField(coreGrid, "Einheiten pro Pack (dein Angebot)", "unitsPerPack", estimatorState.unitsPerPack, {
+    min: 1,
+    step: 1,
+    hint: "Wie viele funktionale Einheiten dein Verkaufspack enthaelt.",
+    help: "Beispiel: 120 Kapseln = 120 Einheiten pro Pack. Daraus wird der Packpreis-Anker abgeleitet.",
+  });
   appendSelectField(
     coreGrid,
     "Listing-Typ",
     "listingScenario",
     MARKET_ESTIMATOR_LISTING_SCENARIOS.map((entry) => ({ value: entry, label: MARKET_ESTIMATOR_LISTING_SCENARIO_LABELS[entry] ?? entry })),
     estimatorState.listingScenario,
+    "string",
+    {
+      hint: "Neu = neues Listing. Bestand = Produkt auf bestehendem Listing.",
+      help: "Der Listing-Typ steuert, welche Review-Basis im Share-Modell verwendet wird.",
+    },
   );
   appendSelectField(
     coreGrid,
@@ -11434,6 +11540,11 @@ function createMarketEstimatorModalContent(selected, metrics) {
       { value: "3", label: "3 - 3+ sichtbare USPs" },
     ],
     estimatorState.differentiationScore,
+    "string",
+    {
+      hint: "Bewerte dein Produkt gegen die sichtbaren Wettbewerber.",
+      help: "0 = austauschbar. 1 = ein klarer Vorteil. 2 = zwei klare Vorteile. 3 = deutliche Differenzierung/Subkategorie.",
+    },
   );
   appendSelectField(
     coreGrid,
@@ -11445,6 +11556,11 @@ function createMarketEstimatorModalContent(selected, metrics) {
       { value: "2", label: "2 - aggressiv" },
     ],
     estimatorState.ppcBudgetClass,
+    "string",
+    {
+      hint: "Wie stark du Ranking/Traffic in den ersten 90 Tagen pushst.",
+      help: "0 = defensiv, 1 = normal, 2 = offensiv. Hoehere Klasse verbessert den moeglichen Share-Faktor.",
+    },
   );
   if (estimatorState.listingScenario === "existing_listing") {
     appendNumberField(
@@ -11455,7 +11571,8 @@ function createMarketEstimatorModalContent(selected, metrics) {
       {
         min: 0,
         step: 1,
-        hint: "Nur nutzen, wenn das neue Produkt am bestehenden Listing haengt (z. B. Variante).",
+        hint: "Gesamte aktuelle Reviews des bestehenden Listings.",
+        help: "Nur nutzen, wenn dein neues Produkt auf ein vorhandenes Listing geht (z. B. Variante).",
       },
     );
   } else {
@@ -11467,7 +11584,8 @@ function createMarketEstimatorModalContent(selected, metrics) {
       {
         min: 0,
         step: 1,
-        hint: "Konservative Erwartung fuer ein neues Listing ohne Startreviews.",
+        hint: "Wie viele Gesamt-Reviews dein neues Listing bis Tag 90 realistisch haben kann.",
+        help: "Das sind keine Reviews der letzten 30 Tage, sondern die erwartete Review-Basis nach etwa 3 Monaten.",
       },
     );
   }
@@ -11477,20 +11595,64 @@ function createMarketEstimatorModalContent(selected, metrics) {
     "targetPosition90d",
     MARKET_ESTIMATOR_TARGET_POSITIONS.map((entry) => ({ value: entry, label: MARKET_ESTIMATOR_POSITION_LABELS[entry] ?? entry })),
     estimatorState.targetPosition90d,
+    "string",
+    {
+      hint: "Deine realistische organische Position in der Suchergebnisliste bis Tag 90.",
+      help: "Schaetze konservativ: Wo wirst du ohne Sponsored-Slots organisch landen koennen?",
+    },
   );
-  appendCheckboxField(coreGrid, "Optionalen Wirtschaftlichkeitscheck aktivieren", "economicsCheckEnabled", estimatorState.economicsCheckEnabled);
+  appendCheckboxField(
+    coreGrid,
+    "Optionalen Wirtschaftlichkeitscheck aktivieren",
+    "economicsCheckEnabled",
+    estimatorState.economicsCheckEnabled,
+    {
+      hint: "Prueft nur, ob der Startpreis ueber/unter Break-even liegt.",
+      help: "Der Check blockiert die Empfehlung nicht und dient nur als Warnsignal.",
+    },
+  );
   coreCard.appendChild(coreGrid);
 
   const listingTitle = document.createElement("p");
   listingTitle.className = "hint";
-  listingTitle.textContent = "Listing-Staerke fuer Conversion (CVR):";
+  listingTitle.textContent = "Listing-Staerke deines Listings fuer Conversion (CVR):";
   coreCard.appendChild(listingTitle);
+  const listingScopeHint = document.createElement("p");
+  listingScopeHint.className = "hint market-estimator-inline-note";
+  listingScopeHint.textContent = "Wichtig: Diese Punkte gelten fuer dein eigenes geplantes Listing. SERP = Suchergebnisseite.";
+  coreCard.appendChild(listingScopeHint);
   const listingSignals = document.createElement("div");
   listingSignals.className = "market-estimator-check-grid";
-  appendCheckboxField(listingSignals, "Hauptbild sichtbar besser als SERP-Median", "listingSignals.bestImage", estimatorState.listingSignals.bestImage);
-  appendCheckboxField(listingSignals, "Mindestens 4 Bilder inkl. 1 Infografik", "listingSignals.imageSetInfographic", estimatorState.listingSignals.imageSetInfographic);
-  appendCheckboxField(listingSignals, "A+ Content vorhanden", "listingSignals.aPlus", estimatorState.listingSignals.aPlus);
-  appendCheckboxField(listingSignals, "USP klar in Titel + ersten Bullets", "listingSignals.uspCopy", estimatorState.listingSignals.uspCopy);
+  appendCheckboxField(
+    listingSignals,
+    "Hauptbild deines Listings sichtbar besser als SERP-Median",
+    "listingSignals.bestImage",
+    estimatorState.listingSignals.bestImage,
+    {
+      help: "Vergleich mit den sichtbaren Hauptbildern der Top-Suchergebnisse fuer dein Primaerkeyword.",
+    },
+  );
+  appendCheckboxField(
+    listingSignals,
+    "Mindestens 4 Bilder inkl. 1 Infografik (dein Listing)",
+    "listingSignals.imageSetInfographic",
+    estimatorState.listingSignals.imageSetInfographic,
+    {
+      help: "Gemeint ist dein geplanter Content-Standard, nicht der Wettbewerbsdurchschnitt.",
+    },
+  );
+  appendCheckboxField(
+    listingSignals,
+    "A+ Content bei deinem Listing vorhanden",
+    "listingSignals.aPlus",
+    estimatorState.listingSignals.aPlus,
+  );
+  appendCheckboxField(
+    listingSignals,
+    "USP klar in Titel + ersten Bullets deines Listings",
+    "listingSignals.uspCopy",
+    estimatorState.listingSignals.uspCopy,
+  );
   coreCard.appendChild(listingSignals);
 
   if (estimatorState.economicsCheckEnabled) {
@@ -11549,7 +11711,7 @@ function createMarketEstimatorModalContent(selected, metrics) {
   const keywordWrap = document.createElement("section");
   keywordWrap.className = "market-estimator-card";
   const keywordTitle = document.createElement("h5");
-  keywordTitle.textContent = "Keyword-Daten (bis zu 3)";
+  keywordTitle.textContent = "Keyword-Daten (bis zu 3 Keywords)";
   keywordWrap.appendChild(keywordTitle);
 
   const tabRow = document.createElement("div");
@@ -11573,8 +11735,8 @@ function createMarketEstimatorModalContent(selected, metrics) {
   keywordModeHint.className = "hint";
   keywordModeHint.textContent =
     estimatorState.inputView === "quick"
-      ? "Quick-Modus: SERP-Preise je Einheit eintragen. Quartile werden automatisch berechnet."
-      : "Pro-Modus: Quartile (P25/P50/P75/P90) direkt eingeben.";
+      ? "Quick-Modus: SERP-Preisliste je Einheit eintragen. Quartile werden automatisch berechnet. (SERP = Suchergebnisseite)."
+      : "Pro-Modus: Quartile (P25/P50/P75/P90) direkt eingeben. P50 = Median, P25/P75 = unteres/oberes Viertel.";
   keywordWrap.appendChild(keywordModeHint);
 
   const appendManualQuartileFields = (container, keywordKey, keywordState, disabled) => {
@@ -11582,25 +11744,29 @@ function createMarketEstimatorModalContent(selected, metrics) {
       min: 0,
       step: 0.01,
       disabled,
-      hint: "25%-Quantil der SERP-Preise pro Einheit.",
+      hint: "Unteres Quartil: 25% der vergleichbaren Angebote liegen auf/unter diesem Wert.",
+      help: "P25 eignet sich als konservativer Untergrenzen-Anker.",
     });
     appendNumberField(container, "P50 (EUR/Einheit)", `keywords.${keywordKey}.p50UnitGross`, keywordState.p50UnitGross, {
       min: 0,
       step: 0.01,
       disabled,
-      hint: "Median der SERP-Preise pro Einheit.",
+      hint: "Median: 50% der Angebote liegen darunter, 50% darueber.",
+      help: "P50 ist der zentrale Marktanker ohne Ausreisser-Einfluss wie beim Durchschnitt.",
     });
     appendNumberField(container, "P75 (EUR/Einheit)", `keywords.${keywordKey}.p75UnitGross`, keywordState.p75UnitGross, {
       min: 0,
       step: 0.01,
       disabled,
-      hint: "75%-Quantil der SERP-Preise pro Einheit.",
+      hint: "Oberes Quartil: 75% der Angebote liegen auf/unter diesem Wert.",
+      help: "P75 wird standardmaessig als konservative Preisobergrenze verwendet.",
     });
     appendNumberField(container, "P90 (EUR/Einheit)", `keywords.${keywordKey}.p90UnitGross`, keywordState.p90UnitGross, {
       min: 0,
       step: 0.01,
       disabled,
-      hint: "Optional fuer Differenzierungs-Cap (statt P75).",
+      hint: "Nur bei starker Differenzierung relevant (optionale obere Preisgrenze).",
+      help: "Wenn Differenzierung hoch ist, kann statt P75 ausnahmsweise P90 als Cap genutzt werden.",
     });
   };
 
@@ -11608,13 +11774,16 @@ function createMarketEstimatorModalContent(selected, metrics) {
   keywordGrid.className = "market-estimator-keyword-grid";
   MARKET_ESTIMATOR_KEYWORD_KEYS.forEach((keywordKey) => {
     const keywordState = estimatorState.keywords[keywordKey] ?? defaultMarketEstimatorKeyword(keywordKey);
+    const keywordIndex = MARKET_ESTIMATOR_KEYWORD_KEYS.indexOf(keywordKey) + 1;
     const card = document.createElement("article");
     card.className = "market-estimator-keyword-card";
     const headRow = document.createElement("div");
     headRow.className = "market-estimator-keyword-head";
     const headTitle = document.createElement("strong");
-    headTitle.textContent = keywordKey.toUpperCase();
+    headTitle.textContent = `Keyword ${keywordIndex}`;
     headRow.appendChild(headTitle);
+    const headRight = document.createElement("div");
+    headRight.className = "market-estimator-keyword-head-right";
 
     if (keywordKey !== "k1") {
       const toggle = document.createElement("label");
@@ -11628,62 +11797,80 @@ function createMarketEstimatorModalContent(selected, metrics) {
       const toggleText = document.createElement("span");
       toggleText.textContent = "aktiv";
       toggle.append(toggleInput, toggleText);
-      headRow.appendChild(toggle);
+      headRight.appendChild(toggle);
     } else {
       const badge = document.createElement("small");
-      badge.textContent = "Primaerkeyword";
-      headRow.appendChild(badge);
+      badge.className = "market-estimator-keyword-badge";
+      badge.textContent = "Primaerkeyword (Preisanker)";
+      headRight.appendChild(badge);
     }
+    headRow.appendChild(headRight);
     card.appendChild(headRow);
 
     const disabled = keywordKey !== "k1" && !keywordState.enabled;
     const fieldGrid = document.createElement("div");
     fieldGrid.className = "market-estimator-keyword-fields";
-    appendTextField(fieldGrid, "Keyword-Label (optional)", `keywords.${keywordKey}.label`, keywordState.label, { disabled });
+    appendTextField(fieldGrid, "Keyword-Label (optional)", `keywords.${keywordKey}.label`, keywordState.label, {
+      disabled,
+      hint: "Nur fuer deine interne Zuordnung.",
+    });
     appendNumberField(fieldGrid, "Suchvolumen / Monat", `keywords.${keywordKey}.searchVolume`, keywordState.searchVolume, {
       min: 0,
       step: 1,
       disabled,
+      hint: "Geschaetzte monatliche Suchanfragen fuer dieses Keyword.",
+      help: "Nutzt dein Tool-/Brand-Analytics-Wert fuer Amazon.de (moeglichst aktueller Monatswert).",
     });
     appendNumberField(fieldGrid, "Median Reviews Top10", `keywords.${keywordKey}.medianReviewsTop10`, keywordState.medianReviewsTop10, {
       min: 0,
       step: 1,
       disabled,
+      hint: "Median der Review-Anzahl der 10 wichtigsten organischen Wettbewerber.",
+      help: "Steuert deinen Review-Gap und damit den Share-Faktor.",
     });
     appendNumberField(fieldGrid, "Top3 Sales Share (%)", `keywords.${keywordKey}.top3SalesSharePct`, keywordState.top3SalesSharePct, {
       min: 0,
       max: 100,
       step: 0.1,
       disabled,
+      hint: "Wie viel Prozent des Marktes auf die Top-3 Anbieter entfaellt.",
+      help: "Hohe Werte deuten auf Dominanz hin und machen den Eintritt schwerer.",
     });
-    appendNumberField(fieldGrid, "TAM Competitor Units", `keywords.${keywordKey}.tamCompetitorUnits`, keywordState.tamCompetitorUnits, {
+    appendNumberField(fieldGrid, "TAM aus Wettbewerbern (Units/Monat)", `keywords.${keywordKey}.tamCompetitorUnits`, keywordState.tamCompetitorUnits, {
       min: 0,
       step: 1,
       disabled,
+      hint: "Geschaetzte Gesamtmenge/Monat der relevanten Wettbewerber (Top-Listings).",
+      help: "TAM = Total Addressable Market. Hier: nach Haircut die Basis fuer die Competitor-Methode.",
     });
     appendCheckboxField(fieldGrid, "Amazon Retail in Top10", `keywords.${keywordKey}.amazonRetailTop10`, keywordState.amazonRetailTop10, {
       disabled,
+      help: "Setze Haken, wenn Amazon selbst bei diesem Keyword als Verkaeufer in Top10 sichtbar ist.",
     });
 
     if (estimatorState.inputView === "quick") {
       appendTextareaField(
         fieldGrid,
-        "SERP-Preise je Einheit (EUR)",
+        "SERP-Preisliste je Einheit (EUR)",
         `keywords.${keywordKey}.priceSamplesUnitGross`,
         listToInputValue(keywordState.priceSamplesUnitGross),
         {
           disabled,
           rows: 2,
           type: "number_list",
-          hint: "Komma/Zeile getrennt, z. B. 12.99, 13.49, 14.20",
+          hint: "Trenne mit Komma oder Zeilenumbruch, z. B. 12.99, 13.49, 14.20.",
+          help: "SERP = Suchergebnisseite. Bitte sichtbare Bruttopreise pro Einheit der vergleichbaren Top-Ergebnisse eintragen.",
         },
       );
       if (!disabled) {
         appendCheckboxField(
           fieldGrid,
-          "Pro-Override: manuelle Quartile nutzen",
+          "Pro-Override: manuelle Quartile statt Auto-Quartile",
           `keywords.${keywordKey}.useManualQuartiles`,
           keywordState.useManualQuartiles,
+          {
+            hint: "Nutze diese Option, wenn du P25/P50/P75/P90 selbst sauber vorliegen hast.",
+          },
         );
       }
       if (keywordState.useManualQuartiles) {
@@ -11692,14 +11879,20 @@ function createMarketEstimatorModalContent(selected, metrics) {
         const anchor = result?.keywordAnchors?.[keywordKey];
         const quartileInfo = document.createElement("p");
         quartileInfo.className = "hint market-estimator-inline-note";
-        quartileInfo.textContent = `Auto-Quartile: P25 ${formatCurrencySafe(num(anchor?.p25, Number.NaN))} | P50 ${formatCurrencySafe(num(anchor?.p50, Number.NaN))} | P75 ${formatCurrencySafe(num(anchor?.p75, Number.NaN))}`;
+        quartileInfo.textContent =
+          `Auto-Quartile: P25 ${formatCurrencySafe(num(anchor?.p25, Number.NaN))} | ` +
+          `P50 ${formatCurrencySafe(num(anchor?.p50, Number.NaN))} | ` +
+          `P75 ${formatCurrencySafe(num(anchor?.p75, Number.NaN))} · ` +
+          "P25/P50/P75 = unteres Quartil / Median / oberes Quartil";
         fieldGrid.appendChild(quartileInfo);
       }
     } else {
       appendManualQuartileFields(fieldGrid, keywordKey, keywordState, disabled);
       const proNote = document.createElement("p");
       proNote.className = "hint market-estimator-inline-note";
-      proNote.textContent = "Pro-Modus: Quartile werden direkt verwendet (kein Auto-Import aus Preisliste).";
+      proNote.textContent =
+        "Pro-Modus: Quartile werden direkt verwendet (kein Auto-Import aus Preisliste). " +
+        "P50 ist der Hauptanker, P25/P75 zeigen das untere/obere Marktviertel.";
       fieldGrid.appendChild(proNote);
     }
 
@@ -11708,6 +11901,54 @@ function createMarketEstimatorModalContent(selected, metrics) {
   });
   keywordWrap.appendChild(keywordGrid);
   section.appendChild(keywordWrap);
+
+  const glossary = document.createElement("details");
+  glossary.className = "market-estimator-glossary";
+  const glossarySummary = document.createElement("summary");
+  glossarySummary.textContent = "Begriffe einfach erklaert (fuer Einsteiger)";
+  glossary.appendChild(glossarySummary);
+  const glossaryList = document.createElement("ul");
+  glossaryList.className = "market-estimator-glossary-list";
+  [
+    {
+      term: "SERP",
+      text: "Suchergebnisseite auf Amazon. Gemeint sind sichtbare Marktpreise in den Ergebnissen.",
+    },
+    {
+      term: "TAM",
+      text: "Gesamtmarktmenge pro Monat (Total Addressable Market), z. B. aus Wettbewerber- oder Keyword-Daten.",
+    },
+    {
+      term: "P25 / P50 / P75 / P90",
+      text: "Quartile der Marktpreise pro Einheit. P50 = Median, P25/P75 = unteres/oberes Viertel.",
+    },
+    {
+      term: "Startpreis",
+      text: "Empfohlener Startpreis fuer die Launchphase (erste 30-90 Tage).",
+    },
+    {
+      term: "Basispreis",
+      text: "Preisvorschlag aus Marktklasse A/B/C, bevor die Begrenzung auf den Korridor greift.",
+    },
+    {
+      term: "Cap (Preisobergrenze)",
+      text: "Konservative obere Preisgrenze aus Marktquartilen (standardmaessig P75, optional P90).",
+    },
+    {
+      term: "Clamp / Begrenzung",
+      text: "Der Startpreis wird in den Marktkorridor gezwungen: nicht unter Markt-Min und nicht ueber Cap.",
+    },
+    {
+      term: "Units Competitor / Units Keyword",
+      text: "Zwei unabhaengige Absatzpfade. Final Units nimmt konservativ den kleineren Wert.",
+    },
+  ].forEach((entry) => {
+    const item = document.createElement("li");
+    item.innerHTML = `<strong>${entry.term}</strong><span>${entry.text}</span>`;
+    glossaryList.appendChild(item);
+  });
+  glossary.appendChild(glossaryList);
+  section.appendChild(glossary);
 
   const resultCard = document.createElement("section");
   resultCard.className = "market-estimator-card";
@@ -11721,42 +11962,42 @@ function createMarketEstimatorModalContent(selected, metrics) {
     {
       label: "Startpreis",
       value: formatCurrencySafe(result?.price?.startPrice),
-      hint: "Clamp(Basis, Markt-Min, Cap)",
+      hint: "Empfohlener Startpreis fuer die Launchphase, im Marktkorridor begrenzt.",
     },
     {
-      label: "Markt-Min / Markt-Max",
+      label: "Empfohlener Preiskorridor",
       value: `${formatCurrencySafe(result?.price?.minPrice)} / ${formatCurrencySafe(result?.price?.maxPrice)}`,
-      hint: "Preis-Korridor im Modul",
+      hint: "Markt-Min bis Preisobergrenze (Cap).",
     },
     {
-      label: "Basis / Cap",
+      label: "Basispreis / Preisobergrenze",
       value: `${formatCurrencySafe(result?.price?.basisPrice)} / ${formatCurrencySafe(result?.price?.highPriceCap)}`,
-      hint: `Cap-Quelle: ${(result?.price?.capSource || "p75").toUpperCase()}`,
+      hint: `Cap-Quelle: ${(result?.price?.capSource || "p75").toUpperCase()} (Quartil-Regel).`,
     },
     {
-      label: "Units (Competitor)",
+      label: "Absatz aus Wettbewerber-TAM",
       value: formatUnitsSafe(result?.demand?.unitsCompetitorMethod),
-      hint: "TAM Competitor * 0,75 * Share",
+      hint: "Wettbewerber-TAM x Haircut 0,75 x Share.",
     },
     {
-      label: "Units (Keyword)",
+      label: "Absatz aus Keyword-TAM",
       value: formatUnitsSafe(result?.demand?.unitsKeywordMethod),
-      hint: "TAM Keywords * 0,8 * Share",
+      hint: "Keyword-TAM x Haircut 0,8 x Share.",
     },
     {
-      label: "Final Units",
+      label: "Finale Absatzschaetzung",
       value: formatUnitsSafe(result?.demand?.finalUnits),
-      hint: "min(Competitor, Keyword)",
+      hint: "Konservativ: kleinerer Wert aus beiden Pfaden.",
     },
     {
-      label: "Keyword Funnel",
+      label: "Keyword-Funnel (CTR/CVR)",
       value: `CTR ${formatPercentSafe(result?.keywordMethod?.ctrPct)} | CVR ${formatPercentSafe(result?.keywordMethod?.cvrPct)}`,
-      hint: `Listing-Staerke: ${result?.keywordMethod?.listingStrength ?? "-"}`,
+      hint: `Listing-Staerke deines Listings: ${result?.keywordMethod?.listingStrength ?? "-"}`,
     },
     {
-      label: "Share-Faktoren",
+      label: "Share-Treiber",
       value: `Review ${formatNumberSafe(result?.share?.reviewFactor)} | Preis ${formatNumberSafe(result?.share?.priceFactor)}`,
-      hint: `Diff ${formatNumberSafe(result?.share?.diffFactor)} | PPC ${formatNumberSafe(result?.share?.ppcFactor)}`,
+      hint: `Differenzierung ${formatNumberSafe(result?.share?.diffFactor)} | PPC ${formatNumberSafe(result?.share?.ppcFactor)}`,
     },
   ];
   if (result?.economics?.enabled) {
@@ -15338,6 +15579,163 @@ function renderLogisticsChain(metrics, stage = "quick", prebuiltCategories = nul
   }
 }
 
+function buildCockpitVisualPayload(metrics, stage = "quick", categories = null) {
+  const stageKey = stage === "quick" ? "quick" : "validation";
+  const categoryRows = Array.isArray(categories) ? categories : buildCostCategoryData(metrics);
+  const categoryMap = new Map(categoryRows.map((category) => [category.key, category]));
+
+  const waterfallOrder = [
+    "product",
+    "shipping_import",
+    "threepl",
+    "amazon",
+    "ads_returns",
+    "launch_lifecycle",
+    "overhead",
+  ];
+  const waterfallBlocks = waterfallOrder.map((key) => {
+    const category = categoryMap.get(key);
+    return {
+      key,
+      label: category?.title ?? key,
+      value: num(category?.totalPerUnit, 0),
+    };
+  });
+
+  const startValue = num(metrics?.priceNet, Number.NaN);
+  const monthlyUnits = num(metrics?.monthlyUnits, 0);
+  const endValue = monthlyUnits > 0 ? num(metrics?.profitMonthly, 0) / monthlyUnits : Number.NaN;
+  const blockTotal = waterfallBlocks.reduce((sum, item) => sum + num(item.value, 0), 0);
+  const reconciliationDelta =
+    Number.isFinite(startValue) && Number.isFinite(endValue)
+      ? startValue - blockTotal - endValue
+      : Number.NaN;
+
+  const decision = metrics?.goNoGoDecision ?? evaluateGoNoGoTraffic(metrics, state.settings?.goNoGoThresholds);
+  const thresholdSource = decision?.thresholds ?? state.settings?.goNoGoThresholds ?? DEFAULT_SETTINGS.goNoGoThresholds;
+  const riskRows = [
+    {
+      key: "net_margin_after_ppc",
+      label: "Netto-Marge nach PPC",
+      value: num(metrics?.netMarginPct, Number.NaN),
+      minValue: num(thresholdSource?.minNetMarginPct, Number.NaN),
+      targetValue: num(thresholdSource?.targetNetMarginPct, Number.NaN),
+    },
+    {
+      key: "margin_before_ppc",
+      label: "Marge vor PPC",
+      value: num(metrics?.netMarginBeforePpcPct, Number.NaN),
+      minValue: num(thresholdSource?.minMarginBeforePpcPct, Number.NaN),
+      targetValue: num(thresholdSource?.targetMarginBeforePpcPct, Number.NaN),
+    },
+    {
+      key: "roi_unit",
+      label: "ROI (Unit-basiert)",
+      value: num(metrics?.goNoGoRoiPct, Number.NaN),
+      minValue: num(thresholdSource?.minRoiPct, Number.NaN),
+      targetValue: num(thresholdSource?.targetRoiPct, Number.NaN),
+    },
+  ];
+
+  const sensitivity = metrics?.sensitivity ?? {};
+  const sensitivityPayload = {
+    base: num(metrics?.profitMonthly, Number.NaN),
+    worst: num(sensitivity?.worst?.profitMonthly, Number.NaN),
+    best: num(sensitivity?.best?.profitMonthly, Number.NaN),
+    stresses: [
+      {
+        key: "price_down",
+        label: "Preis -10%",
+        value: num(sensitivity?.priceDown?.profitMonthly, Number.NaN),
+      },
+      {
+        key: "tacos_up",
+        label: "TACoS +2%",
+        value: num(sensitivity?.tacosUp?.profitMonthly, Number.NaN),
+      },
+      {
+        key: "units_down",
+        label: "Absatz -10%",
+        value: num(sensitivity?.unitsDown?.profitMonthly, Number.NaN),
+      },
+    ],
+  };
+
+  const totalCostMonthly = Math.max(0, num(metrics?.totalCostMonthly, 0));
+  const impactRows = categoryRows
+    .flatMap((category) => {
+      const lines = Array.isArray(category?.lines) ? category.lines : [];
+      return lines
+        .filter((lineItem) => !lineItem?.isSummary && !lineItem?.excludeFromCategoryTotal)
+        .map((lineItem) => ({
+          key: lineItem?.id || `${category?.key || "row"}.${lineItem?.label || "line"}`,
+          label: lineItem?.label || "Kostenzeile",
+          impactMonthly: Math.max(0, num(lineItem?.impactMonthly, 0)),
+        }));
+    })
+    .sort((a, b) => b.impactMonthly - a.impactMonthly);
+
+  const topN = stageKey === "quick" ? 3 : 5;
+  let cumulativePct = 0;
+  const paretoRows = impactRows.slice(0, topN).map((row) => {
+    const sharePct = totalCostMonthly > 0 ? (row.impactMonthly / totalCostMonthly) * 100 : 0;
+    cumulativePct += sharePct;
+    return {
+      ...row,
+      sharePct,
+      cumulativePct,
+    };
+  });
+
+  return {
+    stage: stageKey,
+    waterfall: {
+      startValue,
+      blocks: waterfallBlocks,
+      endValue,
+      reconciliationDelta,
+    },
+    risk: {
+      rows: riskRows,
+      overall: {
+        color: decision?.color ?? "red",
+        score: num(decision?.score, Number.NaN),
+      },
+    },
+    sensitivity: sensitivityPayload,
+    pareto: {
+      rows: paretoRows,
+      totalCostMonthly,
+      topN,
+    },
+  };
+}
+
+function renderCockpitVisuals(metrics, stage = "quick", prebuiltCategories = null) {
+  if (!dom.cockpitVisualCard || !dom.cockpitVisualGrid) {
+    return;
+  }
+  dom.cockpitVisualCard.classList.remove("hidden");
+
+  const payload = buildCockpitVisualPayload(metrics, stage, prebuiltCategories);
+  if (window.AppCockpitCharts && typeof window.AppCockpitCharts.render === "function") {
+    window.AppCockpitCharts.render(dom.cockpitVisualGrid, payload, {
+      locale: "de-DE",
+      currency: "EUR",
+      formatCurrency,
+      formatNumber,
+      formatPercent,
+    });
+    return;
+  }
+
+  dom.cockpitVisualGrid.innerHTML = "";
+  const fallback = document.createElement("p");
+  fallback.className = "hint";
+  fallback.textContent = "Visual Cockpit ist aktuell nicht verfuegbar.";
+  dom.cockpitVisualGrid.appendChild(fallback);
+}
+
 function renderSelectedOutputs(product, metrics, stage = "quick") {
   setKpi(dom.kpiRevenueGross, metrics.grossRevenueMonthly, "currency");
   setKpi(dom.kpiRevenueNet, metrics.netRevenueMonthly, "currency");
@@ -15408,6 +15806,7 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
   renderShippingDetails(metrics);
   renderFbaDetails(metrics);
   const categories = buildCostCategoryData(metrics);
+  renderCockpitVisuals(metrics, stage, categories);
   renderLogisticsChain(metrics, stage, categories);
   renderCostCategoryGrid(metrics, stage, categories);
 

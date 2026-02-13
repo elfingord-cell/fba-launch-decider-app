@@ -426,6 +426,420 @@ body[data-page="settings"] .sidebar-actions {
   gap: 7px;
 }
 
+.cockpit-visual-card {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  border-color: color-mix(in srgb, #c6dcd5 56%, var(--line));
+  background:
+    radial-gradient(120% 160% at 100% 0%, rgba(195, 230, 217, 0.28) 0%, rgba(195, 230, 217, 0) 54%),
+    linear-gradient(180deg, #ffffff 0%, #f8fcfa 100%);
+}
+
+.cockpit-visual-card .section-head {
+  margin-bottom: 0;
+}
+
+.cockpit-visual-card .section-head h2 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.cockpit-visual-card .section-head p {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.cockpit-visual-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.cockpit-chart-card {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 11px;
+  background: #ffffff;
+  padding: 9px;
+  display: grid;
+  gap: 7px;
+}
+
+.cockpit-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cockpit-chart-head h6 {
+  margin: 0;
+  font-size: 0.76rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.cockpit-chart-head small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.cockpit-waterfall-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.cockpit-waterfall-step {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 8px;
+  padding: 6px 7px;
+  background: #fff;
+  display: grid;
+  gap: 4px;
+}
+
+.cockpit-waterfall-step-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.cockpit-waterfall-step-head span {
+  font-size: 0.66rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.cockpit-waterfall-step-head strong {
+  font-size: 0.69rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.cockpit-waterfall-step-bar-wrap {
+  height: 7px;
+  border-radius: 999px;
+  background: #ebefee;
+  overflow: hidden;
+}
+
+.cockpit-waterfall-step-bar {
+  height: 100%;
+  border-radius: inherit;
+  width: 0;
+}
+
+.cockpit-waterfall-step.is-start .cockpit-waterfall-step-bar {
+  background: linear-gradient(90deg, #5aa8db, #337fa5);
+}
+
+.cockpit-waterfall-step.is-cost .cockpit-waterfall-step-bar {
+  background: linear-gradient(90deg, #efb0a8, #cd6a5e);
+}
+
+.cockpit-waterfall-step.is-profit .cockpit-waterfall-step-bar {
+  background: linear-gradient(90deg, #93d4b3, #2f8f60);
+}
+
+.cockpit-waterfall-step.is-loss .cockpit-waterfall-step-bar {
+  background: linear-gradient(90deg, #f2c7a0, #c07f3b);
+}
+
+.cockpit-waterfall-step small {
+  color: var(--muted);
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.cockpit-waterfall-reconciliation {
+  margin: 0;
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: #2a6654;
+  border: 1px solid color-mix(in srgb, #9fd3c1 60%, white);
+  border-radius: 8px;
+  background: #f1faf6;
+  padding: 6px 7px;
+}
+
+.cockpit-waterfall-reconciliation.warn {
+  color: #8a5031;
+  border-color: color-mix(in srgb, #e2bb98 58%, white);
+  background: #fff8ee;
+}
+
+.cockpit-risk-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.cockpit-risk-row {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px 7px;
+  display: grid;
+  gap: 4px;
+}
+
+.cockpit-risk-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cockpit-risk-row-head span {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.cockpit-risk-row-head strong {
+  font-size: 0.67rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.cockpit-risk-track {
+  position: relative;
+  height: 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  background: #edf2f0;
+}
+
+.cockpit-risk-track .zone {
+  height: 100%;
+}
+
+.cockpit-risk-track .zone.danger {
+  background: #f2c8c3;
+}
+
+.cockpit-risk-track .zone.warn {
+  background: #f5e2b7;
+}
+
+.cockpit-risk-track .zone.ok {
+  background: #cfead9;
+}
+
+.cockpit-risk-marker {
+  position: absolute;
+  top: -2px;
+  width: 8px;
+  height: 13px;
+  border-radius: 5px;
+  transform: translateX(-50%);
+  background: #334f5d;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+}
+
+.cockpit-risk-row small {
+  color: var(--muted);
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.cockpit-risk-row.tone-danger {
+  border-color: color-mix(in srgb, #e4b3ac 60%, white);
+  background: #fff6f5;
+}
+
+.cockpit-risk-row.tone-warn {
+  border-color: color-mix(in srgb, #e6cea0 60%, white);
+  background: #fffaf1;
+}
+
+.cockpit-risk-row.tone-ok {
+  border-color: color-mix(in srgb, #aed7c2 60%, white);
+  background: #f5fcf8;
+}
+
+.cockpit-risk-overall {
+  margin: 0;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  background: #f7faf9;
+  padding: 6px 7px;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.cockpit-risk-overall.tone-green {
+  color: #24684d;
+  border-color: color-mix(in srgb, #a7d9be 58%, white);
+  background: #f0faf4;
+}
+
+.cockpit-risk-overall.tone-orange {
+  color: #8c6609;
+  border-color: color-mix(in srgb, #e8cd95 58%, white);
+  background: #fff8eb;
+}
+
+.cockpit-risk-overall.tone-red {
+  color: #91473d;
+  border-color: color-mix(in srgb, #e5b0aa 58%, white);
+  background: #fff5f3;
+}
+
+.cockpit-sensitivity-chart {
+  width: 100%;
+  height: 90px;
+}
+
+.cockpit-sensitivity-chart .axis {
+  stroke: #93a29f;
+  stroke-width: 1.2;
+}
+
+.cockpit-sensitivity-chart .zero {
+  stroke: #b66d63;
+  stroke-width: 1.1;
+  stroke-dasharray: 3 2;
+}
+
+.cockpit-sensitivity-chart .envelope {
+  fill: #dcedf6;
+  stroke: #9abfd2;
+  stroke-width: 1;
+}
+
+.cockpit-sensitivity-chart .base {
+  fill: #1f7f60;
+  stroke: #ffffff;
+  stroke-width: 1.4;
+}
+
+.cockpit-sensitivity-chart .bound.worst {
+  fill: #c35d51;
+  stroke: #ffffff;
+  stroke-width: 1.2;
+}
+
+.cockpit-sensitivity-chart .bound.best {
+  fill: #2f8f60;
+  stroke: #ffffff;
+  stroke-width: 1.2;
+}
+
+.cockpit-sensitivity-chart .stress {
+  fill: #4f6f89;
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+.cockpit-sensitivity-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.cockpit-sensitivity-legend-item {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 7px;
+  background: #fff;
+  padding: 4px 6px;
+  display: grid;
+  gap: 2px;
+}
+
+.cockpit-sensitivity-legend-item span {
+  color: var(--muted);
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.cockpit-sensitivity-legend-item strong {
+  font-size: 0.66rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.cockpit-sensitivity-warning {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, #9ed2bc 58%, white);
+  border-radius: 8px;
+  background: #f0faf5;
+  color: #285f50;
+  padding: 6px 7px;
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.cockpit-sensitivity-warning.warn {
+  border-color: color-mix(in srgb, #e2b4ad 58%, white);
+  background: #fff5f4;
+  color: #8e4439;
+}
+
+.cockpit-pareto-list {
+  list-style: decimal;
+  margin: 0;
+  padding: 0 0 0 16px;
+  display: grid;
+  gap: 5px;
+}
+
+.cockpit-pareto-row {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px 7px;
+  display: grid;
+  gap: 4px;
+}
+
+.cockpit-pareto-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cockpit-pareto-row-head span {
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.cockpit-pareto-row-head strong {
+  font-size: 0.66rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.cockpit-pareto-bar-wrap {
+  height: 8px;
+  border-radius: 999px;
+  background: #e9efee;
+  overflow: hidden;
+}
+
+.cockpit-pareto-bar {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8ec2a5, #357f61);
+}
+
+.cockpit-pareto-row small {
+  color: var(--muted);
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
 .kpi.compact {
   padding: 8px;
 }
@@ -3925,19 +4339,50 @@ tbody tr:hover {
 .market-estimator-keyword-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 }
 
 .market-estimator-keyword-head strong {
   font-size: 0.78rem;
   font-family: "Space Grotesk", "Manrope", sans-serif;
+  margin-top: 3px;
 }
 
 .market-estimator-keyword-head small {
   color: var(--muted);
   font-size: 0.66rem;
   font-weight: 700;
+}
+
+.market-estimator-keyword-head-right {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 30px;
+}
+
+.market-estimator-keyword-head-right .toggle-row {
+  display: inline-flex;
+  border-radius: 9px;
+  padding: 5px 8px;
+  gap: 6px;
+}
+
+.market-estimator-keyword-head-right .toggle-row span {
+  font-size: 0.72rem;
+}
+
+.market-estimator-keyword-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 67%, white);
+  border-radius: 999px;
+  background: #f7fbfa;
+  color: #3f5e57;
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 4px 8px;
 }
 
 .market-estimator-keyword-fields {
@@ -3954,6 +4399,55 @@ tbody tr:hover {
 .market-estimator-inline-note {
   margin: 0;
   grid-column: 1 / -1;
+}
+
+.market-estimator-toggle-hint {
+  margin: -2px 0 2px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.market-estimator-glossary {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 9px;
+}
+
+.market-estimator-glossary summary {
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-glossary-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.market-estimator-glossary-list li {
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  border-radius: 8px;
+  background: #fcfcfb;
+  padding: 6px 7px;
+  display: grid;
+  gap: 3px;
+}
+
+.market-estimator-glossary-list strong {
+  font-size: 0.67rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.market-estimator-glossary-list span {
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 700;
 }
 
 .market-estimator-result-grid {
@@ -4968,8 +5462,13 @@ tbody tr:hover {
   }
 
   .market-estimator-keyword-grid,
+  .cockpit-visual-grid,
   .market-estimator-visual-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cockpit-sensitivity-legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .market-estimator-flow-grid,
@@ -5049,6 +5548,15 @@ tbody tr:hover {
 
   .sensitivity-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cockpit-sensitivity-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .cockpit-chart-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .chain-grid {
