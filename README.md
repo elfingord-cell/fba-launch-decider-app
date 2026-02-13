@@ -22,9 +22,14 @@ Web-App zur schnellen Kalkulation von Amazon-FBA Produkten (Quick-Check, Validat
 - `settings.html` – globale Settings
 - `app.js` – gesamte App-Logik
 - `styles.css` – Styling
+- `modules/domain/shipping.js` – Shipping-Domain-Helfer (Rechenbrücke D2D + Import-Aufschläge)
+- `modules/ui/shipping-dashboard.js` – UI-Helfer für Shipping-Dashboard-Modelle
+- `modules/ui/setup-wizard.js` – Geführter Setup-Assistent (Schritte, Status, Sprunglogik)
+- `modules/ui/tooltips.js` – zentralisierte Tooltip-/Terminologie-Helfer
 - `api/config.js` – Vercel API Endpoint für Runtime Config
 - `supabase/schema.sql` – Tabellen + RLS Policies
 - `DEPLOY.md` – Deploy-Schritte
+- `QA_BASELINE.md` – Referenzszenarien + Release-Checkliste
 
 ## Lokale Entwicklung
 
@@ -60,6 +65,24 @@ Web-App zur schnellen Kalkulation von Amazon-FBA Produkten (Quick-Check, Validat
 - Realtime Updates ohne Reload
 - Audit Log für Änderungen
 - CSV/Excel Export
+
+## Produkt-Flow & Wizard
+
+Die Produktseite ist in drei Arbeitszonen gegliedert:
+
+- Ergebnis: KPI-Entscheidungsblock (Decision-Bar)
+- Validierung/Erklärung: QuickCheck- und Validation-Workflow
+- Eingabe: Pflichtfelder für Markt, Produkt/Shipping, Amazon/Launch
+
+Zusätzlich gibt es einen geführten Setup-Assistenten mit 5 Schritten:
+
+1. Markt/Absatz
+2. Produktmaße/Gewicht
+3. Shipping/Kartonisierung
+4. Amazon/Launch
+5. Ergebnischeck
+
+Der Wizard speichert nur UI-Zustand (`state.ui.setupWizard`) und ändert keine Persistenzfelder.
 
 ## Lizenz
 

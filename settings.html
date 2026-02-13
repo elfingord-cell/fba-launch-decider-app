@@ -209,6 +209,7 @@
                 </summary>
                 <p class="hint">Wird genutzt in: Quick-Check, Validation, Deep-Dive</p>
                 <p class="hint">Rail-Startwerte basieren auf S1/S2/S3-Referenzsendungen (CN->DE) und sind als 12M-Richtwert jederzeit überschreibbar.</p>
+                <h4>Aktive Treiber (kostenwirksam)</h4>
                 <h4 id="settingsShippingSeaMode">Sea LCL (12M-Ø)</h4>
                 <div class="admin-grid">
                   <label>Hauptlauf variabel (EUR/CBM)<input data-settings-path="shipping12m.modes.sea_lcl.rateEurPerCbm" type="number" min="0" step="0.1" /></label>
@@ -247,6 +248,12 @@
                   <label class="toggle-row"><input data-settings-path="shipping12m.manualSurchargeEnabled" type="checkbox" /><span>Nachbelastung berücksichtigen</span></label>
                   <label>Nachbelastung fix (EUR/Shipment)<input data-settings-path="shipping12m.manualSurchargeEurPerShipment" type="number" min="0" step="0.1" /></label>
                 </div>
+                <details class="settings-inline-advanced">
+                  <summary>Referenz/Legacy (Info)</summary>
+                  <p class="hint">Shipping ist als 12M-Richtwert modelliert und bewusst einfach überschreibbar.</p>
+                  <p class="hint">Rail Vor-/Nachlauf variabel wird auf Sendungsvolumen gerechnet, nicht auf Kartonanzahl.</p>
+                  <p class="hint">Legacy-Felder bleiben für Alt-Daten lesbar, sind aber nicht primäre Treiber im aktuellen Rail-Modell.</p>
+                </details>
               </details>
 
               <details id="settingsCartonSection" class="settings-section">
@@ -523,6 +530,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="modules/packaging3d.js"></script>
+    <script src="modules/domain/shipping.js"></script>
+    <script src="modules/ui/tooltips.js"></script>
+    <script src="modules/ui/shipping-dashboard.js"></script>
+    <script src="modules/ui/setup-wizard.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -134,7 +134,12 @@
 
         <section class="main-column">
           <div id="productWorkspace">
-          <section class="card decision-bar" id="decisionBar">
+	          <section class="workspace-zone workspace-zone-results" id="workspaceZoneResults">
+	            <header class="workspace-zone-head">
+	              <h2>Ergebnis</h2>
+	              <p>KPIs und Kostenwirkung auf einen Blick. Von hier aus gehst du bei Auffälligkeiten zurück in Validierung oder Eingabe.</p>
+	            </header>
+	          <section class="card decision-bar" id="decisionBar">
             <div class="decision-head">
               <div class="help-context">
                 <div class="help-title-row">
@@ -181,9 +186,10 @@
                 <article class="kpi compact" data-kpi="kpiMaxTacos"><span>Max TACoS %</span><strong id="kpiMaxTacos">-</strong></article>
               </div>
             </div>
-          </section>
+	          </section>
+	          </section>
 
-          <section class="card basic-card">
+	          <section class="card basic-card">
             <div class="section-head">
               <div class="help-context">
                 <div class="help-title-row">
@@ -202,7 +208,13 @@
                 </div>
               </div>
             </div>
-            <section class="stage-panel">
+	            <div class="workflow-zones">
+	            <section class="workspace-zone workspace-zone-validation" id="workspaceZoneValidation">
+	              <header class="workspace-zone-head compact">
+	                <h3>Validierung / Erklärung</h3>
+	                <p>Prüfe zuerst die größten Kostentreiber und öffne Details nur dort, wo Klärung nötig ist.</p>
+	              </header>
+	            <section class="stage-panel">
               <div class="stage-switch">
                 <button id="stageQuickBtn" class="stage-btn" type="button">QuickCheck</button>
                 <button id="stageValidationBtn" class="stage-btn" type="button">Validation</button>
@@ -332,7 +344,7 @@
               </article>
               <div id="validationBlockGrid" class="validation-block-grid"></div>
             </section>
-            <section id="validationPlaygroundPanel" class="card validation-playground hidden">
+	            <section id="validationPlaygroundPanel" class="card validation-playground hidden">
               <div class="quick-cost-head">
                 <h3>Validation Playground (Sandbox)</h3>
                 <p class="hint">
@@ -383,9 +395,24 @@
                 <button id="validationResetBtn" type="button" class="btn btn-ghost">Reset auf Baseline</button>
               </div>
               <div id="validationCompareGrid" class="validation-compare-grid"></div>
-            </section>
+	            </section>
+	            </section>
 
-            <form id="basicForm" class="form-grid">
+	            <section class="workspace-zone workspace-zone-input" id="workspaceZoneInput">
+	              <header class="workspace-zone-head compact">
+	                <h3>Eingabe</h3>
+	                <p>Pflichtfelder strukturiert ausfüllen. Der Setup-Assistent zeigt den nächsten sinnvollen Input.</p>
+	              </header>
+	              <section id="setupWizardSection" class="setup-wizard-panel" aria-live="polite">
+	                <div class="setup-wizard-head">
+	                  <h3>Geführter Setup-Assistent</h3>
+	                  <p class="hint">5 Schritte mit Vollständigkeitsstatus und Sprunglinks zu den relevanten Feldern.</p>
+	                </div>
+	                <div id="setupWizardSteps" class="setup-wizard-steps"></div>
+	                <p id="setupWizardNextHint" class="setup-wizard-next hint">-</p>
+	              </section>
+
+	            <form id="basicForm" class="form-grid">
               <section>
                 <div class="help-context">
                   <div class="form-section-head">
@@ -604,10 +631,12 @@
                 </p>
               </section>
             </form>
-            <p class="hint">
-              Alle weiteren Kosten werden aus Settings/Defaults abgeleitet. Du kannst die wichtigsten Schätzblöcke oben prüfen und überschreiben.
-            </p>
-          </section>
+	            <p class="hint">
+	              Alle weiteren Kosten werden aus Settings/Defaults abgeleitet. Du kannst die wichtigsten Schätzblöcke oben prüfen und überschreiben.
+	            </p>
+	            </section>
+	            </div>
+	          </section>
 
           <section id="advancedPanel" class="card advanced-card hidden">
             <div class="section-head">
@@ -1011,6 +1040,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="modules/packaging3d.js"></script>
+    <script src="modules/domain/shipping.js"></script>
+    <script src="modules/ui/tooltips.js"></script>
+    <script src="modules/ui/shipping-dashboard.js"></script>
+    <script src="modules/ui/setup-wizard.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

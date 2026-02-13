@@ -51,6 +51,85 @@ const VALIDATION_PLAYGROUND_PATHS = [
   "basic.listingPackage",
 ];
 
+const SETUP_WIZARD_FIELD_LABELS = window.AppSetupWizardUI?.FIELD_LABEL_BY_PATH ?? {
+  "basic.priceGross": "Verkaufspreis brutto",
+  "basic.category": "Kategorie",
+  "basic.demandValue": "Absatzannahme",
+  "basic.demandBasis": "Absatz-Basis",
+  "basic.netWeightG": "Produktgewicht netto",
+  "basic.packLengthCm": "Verpackung Länge",
+  "basic.packWidthCm": "Verpackung Breite",
+  "basic.packHeightCm": "Verpackung Höhe",
+  "basic.unitsPerOrder": "Units pro Order",
+  "basic.transportMode": "Transportmodus",
+  "basic.exwUnit": "EXW pro Einheit",
+  "basic.marketplace": "Marketplace",
+  "basic.listingPackage": "Listing-Service",
+  "basic.launchCompetition": "Nischenwettbewerb",
+  "basic.launchBudgetTotal": "Launch-Budget gesamt",
+};
+
+const FALLBACK_SETUP_WIZARD_STEPS = [
+  {
+    id: "market_absatz",
+    title: "1 Markt/Absatz",
+    required: [
+      { path: "basic.priceGross" },
+      { path: "basic.category" },
+      { path: "basic.demandValue" },
+      { path: "basic.demandBasis" },
+    ],
+    nextHint: "Preis, Kategorie und Absatz als Basis setzen.",
+  },
+  {
+    id: "produkt_masse",
+    title: "2 Produktmasse/Gewicht",
+    required: [
+      { path: "basic.netWeightG" },
+      { path: "basic.packLengthCm" },
+      { path: "basic.packWidthCm" },
+      { path: "basic.packHeightCm" },
+    ],
+    nextHint: "Masse und Gewicht vollständig machen für Shipping/FBA.",
+  },
+  {
+    id: "shipping_karton",
+    title: "3 Shipping/Kartonisierung",
+    required: [
+      { path: "basic.unitsPerOrder" },
+      { path: "basic.transportMode" },
+    ],
+    nextHint: "PO-Menge und Transportmodus bestätigen.",
+  },
+  {
+    id: "amazon_launch",
+    title: "4 Amazon/Launch",
+    required: [
+      { path: "basic.exwUnit" },
+      { path: "basic.marketplace" },
+      { path: "basic.listingPackage" },
+      { path: "basic.launchCompetition" },
+      {
+        path: "basic.launchBudgetTotal",
+        isFilled: (value) => Number.isFinite(num(value, NaN)) && num(value, 0) >= 0,
+      },
+    ],
+    nextHint: "EXW, Marketplace und Launch-Annahmen setzen.",
+  },
+  {
+    id: "ergebnischeck",
+    title: "5 Ergebnischeck",
+    required: [],
+    completionRule: (context) => Number.isFinite(num(context?.metrics?.totalCostPerUnit, NaN)),
+    nextHint: "QuickCheck und Validation-Workflow auf Plausibilität prüfen.",
+  },
+];
+
+const SETUP_WIZARD_STEPS =
+  window.AppSetupWizardUI && typeof window.AppSetupWizardUI.createDefaultSteps === "function"
+    ? window.AppSetupWizardUI.createDefaultSteps()
+    : FALLBACK_SETUP_WIZARD_STEPS;
+
 const CHAIN_STAGE_ORDER = [
   "supplier",
   "shipping_to_3pl",
@@ -1007,7 +1086,7 @@ const TERM_HELP_BY_TEXT = [
   },
 ];
 
-const COST_METRIC_TOOLTIPS = {
+const COST_METRIC_TOOLTIPS_BASE = {
   "quick.exw": "EXW/Einkauf pro verkaufter Einheit in EUR (USD-EK × USD→EUR).",
   "quick.shipping_to_3pl": "Importblock pro Einheit bis 3PL: Door-to-door Shipping + Zoll + orderbezogene Fixkosten.",
   "quick.threepl": "3PL-Kosten pro Einheit: Receiving, Lagerung, Outbound-Service und Carrier.",
@@ -1065,6 +1144,11 @@ const COST_METRIC_TOOLTIPS = {
   "returns.return_loss_per_return": "Warenwertverlust pro Retoure auf Landed-Basis.",
   "returns.return_cost_per_return": "Gesamtkosten pro Retoure = Warenwertverlust pro Retoure + Handling je Retoure.",
 };
+
+const COST_METRIC_TOOLTIPS =
+  window.AppTooltipsUI && typeof window.AppTooltipsUI.mergeShippingTooltipOverrides === "function"
+    ? window.AppTooltipsUI.mergeShippingTooltipOverrides(COST_METRIC_TOOLTIPS_BASE)
+    : COST_METRIC_TOOLTIPS_BASE;
 
 const UI_HELP_TEXT = {
   "ui.settings_flow":
@@ -1627,6 +1711,11 @@ const state = {
     validationSandboxMetrics: null,
     shipping3dCleanup: null,
     shipping3dInlineCleanup: null,
+    setupWizard: {
+      activeStep: "market_absatz",
+      stepStatus: {},
+      lastSuggestedFieldPath: "",
+    },
   },
 };
 
@@ -1672,6 +1761,9 @@ const dom = {
   validationApplyBtn: document.getElementById("validationApplyBtn"),
   validationDiscardBtn: document.getElementById("validationDiscardBtn"),
   validationResetBtn: document.getElementById("validationResetBtn"),
+  setupWizardSection: document.getElementById("setupWizardSection"),
+  setupWizardSteps: document.getElementById("setupWizardSteps"),
+  setupWizardNextHint: document.getElementById("setupWizardNextHint"),
   toggleAllKpisBtn: document.getElementById("toggleAllKpisBtn"),
   decisionSecondaryWrap: document.getElementById("decisionSecondaryWrap"),
   advancedToggleWrap: document.getElementById("advancedToggleWrap"),
@@ -11071,32 +11163,56 @@ function createShippingLayoutPreviewElement(metrics) {
 }
 
 function createShippingDashboardModalContent(metrics, options = {}) {
-  const contextStage = options.contextStage ?? "quick";
-  const show3dPackImage = options.show3dPackImage ?? !(contextStage === "quick" || contextStage === "validation");
-  const modeLabel = metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.transportMode);
-  const toCurrencyCents = (value) => roundInt(num(value, 0) * 100, 0);
-  const unitsPerPo = Math.max(1, num(metrics.shipping.unitsPerOrder, 1));
-  const shippingD2dPerUnit = Math.max(0, num(metrics.shipping.shippingPerUnit, 0));
-  const customsPerUnit = Math.max(0, num(metrics.customsUnit, 0));
-  const orderFixedPerUnit = Math.max(0, num(metrics.orderFixedPerUnit, 0));
-  const importSurchargesPerUnit = customsPerUnit + orderFixedPerUnit;
-  const shippingTo3plPerUnit = Math.max(
-    0,
-    num(metrics.quickBlockShippingTo3plPerUnit, shippingD2dPerUnit + importSurchargesPerUnit),
-  );
-  const shippingD2dTotalPo = Math.max(0, num(metrics.shipping.shippingTotal, shippingD2dPerUnit * unitsPerPo));
-  const importSurchargesTotalPo = importSurchargesPerUnit * unitsPerPo;
-  const shippingTo3plTotalPo = shippingD2dTotalPo + importSurchargesTotalPo;
-  const rawExpectedPerUnit = shippingD2dPerUnit + customsPerUnit + orderFixedPerUnit;
-  const rawEquationDiff = Math.abs(rawExpectedPerUnit - shippingTo3plPerUnit);
-  const d2dCents = toCurrencyCents(shippingD2dPerUnit);
-  const customsCents = toCurrencyCents(customsPerUnit);
-  const orderFixedCents = toCurrencyCents(orderFixedPerUnit);
-  const totalCents = toCurrencyCents(shippingTo3plPerUnit);
-  const roundedEquationDiffCents = Math.abs((d2dCents + customsCents + orderFixedCents) - totalCents);
-  const equationMatchesRaw = rawEquationDiff <= 0.0005;
-  const equationMatchesRounded = roundedEquationDiffCents === 0;
-  const equationMatches = equationMatchesRaw && equationMatchesRounded;
+  const dashboardModel =
+    window.AppShippingDashboardUI && typeof window.AppShippingDashboardUI.prepareDashboardModel === "function"
+      ? window.AppShippingDashboardUI.prepareDashboardModel(metrics, options, { shippingModeLabel })
+      : {
+        contextStage: options.contextStage ?? "quick",
+        show3dPackImage: options.show3dPackImage ?? !((options.contextStage ?? "quick") === "quick" || (options.contextStage ?? "quick") === "validation"),
+        modeLabel: metrics.shipping.modeLabel ?? shippingModeLabel(metrics.shipping.transportMode),
+        bridge:
+          window.AppShippingDomain && typeof window.AppShippingDomain.buildShippingBridgeModel === "function"
+            ? window.AppShippingDomain.buildShippingBridgeModel(metrics)
+            : {
+              unitsPerPo: Math.max(1, num(metrics.shipping.unitsPerOrder, 1)),
+              shippingD2dPerUnit: Math.max(0, num(metrics.shipping.shippingPerUnit, 0)),
+              customsPerUnit: Math.max(0, num(metrics.customsUnit, 0)),
+              orderFixedPerUnit: Math.max(0, num(metrics.orderFixedPerUnit, 0)),
+              importSurchargesPerUnit: Math.max(0, num(metrics.customsUnit, 0)) + Math.max(0, num(metrics.orderFixedPerUnit, 0)),
+              shippingTo3plPerUnit: Math.max(0, num(metrics.quickBlockShippingTo3plPerUnit, 0)),
+              shippingD2dTotalPo: Math.max(0, num(metrics.shipping.shippingTotal, 0)),
+              importSurchargesTotalPo:
+                (Math.max(0, num(metrics.customsUnit, 0)) + Math.max(0, num(metrics.orderFixedPerUnit, 0))) *
+                Math.max(1, num(metrics.shipping.unitsPerOrder, 1)),
+              shippingTo3plTotalPo:
+                Math.max(0, num(metrics.shipping.shippingTotal, 0)) +
+                ((Math.max(0, num(metrics.customsUnit, 0)) + Math.max(0, num(metrics.orderFixedPerUnit, 0))) *
+                Math.max(1, num(metrics.shipping.unitsPerOrder, 1))),
+              rawEquationDiff: 0,
+              roundedEquationDiffCents: 0,
+              equationMatchesRaw: true,
+              equationMatchesRounded: true,
+              equationMatches: true,
+            },
+      };
+
+  const show3dPackImage = dashboardModel.show3dPackImage;
+  const modeLabel = dashboardModel.modeLabel;
+  const bridgeModel = dashboardModel.bridge;
+  const unitsPerPo = bridgeModel.unitsPerPo;
+  const shippingD2dPerUnit = bridgeModel.shippingD2dPerUnit;
+  const customsPerUnit = bridgeModel.customsPerUnit;
+  const orderFixedPerUnit = bridgeModel.orderFixedPerUnit;
+  const importSurchargesPerUnit = bridgeModel.importSurchargesPerUnit;
+  const shippingTo3plPerUnit = bridgeModel.shippingTo3plPerUnit;
+  const shippingD2dTotalPo = bridgeModel.shippingD2dTotalPo;
+  const importSurchargesTotalPo = bridgeModel.importSurchargesTotalPo;
+  const shippingTo3plTotalPo = bridgeModel.shippingTo3plTotalPo;
+  const rawEquationDiff = bridgeModel.rawEquationDiff;
+  const roundedEquationDiffCents = bridgeModel.roundedEquationDiffCents;
+  const equationMatchesRaw = Boolean(bridgeModel.equationMatchesRaw);
+  const equationMatchesRounded = Boolean(bridgeModel.equationMatchesRounded);
+  const equationMatches = Boolean(bridgeModel.equationMatches);
 
   const section = document.createElement("section");
   section.className = "shipping-dashboard shipping-modal-dashboard";
@@ -11171,18 +11287,25 @@ function createShippingDashboardModalContent(metrics, options = {}) {
 
   const equationLine = document.createElement("p");
   equationLine.className = `shipping-bridge-formula ${equationMatches ? "is-consistent" : "is-warning"}`;
+  const bridgeFormulaText =
+    window.AppShippingDashboardUI && typeof window.AppShippingDashboardUI.buildBridgeFormulaText === "function"
+      ? window.AppShippingDashboardUI.buildBridgeFormulaText(bridgeModel, formatCurrency)
+      : `${formatCurrency(shippingTo3plPerUnit)} = ${formatCurrency(shippingD2dPerUnit)} + ${formatCurrency(customsPerUnit)} + ${formatCurrency(orderFixedPerUnit)}`;
   equationLine.innerHTML =
     `Shipping zu 3PL / Unit = Shipping D2D / Unit + Zoll / Unit + Order-Fix / Unit · ` +
-    `<strong>${formatCurrency(shippingTo3plPerUnit)} = ${formatCurrency(shippingD2dPerUnit)} + ${formatCurrency(customsPerUnit)} + ${formatCurrency(orderFixedPerUnit)}</strong>` +
+    `<strong>${bridgeFormulaText}</strong>` +
     (equationMatches ? " ✓" : "");
   bridge.appendChild(equationLine);
 
   const poLine = document.createElement("p");
   poLine.className = "shipping-bridge-po";
+  const bridgePoText =
+    window.AppShippingDashboardUI && typeof window.AppShippingDashboardUI.buildBridgePoText === "function"
+      ? window.AppShippingDashboardUI.buildBridgePoText(bridgeModel, formatCurrency)
+      : `${formatCurrency(shippingD2dTotalPo)} + ${formatCurrency(importSurchargesTotalPo)} = ${formatCurrency(shippingTo3plTotalPo)}`;
   poLine.innerHTML =
-    `PO-Sicht: <strong>${formatCurrency(shippingD2dTotalPo)}</strong> (Shipping D2D) + ` +
-    `<strong>${formatCurrency(importSurchargesTotalPo)}</strong> (Import-Aufschläge) = ` +
-    `<strong>${formatCurrency(shippingTo3plTotalPo)}</strong> (Shipping zu 3PL)`;
+    `PO-Sicht: <strong>${bridgePoText}</strong> · ` +
+    `Shipping D2D + Import-Aufschläge = Shipping zu 3PL`;
   bridge.appendChild(poLine);
   if (!equationMatches) {
     console.warn("Shipping bridge consistency check failed", {
@@ -11246,7 +11369,12 @@ function createShippingDashboardModalContent(metrics, options = {}) {
     const downshiftHint = document.createElement("p");
     downshiftHint.className = "hint warn";
     downshiftHint.textContent =
-      `Auto von ${formatNumber(metrics.shipping.unitsPerCartonCapCandidate)} auf ${formatNumber(metrics.shipping.unitsPerCartonAuto)} reduziert: Für den Kandidatenwert ist kein exaktes ganzzahliges Raster (nx×ny×nz) im zulässigen Umkarton möglich.`;
+      window.AppTooltipsUI && typeof window.AppTooltipsUI.shippingDownshiftHint === "function"
+        ? window.AppTooltipsUI.shippingDownshiftHint(
+          formatNumber(metrics.shipping.unitsPerCartonCapCandidate),
+          formatNumber(metrics.shipping.unitsPerCartonAuto),
+        )
+        : `Auto von ${formatNumber(metrics.shipping.unitsPerCartonCapCandidate)} auf ${formatNumber(metrics.shipping.unitsPerCartonAuto)} reduziert: Für den Kandidatenwert ist kein exaktes ganzzahliges Raster (nx×ny×nz) im zulässigen Umkarton möglich.`;
     cartonPanel.appendChild(downshiftHint);
     const downshiftAction = document.createElement("p");
     downshiftAction.className = "hint";
@@ -11316,10 +11444,14 @@ function createShippingDashboardModalContent(metrics, options = {}) {
   const basisHint = document.createElement("p");
   basisHint.className = "hint";
   basisHint.textContent =
-    "Vorlauf/Nachlauf (Rail) nutzt Sendungsvolumen. Hauptlauf variabel nutzt Abrechnungsvolumen (W/M).";
+    window.AppTooltipsUI && typeof window.AppTooltipsUI.shippingBasisHintLine === "function"
+      ? window.AppTooltipsUI.shippingBasisHintLine()
+      : "Vorlauf/Nachlauf (Rail) nutzt Sendungsvolumen. Hauptlauf variabel nutzt Abrechnungsvolumen (W/M).";
   basisHint.title =
-    "Sendungsvolumen = physische Kartons × Umkarton-CBM (echtes Volumen der Sendung). " +
-    "Abrechnungsvolumen (W/M) = max(Sendungsvolumen, Sendungsgewicht/1000) und wird als Preisbasis für den variablen Hauptlauf genutzt.";
+    window.AppTooltipsUI && typeof window.AppTooltipsUI.shippingBasisHintTitle === "function"
+      ? window.AppTooltipsUI.shippingBasisHintTitle()
+      : "Sendungsvolumen = physische Kartons × Umkarton-CBM (echtes Volumen der Sendung). " +
+        "Abrechnungsvolumen (W/M) = max(Sendungsvolumen, Sendungsgewicht/1000) und wird als Preisbasis für den variablen Hauptlauf genutzt.";
   basisPanel.appendChild(basisHint);
   basisPanel.appendChild(
     createKpiGrid([
@@ -12098,7 +12230,23 @@ function renderValidationWorkflow(metrics, product) {
   const targetPct = clamp(num(metrics.validationCoverageTargetPct, VALIDATION_COVERAGE_TARGET_DEFAULT), 80, 99);
   const coveredPerUnit = num(metrics.validationCoveredPerUnit, 0);
   const residualPerUnit = Math.max(0, num(metrics.validationResidualPerUnit, 0));
-  const blockItems = Array.isArray(metrics.validationBlockItems) ? metrics.validationBlockItems : [];
+  const blockItemsRaw = Array.isArray(metrics.validationBlockItems) ? metrics.validationBlockItems : [];
+  const blockItems = [...blockItemsRaw].sort((left, right) => {
+    const priority = (item) => {
+      if (!item.isCore && !item.isChecked) {
+        return item.isSuggested ? 0 : 1;
+      }
+      if (!item.isCore && item.isChecked) {
+        return 2;
+      }
+      return 3;
+    };
+    const bucketDelta = priority(left) - priority(right);
+    if (bucketDelta !== 0) {
+      return bucketDelta;
+    }
+    return num(right.perUnit, 0) - num(left.perUnit, 0);
+  });
   const openTopResidualItems = Array.isArray(metrics.validationOpenTopResidualItems)
     ? metrics.validationOpenTopResidualItems
     : [];
@@ -12158,6 +12306,9 @@ function renderValidationWorkflow(metrics, product) {
     if (item.isChecked) {
       card.classList.add("checked");
     }
+    if (!item.isCore && !item.isChecked) {
+      card.classList.add("priority-open");
+    }
 
     const head = document.createElement("div");
     head.className = "validation-block-head";
@@ -12190,34 +12341,48 @@ function renderValidationWorkflow(metrics, product) {
     values.title = item.explain || `${item.label}: Kostenanteil an den Gesamtkosten pro Unit.`;
     card.appendChild(values);
 
+    const nextActionHint = document.createElement("p");
+    nextActionHint.className = "validation-block-next hint";
+    if (item.isCore) {
+      nextActionHint.textContent = "Primäraktion: Details öffnen.";
+    } else if (!item.isChecked) {
+      nextActionHint.textContent = item.isSuggested
+        ? "Primäraktion: validieren (empfohlen, hoher Kosteneffekt)."
+        : "Primäraktion: validieren.";
+    } else {
+      nextActionHint.textContent = "Primäraktion: Annahme prüfen.";
+    }
+    card.appendChild(nextActionHint);
+
     const actions = document.createElement("div");
     actions.className = "validation-block-actions";
-    const detailBtn = document.createElement("button");
-    detailBtn.type = "button";
-    detailBtn.className = "btn btn-ghost";
-    detailBtn.textContent = "Details";
-    detailBtn.addEventListener("click", () => {
-      if (item.detailType === "core" && item.blockKey) {
-        openCostBlockModal(item.blockKey, "validation");
-        return;
-      }
-      openValidationResidualModal(item);
-    });
-    if (item.detailType !== "core" && (!Array.isArray(item.driverPaths) || item.driverPaths.length === 0)) {
-      detailBtn.disabled = true;
-    }
-    actions.appendChild(detailBtn);
-
-    if (!item.isCore) {
-      const toggleBtn = document.createElement("button");
-      toggleBtn.type = "button";
-      toggleBtn.className = item.isChecked ? "btn btn-ghost" : "btn btn-primary";
-      toggleBtn.textContent = item.isChecked ? "Validierung zurücknehmen" : "Als validiert markieren";
-      toggleBtn.addEventListener("click", () => {
-        updateValidationCheckedBlock(product, item.id, !item.isChecked);
+    const primaryBtn = document.createElement("button");
+    primaryBtn.type = "button";
+    if (item.isCore) {
+      primaryBtn.className = "btn btn-ghost";
+      primaryBtn.textContent = "Details öffnen";
+      primaryBtn.addEventListener("click", () => {
+        if (item.blockKey) {
+          openCostBlockModal(item.blockKey, "validation");
+        }
       });
-      actions.appendChild(toggleBtn);
+    } else if (!item.isChecked) {
+      primaryBtn.className = "btn btn-primary";
+      primaryBtn.textContent = "Validieren";
+      primaryBtn.addEventListener("click", () => {
+        updateValidationCheckedBlock(product, item.id, true);
+      });
+    } else {
+      primaryBtn.className = "btn btn-ghost";
+      primaryBtn.textContent = "Annahme prüfen";
+      primaryBtn.addEventListener("click", () => {
+        openValidationResidualModal(item);
+      });
     }
+    if (!item.isCore && item.detailType !== "core" && !item.isChecked && (!Array.isArray(item.driverPaths) || item.driverPaths.length === 0)) {
+      primaryBtn.disabled = true;
+    }
+    actions.appendChild(primaryBtn);
 
     card.appendChild(actions);
     dom.validationBlockGrid.appendChild(card);
@@ -13012,6 +13177,180 @@ function renderStagePanel(product, metrics) {
   return stageState;
 }
 
+function ensureSetupWizardUiState() {
+  if (!state.ui.setupWizard || typeof state.ui.setupWizard !== "object") {
+    state.ui.setupWizard = {
+      activeStep: "market_absatz",
+      stepStatus: {},
+      lastSuggestedFieldPath: "",
+    };
+  }
+  if (typeof state.ui.setupWizard.activeStep !== "string" || !state.ui.setupWizard.activeStep) {
+    state.ui.setupWizard.activeStep = "market_absatz";
+  }
+  if (!state.ui.setupWizard.stepStatus || typeof state.ui.setupWizard.stepStatus !== "object") {
+    state.ui.setupWizard.stepStatus = {};
+  }
+  if (typeof state.ui.setupWizard.lastSuggestedFieldPath !== "string") {
+    state.ui.setupWizard.lastSuggestedFieldPath = "";
+  }
+  return state.ui.setupWizard;
+}
+
+function isWizardValueFilled(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0;
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+  return Boolean(value);
+}
+
+function evaluateSetupWizardFallback(product, metrics) {
+  return SETUP_WIZARD_STEPS.map((step) => {
+    const required = Array.isArray(step.required) ? step.required : [];
+    const missing = [];
+    let completeCount = 0;
+    required.forEach((entry) => {
+      const path = entry?.path;
+      if (!path) {
+        return;
+      }
+      const value = getByPath(product, path);
+      const isFilled = typeof entry?.isFilled === "function" ? entry.isFilled(value, product, { product, metrics }) : isWizardValueFilled(value);
+      if (isFilled) {
+        completeCount += 1;
+      } else {
+        missing.push({
+          path,
+          label: SETUP_WIZARD_FIELD_LABELS[path] ?? path,
+        });
+      }
+    });
+    const requiredComplete = required.length === 0 ? true : missing.length === 0;
+    const completionRulePassed = typeof step.completionRule === "function"
+      ? Boolean(step.completionRule({ product, metrics }))
+      : true;
+    return {
+      id: step.id,
+      title: step.title,
+      requiredCount: required.length,
+      completeCount,
+      complete: requiredComplete && completionRulePassed,
+      firstMissingPath: missing[0]?.path ?? null,
+      missing,
+      nextHint: step.nextHint ?? "",
+    };
+  });
+}
+
+function fallbackSetupWizardActiveStep(stepStates, currentStepId) {
+  const current = stepStates.find((step) => step.id === currentStepId);
+  if (current && !current.complete) {
+    return current.id;
+  }
+  const firstIncomplete = stepStates.find((step) => !step.complete);
+  return (firstIncomplete ?? stepStates[0] ?? { id: "market_absatz" }).id;
+}
+
+function focusSetupWizardField(path) {
+  if (!path) {
+    return false;
+  }
+  const target = document.querySelector(`[data-path="${path}"]`);
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  setWorkspaceTab("product");
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (typeof target.focus === "function") {
+    target.focus({ preventScroll: true });
+  }
+  const label = target.closest("label");
+  if (label instanceof HTMLElement) {
+    label.classList.add("driver-focus");
+    window.setTimeout(() => {
+      label.classList.remove("driver-focus");
+    }, 1200);
+  }
+  return true;
+}
+
+function renderSetupWizard(product, metrics) {
+  if (!dom.setupWizardSection || !dom.setupWizardSteps || !dom.setupWizardNextHint || !product) {
+    return;
+  }
+  const wizardState = ensureSetupWizardUiState();
+  const context = { product, metrics, getByPath };
+  const stepStates =
+    window.AppSetupWizardUI && typeof window.AppSetupWizardUI.evaluateWizardSteps === "function"
+      ? window.AppSetupWizardUI.evaluateWizardSteps(SETUP_WIZARD_STEPS, context)
+      : evaluateSetupWizardFallback(product, metrics);
+
+  if (!Array.isArray(stepStates) || stepStates.length === 0) {
+    dom.setupWizardSection.classList.add("hidden");
+    return;
+  }
+  dom.setupWizardSection.classList.remove("hidden");
+
+  const activeStepId =
+    window.AppSetupWizardUI && typeof window.AppSetupWizardUI.inferActiveStepId === "function"
+      ? window.AppSetupWizardUI.inferActiveStepId(stepStates, wizardState.activeStep)
+      : fallbackSetupWizardActiveStep(stepStates, wizardState.activeStep);
+
+  wizardState.activeStep = activeStepId;
+  wizardState.stepStatus = Object.fromEntries(
+    stepStates.map((step) => [step.id, step.complete ? "complete" : "incomplete"]),
+  );
+
+  const nextHint =
+    window.AppSetupWizardUI && typeof window.AppSetupWizardUI.buildNextHint === "function"
+      ? window.AppSetupWizardUI.buildNextHint(stepStates, activeStepId)
+      : (stepStates.find((step) => step.id === activeStepId)?.nextHint ?? "");
+  dom.setupWizardNextHint.textContent = nextHint || "Alle Schritte vollständig. Prüfe jetzt Ergebnisse und Sensitivität.";
+
+  const activeStep = stepStates.find((step) => step.id === activeStepId);
+  wizardState.lastSuggestedFieldPath = activeStep?.firstMissingPath ?? "";
+
+  if (window.AppSetupWizardUI && typeof window.AppSetupWizardUI.renderWizard === "function") {
+    window.AppSetupWizardUI.renderWizard(dom.setupWizardSteps, {
+      stepStates,
+      activeStepId,
+      onActivateStep: (stepId) => {
+        wizardState.activeStep = stepId;
+        renderComputedViews();
+      },
+      onJumpPath: (path, stepId) => {
+        if (stepId) {
+          wizardState.activeStep = stepId;
+        }
+        renderComputedViews();
+        window.setTimeout(() => {
+          focusSetupWizardField(path);
+        }, 0);
+      },
+    });
+    return;
+  }
+
+  dom.setupWizardSteps.innerHTML = "";
+  stepStates.forEach((step) => {
+    const card = document.createElement("article");
+    card.className = `setup-wizard-step ${step.complete ? "is-complete" : "is-incomplete"} ${step.id === activeStepId ? "is-active" : ""}`;
+    const title = document.createElement("p");
+    title.className = "setup-wizard-step-title";
+    title.textContent = step.title;
+    const status = document.createElement("p");
+    status.className = "setup-wizard-step-meta";
+    status.textContent = step.complete
+      ? "Vollständig"
+      : `Offen: ${SETUP_WIZARD_FIELD_LABELS[step.firstMissingPath] ?? step.firstMissingPath ?? "-"}`;
+    card.append(title, status);
+    dom.setupWizardSteps.appendChild(card);
+  });
+}
+
 function renderDecisionBar(stage) {
   const isQuick = stage === "quick";
   if (isQuick) {
@@ -13515,6 +13854,7 @@ function renderSelectedProductPanels(metricsById = new Map()) {
   applyStageVisibility(product, stageState);
   renderDecisionBar(stageState.stage);
   renderSelectedOutputs(product, metrics, stageState.stage);
+  renderSetupWizard(product, metrics);
   renderValidationPlayground(product, metrics);
   renderAssumedLabels(resolved.assumedLabels, diagnostics);
   renderLaunchHint(product, resolved);
