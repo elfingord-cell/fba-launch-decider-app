@@ -440,6 +440,12 @@ body[data-page="settings"] .sidebar-actions {
   margin-bottom: 0;
 }
 
+.cockpit-visual-card .section-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .cockpit-visual-card .section-head h2 {
   margin: 0;
   font-size: 0.9rem;
@@ -455,6 +461,16 @@ body[data-page="settings"] .sidebar-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
+}
+
+.cockpit-visual-card.is-collapsed .cockpit-visual-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.btn-compact {
+  padding: 5px 9px;
+  font-size: 0.68rem;
 }
 
 .cockpit-chart-card {
@@ -838,6 +854,233 @@ body[data-page="settings"] .sidebar-actions {
   color: var(--muted);
   font-size: 0.61rem;
   font-weight: 700;
+}
+
+.cockpit-mini-card {
+  padding: 7px;
+  gap: 6px;
+}
+
+.cockpit-mini-card .cockpit-chart-head h6 {
+  font-size: 0.7rem;
+}
+
+.cockpit-mini-card .cockpit-chart-head small {
+  font-size: 0.6rem;
+}
+
+.cockpit-mini-waterfall-chart {
+  width: 100%;
+  height: 150px;
+}
+
+.cockpit-mini-waterfall-chart .axis {
+  stroke: #9ca9a5;
+  stroke-width: 1;
+}
+
+.cockpit-mini-waterfall-chart .bar-start {
+  fill: #4c78c2;
+}
+
+.cockpit-mini-waterfall-chart .bar-cost {
+  fill: #e77f2f;
+}
+
+.cockpit-mini-waterfall-chart .bar-end {
+  fill: #8bc34a;
+}
+
+.cockpit-mini-waterfall-chart .bar-label {
+  fill: #5e6677;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.cockpit-mini-waterfall-chart .bar-value {
+  fill: #37404d;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.cockpit-mini-donut-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cockpit-mini-donut {
+  width: 94px;
+  height: 94px;
+  border-radius: 999px;
+  position: relative;
+}
+
+.cockpit-mini-donut-center {
+  position: absolute;
+  inset: 20px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--line) 66%, white);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1px;
+}
+
+.cockpit-mini-donut-center strong {
+  font-size: 0.66rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.cockpit-mini-donut-center small {
+  font-size: 0.56rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.cockpit-mini-pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.cockpit-mini-pie-legend-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.cockpit-mini-pie-legend-row strong {
+  color: var(--ink);
+  font-size: 0.6rem;
+}
+
+.cockpit-mini-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.cockpit-mini-risk-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.cockpit-mini-risk-row {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 7px;
+  background: #fff;
+  padding: 5px 6px;
+}
+
+.cockpit-mini-risk-row .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #6c798f;
+}
+
+.cockpit-mini-risk-row.tone-danger .dot {
+  background: #d46456;
+}
+
+.cockpit-mini-risk-row.tone-warn .dot {
+  background: #d19a2f;
+}
+
+.cockpit-mini-risk-row.tone-ok .dot {
+  background: #2f8f60;
+}
+
+.cockpit-mini-risk-row .label {
+  font-size: 0.62rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.cockpit-mini-risk-row strong {
+  font-size: 0.62rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
+}
+
+.cockpit-mini-sensitivity-track {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: #e9efee;
+}
+
+.cockpit-mini-sensitivity-track .range {
+  position: absolute;
+  top: 1px;
+  height: 10px;
+  border-radius: 999px;
+  background: #d3e7f4;
+}
+
+.cockpit-mini-sensitivity-track .marker {
+  position: absolute;
+  top: -2px;
+  width: 8px;
+  height: 16px;
+  border-radius: 5px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.cockpit-mini-sensitivity-track .marker.worst {
+  background: #c35d51;
+}
+
+.cockpit-mini-sensitivity-track .marker.base {
+  background: #1f7f60;
+}
+
+.cockpit-mini-sensitivity-track .marker.best {
+  background: #2f8f60;
+}
+
+.cockpit-mini-sensitivity-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cockpit-mini-sensitivity-item {
+  border: 1px solid color-mix(in srgb, var(--line) 64%, white);
+  border-radius: 7px;
+  background: #fff;
+  padding: 4px 5px;
+  display: grid;
+  gap: 2px;
+}
+
+.cockpit-mini-sensitivity-item span {
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.cockpit-mini-sensitivity-item strong {
+  font-size: 0.6rem;
+  font-family: "Space Grotesk", "Manrope", sans-serif;
 }
 
 .kpi.compact {
@@ -5541,6 +5784,10 @@ tbody tr:hover {
   .market-estimator-keyword-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .cockpit-visual-card.is-collapsed .cockpit-visual-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 1220px) {
@@ -5592,6 +5839,10 @@ tbody tr:hover {
   .market-estimator-keyword-grid,
   .cockpit-visual-grid,
   .market-estimator-visual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cockpit-visual-card.is-collapsed .cockpit-visual-grid {
     grid-template-columns: 1fr;
   }
 
@@ -5685,6 +5936,10 @@ tbody tr:hover {
   .cockpit-chart-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .cockpit-mini-sensitivity-legend {
+    grid-template-columns: 1fr;
   }
 
   .chain-grid {

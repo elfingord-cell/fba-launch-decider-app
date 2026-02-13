@@ -1785,6 +1785,7 @@ const state = {
     driverModal: null,
     costCategoryExpanded: {},
     chainExpanded: {},
+    cockpitVisualCollapsed: false,
     validationSandboxDraft: null,
     validationSandboxActive: false,
     validationSandboxProductId: null,
@@ -1875,6 +1876,7 @@ const dom = {
   trafficLight: document.getElementById("trafficLight"),
   driverFocusHint: document.getElementById("driverFocusHint"),
   cockpitVisualCard: document.getElementById("cockpitVisualCard"),
+  cockpitVisualToggleBtn: document.getElementById("cockpitVisualToggleBtn"),
   cockpitVisualGrid: document.getElementById("cockpitVisualGrid"),
   outputsCard: document.getElementById("outputsCard"),
   shippingQuickCard: document.getElementById("shippingQuickCard"),
@@ -16072,6 +16074,12 @@ function renderCockpitVisuals(metrics, stage = "quick", prebuiltCategories = nul
     return;
   }
   dom.cockpitVisualCard.classList.remove("hidden");
+  const isCollapsed = Boolean(state.ui.cockpitVisualCollapsed);
+  dom.cockpitVisualCard.classList.toggle("is-collapsed", isCollapsed);
+  if (dom.cockpitVisualToggleBtn) {
+    dom.cockpitVisualToggleBtn.textContent = isCollapsed ? "Ausklappen" : "Einklappen";
+    dom.cockpitVisualToggleBtn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+  }
 
   const payload = buildCockpitVisualPayload(metrics, stage, prebuiltCategories);
   if (window.AppCockpitCharts && typeof window.AppCockpitCharts.render === "function") {
@@ -16081,6 +16089,7 @@ function renderCockpitVisuals(metrics, stage = "quick", prebuiltCategories = nul
       formatCurrency,
       formatNumber,
       formatPercent,
+      compact: isCollapsed,
     });
     return;
   }
@@ -16945,7 +16954,6 @@ function renderSelectedProductPanels(metricsById = new Map()) {
   applyStageVisibility(product, stageState);
   renderDecisionBar(stageState.stage);
   renderSelectedOutputs(product, metrics, stageState.stage);
-  renderSetupWizard(product, metrics);
   renderValidationPlayground(product, metrics);
   renderAssumedLabels(resolved.assumedLabels, diagnostics);
   renderLaunchHint(product, resolved);
@@ -17212,6 +17220,11 @@ function applyMouseoverHelp() {
     dom.toggleAllKpisBtn.title = isValidation
       ? "Zeigt zusätzliche KPIs in der Decision-Bar."
       : "Im QuickCheck ausgeblendet.";
+  }
+  if (dom.cockpitVisualToggleBtn) {
+    dom.cockpitVisualToggleBtn.title = state.ui.cockpitVisualCollapsed
+      ? "Visual Cockpit mit voller Detailansicht ausklappen."
+      : "Visual Cockpit auf kompakte Mini-Charts einklappen.";
   }
   if (dom.compareSort) {
     dom.compareSort.title = "Sortiert die Vergleichstabelle nach dem gewählten KPI.";
@@ -17576,6 +17589,12 @@ function bindEvents() {
   if (dom.toggleAllKpisBtn) {
     dom.toggleAllKpisBtn.addEventListener("click", () => {
       state.ui.quickShowAllKpis = !state.ui.quickShowAllKpis;
+      renderComputedViews();
+    });
+  }
+  if (dom.cockpitVisualToggleBtn) {
+    dom.cockpitVisualToggleBtn.addEventListener("click", () => {
+      state.ui.cockpitVisualCollapsed = !state.ui.cockpitVisualCollapsed;
       renderComputedViews();
     });
   }

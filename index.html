@@ -194,6 +194,9 @@
                   <h2>Visual Cockpit</h2>
                   <p>Preis, Risiko, Sensitivität und Kostentreiber auf einen Blick.</p>
                 </div>
+                <div class="section-head-actions">
+                  <button id="cockpitVisualToggleBtn" type="button" class="btn btn-ghost btn-compact">Einklappen</button>
+                </div>
               </div>
               <div id="cockpitVisualGrid" class="cockpit-visual-grid"></div>
             </section>
@@ -209,7 +212,7 @@
                     </span>
                     <div class="section-title-copy">
                       <h2>Basic View</h2>
-                      <p>Geführter 2-Stufen-Flow: zuerst QuickCheck, dann Validation.</p>
+                      <p>2-Stufen-Flow: zuerst QuickCheck, dann Validation.</p>
                     </div>
                   </div>
                   <button type="button" class="info-trigger" data-help-key="ui.basic_flow" aria-label="Hilfe zum Basic-Flow" aria-expanded="false">
@@ -411,17 +414,8 @@
 	            <section class="workspace-zone workspace-zone-input" id="workspaceZoneInput">
 	              <header class="workspace-zone-head compact">
 	                <h3>Eingabe</h3>
-	                <p>Pflichtfelder strukturiert ausfüllen. Der Setup-Assistent zeigt den nächsten sinnvollen Input.</p>
+	                <p>Pflichtfelder strukturiert ausfüllen.</p>
 	              </header>
-	              <section id="setupWizardSection" class="setup-wizard-panel" aria-live="polite">
-	                <div class="setup-wizard-head">
-	                  <h3>Geführter Setup-Assistent</h3>
-	                  <p class="hint">5 Schritte mit Vollständigkeitsstatus und Sprunglinks zu den relevanten Feldern.</p>
-	                </div>
-	                <div id="setupWizardSteps" class="setup-wizard-steps"></div>
-	                <p id="setupWizardNextHint" class="setup-wizard-next hint">-</p>
-	              </section>
-
 	            <form id="basicForm" class="form-grid">
               <section>
                 <div class="help-context">
@@ -1066,7 +1060,6 @@
     <script src="modules/ui/cockpit-charts.js"></script>
     <script src="modules/ui/tooltips.js"></script>
     <script src="modules/ui/shipping-dashboard.js"></script>
-    <script src="modules/ui/setup-wizard.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

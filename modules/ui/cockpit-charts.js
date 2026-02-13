@@ -276,6 +276,254 @@
     return circle;
   }
 
+  function appendSvgText(svg, x, y, text, className = "", anchor = "middle") {
+    const node = svgTag("text");
+    node.setAttribute("x", String(x));
+    node.setAttribute("y", String(y));
+    node.setAttribute("text-anchor", anchor);
+    if (className) {
+      node.setAttribute("class", className);
+    }
+    node.textContent = text;
+    svg.append(node);
+    return node;
+  }
+
+  function extractCostSegments(payload, maxSegments = 4) {
+    const blocks = Array.isArray(payload?.waterfall?.blocks) ? payload.waterfall.blocks : [];
+    const rows = blocks
+      .map((entry) => ({
+        label: entry?.label || "Kosten",
+        value: Math.max(0, num(entry?.value, 0)),
+      }))
+      .filter((entry) => entry.value > 0)
+      .sort((a, b) => b.value - a.value);
+    if (rows.length <= maxSegments) {
+      return rows;
+    }
+    const top = rows.slice(0, maxSegments - 1);
+    const rest = rows.slice(maxSegments - 1).reduce((sum, row) => sum + row.value, 0);
+    return [...top, { label: "Sonstige", value: rest }];
+  }
+
+  function renderMiniWaterfallCard(payload, fmt) {
+    const waterfall = payload?.waterfall ?? {};
+    const startValue = num(waterfall.startValue);
+    const endValue = num(waterfall.endValue);
+    const costs = extractCostSegments(payload, 4);
+    if (!Number.isFinite(startValue) || !Number.isFinite(endValue) || costs.length === 0) {
+      return noDataCard("Waterfall", "Keine belastbaren Umsatz/Kostenwerte.");
+    }
+
+    const card = createNode("article", "cockpit-chart-card cockpit-mini-card cockpit-mini-waterfall-card");
+    const head = createNode("header", "cockpit-chart-head");
+    head.append(
+      createNode("h6", "", "Waterfall (kompakt)"),
+      createNode("small", "", "Umsatz -> Kosten -> DB"),
+    );
+    card.append(head);
+
+    const bars = [];
+    bars.push({ label: "Umsatz", from: 0, to: startValue, kind: "start", raw: startValue });
+    let running = startValue;
+    costs.forEach((cost) => {
+      const next = running - cost.value;
+      bars.push({ label: cost.label, from: running, to: next, kind: "cost", raw: -cost.value });
+      running = next;
+    });
+    bars.push({ label: "DB", from: 0, to: endValue, kind: "end", raw: endValue });
+
+    const allValues = bars.flatMap((entry) => [entry.from, entry.to]).filter((value) => Number.isFinite(value));
+    const domainMin = Math.min(0, ...allValues);
+    const domainMax = Math.max(...allValues, 0.0001);
+    const span = Math.max(0.0001, domainMax - domainMin);
+    const chartW = 520;
+    const chartH = 190;
+    const padL = 24;
+    const padR = 10;
+    const padT = 14;
+    const padB = 44;
+    const plotW = chartW - padL - padR;
+    const plotH = chartH - padT - padB;
+    const barWidth = Math.max(24, Math.min(54, plotW / (bars.length * 1.35)));
+    const stepX = bars.length > 1 ? (plotW - barWidth) / (bars.length - 1) : 0;
+    const y = (value) => padT + (1 - (value - domainMin) / span) * plotH;
+    const yZero = y(0);
+
+    const svg = svgTag("svg");
+    svg.setAttribute("class", "cockpit-mini-waterfall-chart");
+    svg.setAttribute("viewBox", `0 0 ${chartW} ${chartH}`);
+    appendSvgLine(svg, padL, yZero, chartW - padR, yZero, "axis");
+
+    bars.forEach((entry, index) => {
+      const x = padL + index * stepX;
+      const yFrom = y(entry.from);
+      const yTo = y(entry.to);
+      const top = Math.min(yFrom, yTo);
+      const height = Math.max(2, Math.abs(yTo - yFrom));
+      appendSvgRect(
+        svg,
+        x,
+        top,
+        barWidth,
+        height,
+        entry.kind === "start" ? "bar-start" : entry.kind === "end" ? "bar-end" : "bar-cost",
+      );
+      appendSvgText(
+        svg,
+        x + barWidth / 2,
+        top - 4,
+        `${entry.raw >= 0 ? "+" : ""}${Math.round(entry.raw * 100) / 100}`,
+        "bar-value",
+        "middle",
+      );
+      appendSvgText(svg, x + barWidth / 2, chartH - 20, entry.label, "bar-label", "middle");
+    });
+
+    card.append(svg);
+    return card;
+  }
+
+  function renderMiniPieCard(payload, fmt) {
+    const segments = extractCostSegments(payload, 5);
+    const total = segments.reduce((sum, entry) => sum + entry.value, 0);
+    if (!(total > 0)) {
+      return noDataCard("Kostenmix", "Keine Kostensegmente vorhanden.");
+    }
+
+    const card = createNode("article", "cockpit-chart-card cockpit-mini-card");
+    const head = createNode("header", "cockpit-chart-head");
+    head.append(
+      createNode("h6", "", "Kostenmix (Pie)"),
+      createNode("small", "", "Top-Treiber + Rest"),
+    );
+    card.append(head);
+
+    const colors = ["#4c78a8", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc949"];
+    let cursor = 0;
+    const gradientParts = segments.map((segment, index) => {
+      const start = cursor;
+      cursor += (segment.value / total) * 100;
+      return `${colors[index % colors.length]} ${start}% ${cursor}%`;
+    });
+
+    const donutWrap = createNode("div", "cockpit-mini-donut-wrap");
+    const donut = createNode("div", "cockpit-mini-donut");
+    donut.style.background = `conic-gradient(${gradientParts.join(", ")})`;
+    const center = createNode("div", "cockpit-mini-donut-center");
+    center.innerHTML = `<strong>${fmt.currency(total)}</strong><small>Kosten/Unit</small>`;
+    donut.append(center);
+    donutWrap.append(donut);
+    card.append(donutWrap);
+
+    const legend = createNode("ul", "cockpit-mini-pie-legend");
+    segments.forEach((segment, index) => {
+      const share = (segment.value / total) * 100;
+      const row = createNode("li", "cockpit-mini-pie-legend-row");
+      const swatch = createNode("span", "cockpit-mini-swatch");
+      swatch.style.background = colors[index % colors.length];
+      const label = createNode("span", "", segment.label);
+      const value = createNode("strong", "", `${fmt.percent(share)} · ${fmt.currency(segment.value)}`);
+      row.append(swatch, label, value);
+      legend.append(row);
+    });
+    card.append(legend);
+
+    return card;
+  }
+
+  function renderMiniRiskCard(payload, fmt) {
+    const rows = Array.isArray(payload?.risk?.rows) ? payload.risk.rows : [];
+    if (rows.length === 0) {
+      return noDataCard("Risiko", "Keine KPI-Risikowerte vorhanden.");
+    }
+
+    const card = createNode("article", "cockpit-chart-card cockpit-mini-card");
+    const head = createNode("header", "cockpit-chart-head");
+    head.append(
+      createNode("h6", "", "Risiko-Ampel"),
+      createNode("small", "", "3 KPI compact"),
+    );
+    card.append(head);
+
+    const list = createNode("ul", "cockpit-mini-risk-list");
+    rows.forEach((row) => {
+      const value = num(row?.value, Number.NaN);
+      const minValue = num(row?.minValue, Number.NaN);
+      const targetValue = num(row?.targetValue, Number.NaN);
+      if (!Number.isFinite(value) || !Number.isFinite(minValue) || !Number.isFinite(targetValue)) {
+        return;
+      }
+      const tone = riskTone(value, minValue, targetValue);
+      const item = createNode("li", `cockpit-mini-risk-row tone-${tone}`);
+      const dot = createNode("span", "dot");
+      const label = createNode("span", "label", row?.label || "KPI");
+      const metric = createNode("strong", "", fmt.percent(value));
+      item.append(dot, label, metric);
+      list.append(item);
+    });
+    card.append(list);
+
+    const overall = payload?.risk?.overall ?? {};
+    const badge = createNode("p", `cockpit-risk-overall tone-${String(overall.color || "red")}`);
+    badge.textContent = `Gesamt: ${labelForRiskColor(String(overall.color || "red"))}`;
+    card.append(badge);
+
+    return card;
+  }
+
+  function renderMiniSensitivityCard(payload, fmt) {
+    const sensitivity = payload?.sensitivity ?? {};
+    const base = num(sensitivity.base);
+    const worst = num(sensitivity.worst);
+    const best = num(sensitivity.best);
+    if (!Number.isFinite(base) || !Number.isFinite(worst) || !Number.isFinite(best)) {
+      return noDataCard("Sensitivity", "Keine Worst/Base/Best-Werte vorhanden.");
+    }
+
+    const card = createNode("article", "cockpit-chart-card cockpit-mini-card");
+    const head = createNode("header", "cockpit-chart-head");
+    head.append(
+      createNode("h6", "", "Sensitivity (compact)"),
+      createNode("small", "", "Worst / Base / Best"),
+    );
+    card.append(head);
+
+    const domainMin = Math.min(worst, base, best, 0);
+    const domainMax = Math.max(worst, base, best, 0.0001);
+    const span = Math.max(0.0001, domainMax - domainMin);
+    const toPct = (value) => clamp(((value - domainMin) / span) * 100, 0, 100);
+    const lo = Math.min(toPct(worst), toPct(best));
+    const hi = Math.max(toPct(worst), toPct(best));
+
+    const track = createNode("div", "cockpit-mini-sensitivity-track");
+    const range = createNode("div", "range");
+    range.style.left = `${lo}%`;
+    range.style.width = `${Math.max(2, hi - lo)}%`;
+    const markerWorst = createNode("span", "marker worst");
+    markerWorst.style.left = `${toPct(worst)}%`;
+    const markerBase = createNode("span", "marker base");
+    markerBase.style.left = `${toPct(base)}%`;
+    const markerBest = createNode("span", "marker best");
+    markerBest.style.left = `${toPct(best)}%`;
+    track.append(range, markerWorst, markerBase, markerBest);
+    card.append(track);
+
+    const legend = createNode("ul", "cockpit-mini-sensitivity-legend");
+    [
+      { label: "Worst", value: worst, cls: "worst" },
+      { label: "Base", value: base, cls: "base" },
+      { label: "Best", value: best, cls: "best" },
+    ].forEach((entry) => {
+      const item = createNode("li", `cockpit-mini-sensitivity-item ${entry.cls}`);
+      item.append(createNode("span", "", entry.label), createNode("strong", "", fmt.currency(entry.value)));
+      legend.append(item);
+    });
+    card.append(legend);
+
+    return card;
+  }
+
   function renderSensitivityCard(payload, fmt, compact = false) {
     const sensitivity = payload?.sensitivity ?? {};
     const base = num(sensitivity.base);
@@ -405,14 +653,22 @@
     clearNode(container);
 
     const fmt = formatters(options);
-    const stage = payload?.stage === "quick" ? "quick" : "validation";
-    const compact = stage === "quick";
+    const compact = Boolean(options.compact);
+    if (compact) {
+      container.append(
+        renderMiniWaterfallCard(payload, fmt),
+        renderMiniPieCard(payload, fmt),
+        renderMiniRiskCard(payload, fmt),
+        renderMiniSensitivityCard(payload, fmt),
+      );
+      return;
+    }
 
     container.append(
-      renderWaterfallCard(payload, fmt, compact),
-      renderRiskCard(payload, fmt, compact),
-      renderSensitivityCard(payload, fmt, compact),
-      renderParetoCard(payload, fmt, compact),
+      renderWaterfallCard(payload, fmt, false),
+      renderRiskCard(payload, fmt, false),
+      renderSensitivityCard(payload, fmt, false),
+      renderParetoCard(payload, fmt, false),
     );
   }
 
