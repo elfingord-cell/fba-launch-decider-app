@@ -4263,13 +4263,37 @@ function createLocalStoreAdapter() {
     type: "local",
     async loadSettings() {
       const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
-      return raw ? JSON.parse(raw) : null;
+      if (!raw) {
+        return null;
+      }
+      try {
+        return JSON.parse(raw);
+      } catch (_error) {
+        console.warn("Ungültige lokale Einstellungen im LocalStorage, nutze keine lokalen Einstellungen.");
+        localStorage.removeItem(STORAGE_KEY_SETTINGS);
+        return null;
+      }
     },
     async loadProducts() {
       const rawCurrent = localStorage.getItem(STORAGE_KEY_PRODUCTS);
       const rawLegacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-      const raw = rawCurrent || rawLegacy;
-      return raw ? JSON.parse(raw) : null;
+      if (rawCurrent) {
+        try {
+          return JSON.parse(rawCurrent);
+        } catch (_error) {
+          console.warn("Ungültige aktuelle lokale Produktdaten im LocalStorage.");
+          localStorage.removeItem(STORAGE_KEY_PRODUCTS);
+        }
+      }
+      if (rawLegacy) {
+        try {
+          return JSON.parse(rawLegacy);
+        } catch (_error) {
+          console.warn("Ungültige Legacy-Produktdaten im LocalStorage.");
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+        }
+      }
+      return null;
     },
     async saveSettings(settings) {
       localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
@@ -4305,10 +4329,14 @@ async function loadRemoteConfig() {
   try {
     const localRaw = localStorage.getItem(LOCAL_SUPABASE_CONFIG_KEY);
     if (localRaw) {
-      const parsedLocal = JSON.parse(localRaw);
-      const localConfig = normalizeConfig(parsedLocal);
-      if (localConfig) {
-        return localConfig;
+      try {
+        const parsedLocal = JSON.parse(localRaw);
+        const localConfig = normalizeConfig(parsedLocal);
+        if (localConfig) {
+          return localConfig;
+        }
+      } catch (_error) {
+        localStorage.removeItem(LOCAL_SUPABASE_CONFIG_KEY);
       }
     }
   } catch (_error) {
@@ -17805,7 +17833,7 @@ function bindEvents() {
       if (imported) {
         await flushRemoteProductsSave();
         await flushRemoteSettingsSave();
-        renderAll();
+        renderPageAfterLoad();
       }
     });
   }
