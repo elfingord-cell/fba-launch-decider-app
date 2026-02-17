@@ -1799,6 +1799,7 @@ const state = {
       stepStatus: {},
       lastSuggestedFieldPath: "",
     },
+    sidebarDrawerOpen: false,
   },
 };
 
@@ -1825,6 +1826,7 @@ const dom = {
   validationBlockGrid: document.getElementById("validationBlockGrid"),
   validationCoverageCard: document.getElementById("validationCoverageCard"),
   validationCoveragePct: document.getElementById("validationCoveragePct"),
+  validationCoverageBar: document.getElementById("validationCoverageBar"),
   validationCoverageTarget: document.getElementById("validationCoverageTarget"),
   validationCoveredCost: document.getElementById("validationCoveredCost"),
   validationResidualCost: document.getElementById("validationResidualCost"),
@@ -1926,6 +1928,9 @@ const dom = {
   sessionInfo: document.getElementById("sessionInfo"),
   syncNowBtn: document.getElementById("syncNowBtn"),
   importLocalBtn: document.getElementById("importLocalBtn"),
+  portfolioDrawerBtn: document.getElementById("portfolioDrawerBtn"),
+  sidebarDrawerBackdrop: document.getElementById("sidebarDrawerBackdrop"),
+  sidebarDrawerCloseBtn: document.getElementById("sidebarDrawerCloseBtn"),
   compareCard: document.getElementById("compareCard"),
   productWorkspace: document.getElementById("productWorkspace"),
   driverModal: document.getElementById("driverModal"),
@@ -4183,6 +4188,9 @@ function setAppMode(mode, reason = "") {
   if (dom.appContent) {
     dom.appContent.classList.toggle("hidden", !showApp);
   }
+  if (!showApp) {
+    setSidebarDrawerOpen(false);
+  }
   if (dom.authPanel) {
     dom.authPanel.classList.toggle("hidden", !showAuth);
   }
@@ -4218,6 +4226,15 @@ function setAppMode(mode, reason = "") {
     setAuthStatus("Lokaler Modus aktiv.");
   } else {
     setAuthStatus(reason);
+  }
+}
+
+function setSidebarDrawerOpen(isOpen) {
+  const nextState = Boolean(isOpen);
+  state.ui.sidebarDrawerOpen = nextState;
+  document.body.classList.toggle("sidebar-drawer-open", nextState);
+  if (dom.sidebarDrawerBackdrop) {
+    dom.sidebarDrawerBackdrop.classList.toggle("hidden", !nextState);
   }
 }
 
@@ -15309,6 +15326,10 @@ function renderValidationWorkflow(metrics, product) {
   if (dom.validationCoverageStatus) {
     dom.validationCoverageStatus.textContent = meta.text;
   }
+  if (dom.validationCoverageBar) {
+    const widthPct = clamp(coveragePct, 0, 100);
+    dom.validationCoverageBar.style.width = `${widthPct}%`;
+  }
   if (dom.validationCoverageCard) {
     dom.validationCoverageCard.classList.remove("coverage-ok", "coverage-warn", "coverage-critical");
     dom.validationCoverageCard.classList.add(`coverage-${meta.tone}`);
@@ -16841,6 +16862,8 @@ function renderProductList(metricsById = new Map()) {
     const name = fragment.querySelector(".name");
     const meta = fragment.querySelector(".meta");
     const pill = fragment.querySelector(".pill");
+    const statusDot = fragment.querySelector(".status-dot");
+    const goNoGo = metrics.goNoGoDecision ?? evaluateGoNoGoTraffic(metrics, state.settings?.goNoGoThresholds);
 
     name.textContent = product.name || "Unbenannt";
     meta.textContent = `${formatCurrency(product.basic.priceGross)} brutto · ${formatPercent(metrics.netMarginPct)} Netto-Marge · ${formatPercent(metrics.sellerboardMarginPct)} Sellerboard`;
@@ -16853,6 +16876,11 @@ function renderProductList(metricsById = new Map()) {
     if (stageState.stage === "quick" && !stageState.quickPass) {
       pill.classList.add("red");
     }
+    if (statusDot instanceof HTMLElement) {
+      statusDot.classList.remove("green", "orange", "red");
+      statusDot.classList.add(goNoGo.color === "green" ? "green" : goNoGo.color === "orange" ? "orange" : "red");
+      statusDot.title = `Go/No-Go: ${goNoGo.label}`;
+    }
 
     if (product.id === state.selectedId) {
       button.classList.add("active");
@@ -16861,6 +16889,7 @@ function renderProductList(metricsById = new Map()) {
     button.addEventListener("click", () => {
       state.selectedId = product.id;
       setWorkspaceTab("product");
+      setSidebarDrawerOpen(false);
       renderAll();
     });
 
@@ -17638,6 +17667,26 @@ function bindEvents() {
       openShippingPackAssistantModal();
     });
   }
+  if (dom.portfolioDrawerBtn) {
+    dom.portfolioDrawerBtn.addEventListener("click", () => {
+      setSidebarDrawerOpen(true);
+    });
+  }
+  if (dom.sidebarDrawerCloseBtn) {
+    dom.sidebarDrawerCloseBtn.addEventListener("click", () => {
+      setSidebarDrawerOpen(false);
+    });
+  }
+  if (dom.sidebarDrawerBackdrop) {
+    dom.sidebarDrawerBackdrop.addEventListener("click", () => {
+      setSidebarDrawerOpen(false);
+    });
+  }
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 1220 && state.ui.sidebarDrawerOpen) {
+      setSidebarDrawerOpen(false);
+    }
+  });
 
   if (dom.quickCostWorkflowGrid) {
     dom.quickCostWorkflowGrid.addEventListener("click", (event) => {
@@ -17917,6 +17966,9 @@ function bindEvents() {
       return;
     }
     closeInlineHelpNotes();
+    if (state.ui.sidebarDrawerOpen) {
+      setSidebarDrawerOpen(false);
+    }
     if (state.ui.driverModal) {
       closeDriverModal();
     }
@@ -17967,6 +18019,7 @@ function bindEvents() {
 
     state.selectedId = id;
     setWorkspaceTab("product");
+    setSidebarDrawerOpen(false);
     renderAll();
   });
 }

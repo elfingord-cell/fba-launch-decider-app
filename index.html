@@ -7,12 +7,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap"
       rel="stylesheet"
     />
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body data-page="product">
+  <body data-page="product" class="bg-slate-50 text-slate-900">
     <div class="blob blob-a"></div>
     <div class="blob blob-b"></div>
     <svg class="icon-sprite" aria-hidden="true" focusable="false">
@@ -72,6 +73,7 @@
             <p id="fxStatus" class="fx-status">USD→EUR Kurs: wird geladen ...</p>
             <button id="refreshFxBtn" type="button" class="btn btn-ghost">Kurs aktualisieren</button>
             <a href="settings.html" class="btn btn-ghost settings-link">Zu Settings</a>
+            <button id="portfolioDrawerBtn" type="button" class="btn btn-ghost sidebar-mobile-toggle">Portfolio</button>
             <button id="importLocalBtn" type="button" class="btn btn-ghost hidden">Lokale Daten importieren</button>
             <button id="syncNowBtn" type="button" class="btn btn-ghost hidden">Jetzt synchronisieren</button>
             <button id="authLogoutBtn" type="button" class="btn btn-ghost hidden">Abmelden</button>
@@ -116,10 +118,14 @@
       </section>
 
       <section id="appContent" class="layout hidden">
+        <button id="sidebarDrawerBackdrop" class="sidebar-drawer-backdrop hidden" type="button" aria-label="Sidebar schließen"></button>
         <aside class="card sidebar">
           <div class="sidebar-head">
             <h2>Produkte</h2>
-            <button id="addProductBtn" type="button" class="btn btn-primary">+ Neu</button>
+            <div class="sidebar-head-actions">
+              <button id="addProductBtn" type="button" class="btn btn-primary">+ Neu</button>
+              <button id="sidebarDrawerCloseBtn" type="button" class="btn btn-ghost sidebar-close-btn" aria-label="Portfolio schließen">Schließen</button>
+            </div>
           </div>
           <ul id="productList" class="product-list"></ul>
           <div class="sidebar-actions">
@@ -343,6 +349,9 @@
                   <span>Validation-Abdeckung</span>
                   <strong id="validationCoveragePct">-</strong>
                 </div>
+                <div class="validation-coverage-progress">
+                  <div id="validationCoverageBar" class="validation-coverage-progress-bar"></div>
+                </div>
                 <div class="quick-coverage-values">
                   <small id="validationCoverageTarget">-</small>
                   <small id="validationCoveredCost">-</small>
@@ -409,6 +418,8 @@
 	                <p>Pflichtfelder strukturiert ausfüllen.</p>
 	              </header>
 	            <form id="basicForm" class="form-grid">
+              <details class="input-accordion-item" open>
+                <summary class="input-accordion-trigger">1) Markt &amp; Absatz</summary>
               <section>
                 <div class="help-context">
                   <div class="form-section-head">
@@ -470,7 +481,10 @@
                   </label>
                 </div>
               </section>
+              </details>
 
+              <details class="input-accordion-item" open>
+                <summary class="input-accordion-trigger">2) Produkt, Verpackung &amp; Shipping Input</summary>
               <section>
                 <div class="help-context">
                   <div class="form-section-head">
@@ -534,7 +548,10 @@
                   <p id="shippingModuleStatus" class="shipping-module-status hint">3D-Packbild wird vorbereitet ...</p>
                 </article>
               </section>
+              </details>
 
+              <details class="input-accordion-item" open>
+                <summary class="input-accordion-trigger">3) Einkauf, Amazon &amp; Launch</summary>
               <section>
                 <div class="help-context">
                   <div class="form-section-head">
@@ -628,6 +645,7 @@
                   Währungslogik: EK/EXW in USD. Shipping, Amazon Fees, Launch und Overhead in EUR.
                 </p>
               </section>
+              </details>
             </form>
 	            <p class="hint">
 	              Alle weiteren Kosten werden aus Settings/Defaults abgeleitet. Du kannst die wichtigsten Schätzblöcke oben prüfen und überschreiben.
@@ -1022,6 +1040,7 @@
     <template id="productItemTemplate">
       <li>
         <button class="product-btn" type="button">
+          <span class="status-dot" aria-hidden="true"></span>
           <span class="name"></span>
           <span class="meta"></span>
           <span class="pill"></span>
