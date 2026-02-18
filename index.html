@@ -11,6 +11,7 @@
       rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body data-page="product" class="bg-slate-50 text-slate-900">
@@ -63,13 +64,17 @@
       </symbol>
     </svg>
 
-    <main class="shell">
+    <main class="shell teamhub-shell">
       <header class="card hero">
         <div class="hero-main">
           <p class="eyebrow">Amazon FBA 80/20 Modell</p>
           <h1 id="headerProductName">Produkt: -</h1>
           <p>Launch-Entscheider pro Produkt: schnelle Go/Watch/No-Go Bewertung mit Progressive Disclosure.</p>
           <div class="hero-tools">
+            <label class="topbar-search" for="globalSearchInput">
+              <i data-lucide="search" aria-hidden="true"></i>
+              <input id="globalSearchInput" type="search" placeholder="KPI, Produkt oder Treiber suchen" />
+            </label>
             <p id="fxStatus" class="fx-status">USD→EUR Kurs: wird geladen ...</p>
             <button id="refreshFxBtn" type="button" class="btn btn-ghost">Kurs aktualisieren</button>
             <a href="settings.html" class="btn btn-ghost settings-link">Zu Settings</a>
@@ -78,6 +83,7 @@
             <button id="syncNowBtn" type="button" class="btn btn-ghost hidden">Jetzt synchronisieren</button>
             <button id="authLogoutBtn" type="button" class="btn btn-ghost hidden">Abmelden</button>
             <span id="sessionInfo" class="hint hidden"></span>
+            <span class="topbar-user-badge" aria-label="Aktiver Nutzer">PL</span>
           </div>
         </div>
         <div class="meta-grid">
@@ -1057,5 +1063,12 @@
     <script src="modules/ui/tooltips.js"></script>
     <script src="modules/ui/shipping-dashboard.js"></script>
     <script src="app.js"></script>
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        if (window.lucide && typeof window.lucide.createIcons === "function") {
+          window.lucide.createIcons();
+        }
+      });
+    </script>
   </body>
 </html>
