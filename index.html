@@ -10,11 +10,11 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:," />
     <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body data-page="product" class="bg-slate-50 text-slate-900">
+  <body data-page="product">
     <div class="blob blob-a"></div>
     <div class="blob blob-b"></div>
     <svg class="icon-sprite" aria-hidden="true" focusable="false">
@@ -162,22 +162,50 @@
                 </div>
               </div>
               <div class="decision-head-actions">
-                <button id="toggleAllKpisBtn" type="button" class="btn btn-ghost">Alle KPIs anzeigen</button>
-                <div id="trafficLight" class="traffic-badge traffic-neutral">ROT</div>
+                <button id="toggleAllKpisBtn" type="button" class="btn btn-ghost">Details ausblenden</button>
+                <div id="trafficLight" class="traffic-badge traffic-neutral">STATUS: ROT</div>
               </div>
             </div>
             <div class="decision-primary-grid">
-              <article class="kpi kpi-traffic-focus" data-kpi="kpiNetMargin"><span>Netto-Marge nach PPC %</span><strong id="kpiNetMargin">-</strong></article>
-              <article class="kpi kpi-traffic-focus" data-kpi="kpiNetMarginBeforePpc"><span>Marge vor PPC %</span><strong id="kpiNetMarginBeforePpc">-</strong></article>
-              <article class="kpi kpi-traffic-focus" data-kpi="kpiGoNoGoRoi"><span>ROI % (Ampel, Unit-basiert)</span><strong id="kpiGoNoGoRoi">-</strong></article>
-              <article class="kpi" data-kpi="kpiSellerboardMargin"><span>Sellerboard-Marge % (brutto)</span><strong id="kpiSellerboardMargin">-</strong></article>
-              <article class="kpi" data-kpi="kpiTotalCostPerUnit"><span>Kosten pro Stück (EUR)</span><strong id="kpiTotalCostPerUnit">-</strong></article>
-              <article class="kpi" data-kpi="kpiDb1Unit"><span>Gewinn pro Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
-              <article class="kpi" data-kpi="kpiRevenueGross"><span>Umsatz / Monat (EUR brutto)</span><strong id="kpiRevenueGross">-</strong></article>
-              <article class="kpi" data-kpi="kpiProfitMonthly"><span>Gewinn netto / Monat (EUR)</span><strong id="kpiProfitMonthly">-</strong></article>
+              <article class="kpi kpi-traffic-focus" data-kpi="kpiNetMargin">
+                <div class="kpi-head-row">
+                  <span>Netto-Marge nach PPC</span>
+                  <span id="kpiBadgeNetMargin" class="kpi-state-badge watch">Watch</span>
+                </div>
+                <strong id="kpiNetMargin">-</strong>
+                <small id="kpiMetaNetMargin" class="kpi-meta-line">Kosten/Stk: - · Gewinn/Stk: -</small>
+              </article>
+              <article class="kpi kpi-traffic-focus" data-kpi="kpiNetMarginBeforePpc">
+                <div class="kpi-head-row">
+                  <span>Marge vor PPC</span>
+                  <span id="kpiBadgeMarginBeforePpc" class="kpi-state-badge go">Go</span>
+                </div>
+                <strong id="kpiNetMarginBeforePpc">-</strong>
+                <small id="kpiMetaMarginBeforePpc" class="kpi-meta-line">Umsatz/Mo: - · Gewinn netto/Mo: -</small>
+              </article>
+              <article class="kpi kpi-traffic-focus" data-kpi="kpiGoNoGoRoi">
+                <div class="kpi-head-row">
+                  <span>ROI (Unit-basiert)</span>
+                  <span id="kpiBadgeRoi" class="kpi-state-badge no-go">No-Go</span>
+                </div>
+                <strong id="kpiGoNoGoRoi">-</strong>
+                <small id="kpiMetaRoi" class="kpi-meta-line">Landed/Unit: - · Shipping/Unit: -</small>
+              </article>
+              <article class="kpi" data-kpi="kpiSellerboardMargin">
+                <div class="kpi-head-row">
+                  <span>Sellerboard-Marge</span>
+                  <span id="kpiBadgeSellerboard" class="kpi-state-badge neutral">Neutral</span>
+                </div>
+                <strong id="kpiSellerboardMargin">-</strong>
+                <small id="kpiMetaSellerboard" class="kpi-meta-line">Break-even: - · Max TACoS: -</small>
+              </article>
             </div>
-            <div id="decisionSecondaryWrap" class="decision-secondary-wrap hidden">
+            <div id="decisionSecondaryWrap" class="decision-secondary-wrap">
               <div class="decision-secondary-grid">
+                <article class="kpi compact" data-kpi="kpiTotalCostPerUnit"><span>Kosten pro Stück (EUR)</span><strong id="kpiTotalCostPerUnit">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiDb1Unit"><span>Gewinn pro Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiRevenueGross"><span>Umsatz / Monat (EUR brutto)</span><strong id="kpiRevenueGross">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiProfitMonthly"><span>Gewinn netto / Monat (EUR)</span><strong id="kpiProfitMonthly">-</strong></article>
                 <article class="kpi compact" data-kpi="kpiDb1Margin"><span>DB1-Marge %</span><strong id="kpiDb1Margin">-</strong></article>
                 <article class="kpi compact" data-kpi="kpiTotalCostMonthly"><span>Gesamtkosten / Monat (EUR)</span><strong id="kpiTotalCostMonthly">-</strong></article>
                 <article class="kpi compact" data-kpi="kpiRevenueNet"><span>Umsatz / Monat (EUR netto)</span><strong id="kpiRevenueNet">-</strong></article>

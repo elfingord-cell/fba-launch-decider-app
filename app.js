@@ -8,6 +8,7 @@ const DEFAULT_USD_TO_EUR = 0.92;
 const FX_ENDPOINT = "https://api.frankfurter.app/latest?from=USD&to=EUR";
 const SUPABASE_CONFIG_ENDPOINT = "/api/config";
 const LOCAL_SUPABASE_CONFIG_KEY = "fba-margin-calculator.supabase-config";
+const FORCE_REMOTE_CONFIG_FETCH_KEY = "fba-margin-calculator.force-remote-config-fetch";
 const REMOTE_SAVE_DEBOUNCE_MS = 350;
 const SUPABASE_CLIENT_TIMEOUT_MS = 12000;
 const REALTIME_PULL_DEBOUNCE_MS = 200;
@@ -1764,7 +1765,7 @@ const state = {
   },
   ui: {
     advancedVisible: false,
-    quickShowAllKpis: false,
+    quickShowAllKpis: true,
     compareSort: "profit_desc",
     compareFilter: "all",
     focusedDriverPaths: [],
@@ -1959,6 +1960,14 @@ const dom = {
   kpiProductRoi: document.getElementById("kpiProductRoi"),
   kpiCashRoi: document.getElementById("kpiCashRoi"),
   kpiPayback: document.getElementById("kpiPayback"),
+  kpiBadgeNetMargin: document.getElementById("kpiBadgeNetMargin"),
+  kpiBadgeMarginBeforePpc: document.getElementById("kpiBadgeMarginBeforePpc"),
+  kpiBadgeRoi: document.getElementById("kpiBadgeRoi"),
+  kpiBadgeSellerboard: document.getElementById("kpiBadgeSellerboard"),
+  kpiMetaNetMargin: document.getElementById("kpiMetaNetMargin"),
+  kpiMetaMarginBeforePpc: document.getElementById("kpiMetaMarginBeforePpc"),
+  kpiMetaRoi: document.getElementById("kpiMetaRoi"),
+  kpiMetaSellerboard: document.getElementById("kpiMetaSellerboard"),
 
   costCategoryGrid: document.getElementById("costCategoryGrid"),
 
@@ -4334,6 +4343,20 @@ async function loadRemoteConfig() {
     return { supabaseUrl, supabaseAnonKey };
   };
 
+  const shouldSkipRemoteConfigFetch = () => {
+    try {
+      const host = String(window.location?.hostname ?? "").toLowerCase();
+      const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+      if (!isLocalHost) {
+        return false;
+      }
+      const forceRemoteFetch = localStorage.getItem(FORCE_REMOTE_CONFIG_FETCH_KEY) === "true";
+      return !forceRemoteFetch;
+    } catch (_error) {
+      return false;
+    }
+  };
+
   try {
     const windowConfig = normalizeConfig(window.APP_CONFIG);
     if (windowConfig) {
@@ -4358,6 +4381,10 @@ async function loadRemoteConfig() {
     }
   } catch (_error) {
     // Ignore invalid local override and continue.
+  }
+
+  if (shouldSkipRemoteConfigFetch()) {
+    return null;
   }
 
   try {
@@ -15200,6 +15227,7 @@ function renderQuickCostWorkflow(metrics) {
       "quick-rank-1",
       "quick-rank-2",
       "quick-rank-3",
+      "quick-critical",
     );
     labelWrap?.querySelector(".quick-rank-badge")?.remove();
 
@@ -15211,6 +15239,9 @@ function renderQuickCostWorkflow(metrics) {
     if (sublineNode instanceof HTMLElement && category) {
       const impact = classifyImpact(num(category.totalMonthly, 0), num(metrics.totalCostMonthly, 0));
       tile.classList.add(`quick-impact-${impact.level}`);
+      if (blockKey === "amazon") {
+        tile.classList.add("quick-critical");
+      }
       if (rank) {
         tile.classList.add("quick-top-impact", `quick-rank-${rank}`);
         if (labelWrap instanceof HTMLElement) {
@@ -16227,6 +16258,60 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
   applyKpiTrafficClass(dom.kpiNetMarginBeforePpc, launchDecision.kpiStatus.marginBeforePpc);
   applyKpiTrafficClass(dom.kpiGoNoGoRoi, launchDecision.kpiStatus.roi);
 
+  const setKpiStateBadge = (node, status, fallbackLabel = "Neutral") => {
+    if (!(node instanceof HTMLElement)) {
+      return;
+    }
+    node.classList.remove("go", "watch", "no-go", "neutral");
+    if (status === "green") {
+      node.classList.add("go");
+      node.textContent = "Go";
+      return;
+    }
+    if (status === "orange") {
+      node.classList.add("watch");
+      node.textContent = "Watch";
+      return;
+    }
+    if (status === "red") {
+      node.classList.add("no-go");
+      node.textContent = "No-Go";
+      return;
+    }
+    node.classList.add("neutral");
+    node.textContent = fallbackLabel;
+  };
+
+  const setKpiMetaLine = (node, text) => {
+    if (!(node instanceof HTMLElement)) {
+      return;
+    }
+    node.textContent = text;
+  };
+
+  setKpiStateBadge(dom.kpiBadgeNetMargin, launchDecision.kpiStatus.netMarginAfterPpc);
+  setKpiStateBadge(dom.kpiBadgeMarginBeforePpc, launchDecision.kpiStatus.marginBeforePpc);
+  setKpiStateBadge(dom.kpiBadgeRoi, launchDecision.kpiStatus.roi);
+  setKpiStateBadge(dom.kpiBadgeSellerboard, "", "Neutral");
+
+  const breakEvenText = metrics.breakEvenPrice === null ? "n/a" : formatCurrency(metrics.breakEvenPrice);
+  setKpiMetaLine(
+    dom.kpiMetaNetMargin,
+    `Kosten/Stk: ${formatCurrency(metrics.totalCostPerUnit)} · Gewinn/Stk: ${formatCurrency(profitPerUnit)}`,
+  );
+  setKpiMetaLine(
+    dom.kpiMetaMarginBeforePpc,
+    `Umsatz/Mo: ${formatCurrency(metrics.grossRevenueMonthly)} · Gewinn netto/Mo: ${formatCurrency(metrics.profitMonthly)}`,
+  );
+  setKpiMetaLine(
+    dom.kpiMetaRoi,
+    `Landed/Unit: ${formatCurrency(metrics.landedUnit)} · Shipping/Unit: ${formatCurrency(metrics.shippingUnit)}`,
+  );
+  setKpiMetaLine(
+    dom.kpiMetaSellerboard,
+    `Break-even: ${breakEvenText} · Max TACoS: ${formatPercent(metrics.maxTacosRateForTarget)}`,
+  );
+
   renderShippingModuleInline(metrics, stage);
   renderShippingDetails(metrics);
   renderFbaDetails(metrics);
@@ -16243,7 +16328,7 @@ function renderSelectedOutputs(product, metrics, stage = "quick") {
 
   if (dom.trafficLight) {
     dom.trafficLight.className = `traffic-badge traffic-${launchDecision.color}`;
-    dom.trafficLight.textContent = launchDecision.label;
+    dom.trafficLight.textContent = `STATUS: ${launchDecision.label}`;
     dom.trafficLight.title = buildGoNoGoTooltipText(launchDecision, metrics);
   }
 
@@ -16495,17 +16580,13 @@ function renderSetupWizard(product, metrics) {
 }
 
 function renderDecisionBar(stage) {
-  const isQuick = stage === "quick";
-  if (isQuick) {
-    state.ui.quickShowAllKpis = false;
-  }
-  const showSecondary = !isQuick && Boolean(state.ui.quickShowAllKpis);
+  const showSecondary = Boolean(state.ui.quickShowAllKpis);
   if (dom.decisionSecondaryWrap) {
     dom.decisionSecondaryWrap.classList.toggle("hidden", !showSecondary);
   }
   if (dom.toggleAllKpisBtn) {
-    dom.toggleAllKpisBtn.classList.toggle("hidden", isQuick);
-    dom.toggleAllKpisBtn.textContent = showSecondary ? "Weitere KPIs einklappen" : "Weitere KPIs ausklappen";
+    dom.toggleAllKpisBtn.classList.remove("hidden");
+    dom.toggleAllKpisBtn.textContent = showSecondary ? "Details ausblenden" : "Details einblenden";
     dom.toggleAllKpisBtn.setAttribute("aria-expanded", showSecondary ? "true" : "false");
   }
 }
@@ -17386,11 +17467,7 @@ function applyMouseoverHelp() {
     dom.shippingPackAssistantOpenBtn.title = helpTextByKey("ui.shipping_pack_assistant");
   }
   if (dom.toggleAllKpisBtn) {
-    const selected = getSelectedProduct();
-    const isValidation = selected ? getProductStage(selected) === "validation" : false;
-    dom.toggleAllKpisBtn.title = isValidation
-      ? "Zeigt zusätzliche KPIs in der Decision-Bar."
-      : "Im QuickCheck ausgeblendet.";
+    dom.toggleAllKpisBtn.title = "Blendet zusätzliche KPI-Details in der Decision-Bar ein oder aus.";
   }
   if (dom.cockpitVisualToggleBtn) {
     dom.cockpitVisualToggleBtn.title = state.ui.cockpitVisualCollapsed

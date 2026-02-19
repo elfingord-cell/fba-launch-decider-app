@@ -1,0 +1,475 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - paragraph [ref=e5]: Amazon FBA 80/20 Modell
+        - 'heading "Produkt: Produkt 1" [level=1] [ref=e37]'
+        - paragraph [ref=e7]: "Launch-Entscheider pro Produkt: schnelle Go/Watch/No-Go Bewertung mit Progressive Disclosure."
+        - generic [ref=e8]:
+          - generic [ref=e9]:
+            - img [ref=e10]
+            - searchbox [ref=e13]
+          - paragraph [ref=e14]: "1 USD = 0,92 EUR · Stand: Fallback · Quelle: Fallback (Settings)"
+          - button "Kurs aktualisieren" [ref=e15] [cursor=pointer]
+          - link "Zu Settings" [ref=e16] [cursor=pointer]:
+            - /url: settings.html
+          - generic "Aktiver Nutzer" [ref=e17]: PL
+      - generic [ref=e18]:
+        - article [ref=e19]:
+          - generic [ref=e20]: Produkte
+          - strong [ref=e21]: "2"
+        - article [ref=e22]:
+          - generic [ref=e23]: Speicher
+          - strong [ref=e24]: lokal
+    - generic [ref=e38]:
+      - complementary [ref=e39]:
+        - generic [ref=e40]:
+          - heading "Produkte" [level=2] [ref=e41]
+          - button "+ Neu" [ref=e43] [cursor=pointer]
+        - list [ref=e44]:
+          - listitem [ref=e45]:
+            - button "Produkt 1 29,99 € brutto · 16.1 % Netto-Marge · 16.0 % Sellerboard QuickCheck" [ref=e46] [cursor=pointer]:
+              - generic [ref=e48]: Produkt 1
+              - generic [ref=e49]: 29,99 € brutto · 16.1 % Netto-Marge · 16.0 % Sellerboard
+              - generic [ref=e50]: QuickCheck
+          - listitem [ref=e51]:
+            - button "Produkt 2 29,99 € brutto · 16.1 % Netto-Marge · 16.0 % Sellerboard QuickCheck" [ref=e52] [cursor=pointer]:
+              - generic [ref=e54]: Produkt 2
+              - generic [ref=e55]: 29,99 € brutto · 16.1 % Netto-Marge · 16.0 % Sellerboard
+              - generic [ref=e56]: QuickCheck
+        - generic [ref=e57]:
+          - button "Duplizieren" [ref=e58] [cursor=pointer]
+          - button "Löschen" [ref=e59] [cursor=pointer]
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - generic [ref=e66]:
+                - generic [ref=e67]:
+                  - img [ref=e69]
+                  - generic [ref=e71]:
+                    - heading "Decision-Bar" [level=2] [ref=e72]
+                    - paragraph [ref=e73]: 3-KPI Go/No-Go-Ampel (Grün/Orange/Rot) auf einen Blick.
+                - button "Hilfe zur Decision-Bar" [ref=e74] [cursor=pointer]: i
+              - 'generic "Go/No-Go-Ampel: ROT (Score 2/6) Betroffene KPIs: 1) Netto-Marge nach PPC: 16.1 % (Orange) · Min 10.0 % · Target 20.0 % 2) Marge vor PPC: 29.1 % (Orange) · Min 25.0 % · Target 30.0 % 3) ROI (Unit-basiert): 47.7 % (Rot) · Min 50.0 % · Target 100.0 % Kurzfazit: Score 2/6 liegt in der roten Zone (<= 2)." [ref=e76]': ROT
+            - generic [ref=e77]:
+              - article "Netto-Marge nach PPC % = (Netto-Gewinn nach PPC / Netto-Umsatz) × 100." [ref=e78]:
+                - generic "Netto-Marge nach PPC % = (Netto-Gewinn nach PPC / Netto-Umsatz) × 100." [ref=e79]: Netto-Marge nach PPC %
+                - strong [ref=e80]: 16.1 %
+                - text: Ampel-KPI
+              - article "Marge vor PPC % = (Deckungsbeitrag vor PPC / Netto-Umsatz) × 100." [ref=e81]:
+                - generic "Marge vor PPC % = (Deckungsbeitrag vor PPC / Netto-Umsatz) × 100." [ref=e82]: Marge vor PPC %
+                - strong [ref=e83]: 29.1 %
+                - text: Ampel-KPI
+              - article "ROI % (Ampel) = (Netto-Gewinn nach PPC je Unit / Landed Cost je Unit) × 100." [ref=e84]:
+                - generic "ROI % (Ampel) = (Netto-Gewinn nach PPC je Unit / Landed Cost je Unit) × 100." [ref=e85]: ROI % (Ampel, Unit-basiert)
+                - strong [ref=e86]: 47.7 %
+                - text: Ampel-KPI
+              - article "Sellerboard-Marge % = (Gewinn vor Overhead / Brutto-Umsatz) × 100. Overhead = produktunabhängige Fixkosten." [ref=e87]:
+                - generic "Sellerboard-Marge % = (Gewinn vor Overhead / Brutto-Umsatz) × 100. Overhead = produktunabhängige Fixkosten." [ref=e88]: Sellerboard-Marge % (brutto)
+                - strong [ref=e89]: 16.0 %
+              - article "Gesamtkosten/Unit = Gesamtkosten/Monat / Monatsabsatz." [ref=e90]:
+                - generic "Gesamtkosten/Unit = Gesamtkosten/Monat / Monatsabsatz." [ref=e91]: Kosten pro Stück (EUR)
+                - strong [ref=e92]: 21,10 €
+              - article "Gewinn pro Stück = Gewinn netto/Monat geteilt durch Monatsabsatz." [ref=e93]:
+                - generic "Gewinn pro Stück = Gewinn netto/Monat geteilt durch Monatsabsatz." [ref=e94]: Gewinn pro Stück (EUR netto)
+                - strong [ref=e95]: 4,04 €
+              - article "Brutto-Umsatz/Monat = Verkaufspreis brutto × Monatsabsatz." [ref=e96]:
+                - generic "Brutto-Umsatz/Monat = Verkaufspreis brutto × Monatsabsatz." [ref=e97]: Umsatz / Monat (EUR brutto)
+                - strong [ref=e98]: 8.377,87 €
+              - article "Gewinn netto/Monat = Gewinn brutto/Monat - Launch/Lifecycle - Leakage." [ref=e99]:
+                - generic "Gewinn netto/Monat = Gewinn brutto/Monat - Launch/Lifecycle - Leakage." [ref=e100]: Gewinn netto / Monat (EUR)
+                - strong [ref=e101]: 1.132,56 €
+          - generic [ref=e102]:
+            - generic [ref=e103]:
+              - generic [ref=e104]:
+                - heading "Visual Cockpit" [level=2] [ref=e105]
+                - paragraph [ref=e106]: Preis, Risiko, Sensitivität und Kostentreiber auf einen Blick.
+              - button "Ausklappen" [ref=e108] [cursor=pointer]
+            - generic [ref=e109]:
+              - article [ref=e110]:
+                - generic [ref=e111]:
+                  - heading "Waterfall (kompakt)" [level=6] [ref=e112]
+                  - generic [ref=e113]: Netto-Umsatz -> Kosten/Unit -> Gewinn/Unit
+                - img [ref=e114]:
+                  - generic [ref=e116]: "+25.14"
+                  - generic [ref=e117]: Umsatz
+                  - generic [ref=e119]: "-7.99"
+                  - generic [ref=e120]: Amazon
+                  - generic [ref=e122]: "-6.44"
+                  - generic [ref=e123]: Produkt
+                  - generic [ref=e125]: "-3.56"
+                  - generic [ref=e126]: Werbung & Retouren
+                  - generic [ref=e128]: "-3.11"
+                  - generic [ref=e129]: Sonstige
+                  - generic [ref=e131]: "+4.04"
+                  - generic [ref=e132]: Gewinn
+                - paragraph [ref=e133]: "Referenz: Kosten/Unit 21,10 € · Gewinn/Unit 4,04 €"
+              - article [ref=e134]:
+                - generic [ref=e135]:
+                  - heading "Kostenmix (Pie)" [level=6] [ref=e136]
+                  - generic [ref=e137]: Top-Treiber + Rest
+                - generic [ref=e140]:
+                  - strong [ref=e141]: 21,10 €
+                  - generic [ref=e142]: Kosten/Unit
+                - list [ref=e143]:
+                  - listitem [ref=e144]:
+                    - generic [ref=e146]: Amazon
+                    - strong [ref=e147]: 37.9 % · 7,99 €
+                  - listitem [ref=e148]:
+                    - generic [ref=e150]: Produkt
+                    - strong [ref=e151]: 30.5 % · 6,44 €
+                  - listitem [ref=e152]:
+                    - generic [ref=e154]: Werbung & Retouren
+                    - strong [ref=e155]: 16.9 % · 3,56 €
+                  - listitem [ref=e156]:
+                    - generic [ref=e158]: Shipping & Import (Vorlauf/Hauptlauf/Nachlauf)
+                    - strong [ref=e159]: 7.7 % · 1,63 €
+                  - listitem [ref=e160]:
+                    - generic [ref=e162]: Sonstige
+                    - strong [ref=e163]: 7.0 % · 1,48 €
+              - article [ref=e164]:
+                - generic [ref=e165]:
+                  - heading "Risiko-Ampel" [level=6] [ref=e166]
+                  - generic [ref=e167]: 3 KPI compact
+                - list [ref=e168]:
+                  - listitem [ref=e169]:
+                    - generic [ref=e171]: Netto-Marge nach PPC
+                    - strong [ref=e172]: 16.1 %
+                  - listitem [ref=e173]:
+                    - generic [ref=e175]: Marge vor PPC
+                    - strong [ref=e176]: 29.1 %
+                  - listitem [ref=e177]:
+                    - generic [ref=e179]: ROI (Unit-basiert)
+                    - strong [ref=e180]: 47.7 %
+                - paragraph [ref=e181]: "Gesamt: ROT"
+              - article [ref=e182]:
+                - generic [ref=e183]:
+                  - heading "Sensitivity (compact)" [level=6] [ref=e184]
+                  - generic [ref=e185]: Gewinn / Monat
+                - list [ref=e191]:
+                  - listitem [ref=e192]:
+                    - generic [ref=e193]: Worst
+                    - strong [ref=e194]: 461,03 €
+                  - listitem [ref=e195]:
+                    - generic [ref=e196]: Base
+                    - strong [ref=e197]: 1.132,56 €
+                  - listitem [ref=e198]:
+                    - generic [ref=e199]: Best
+                    - strong [ref=e200]: 1.964,27 €
+                - paragraph [ref=e201]: "Abhängig von Stressannahmen: Preis -10%, TACoS +2pp, Absatz -10%. Worst kombiniert alle drei, Best ist die inverse Kombination."
+        - generic [ref=e202]:
+          - generic [ref=e205]:
+            - generic [ref=e206]:
+              - img [ref=e208]
+              - generic [ref=e210]:
+                - heading "Basic View" [level=2] [ref=e211]
+                - paragraph [ref=e212]: "2-Stufen-Flow: zuerst QuickCheck, dann Validation."
+            - button "Hilfe zum Basic-Flow" [ref=e213] [cursor=pointer]: i
+          - generic [ref=e214]:
+            - generic [ref=e215]:
+              - generic [ref=e216]:
+                - heading "Validierung / Erklärung" [level=3] [ref=e217]
+                - paragraph [ref=e218]: Prüfe zuerst die größten Kostentreiber und öffne Details nur dort, wo Klärung nötig ist.
+              - generic [ref=e219]:
+                - generic [ref=e220]:
+                  - button "QuickCheck" [ref=e221] [cursor=pointer]
+                  - button "Validation" [ref=e222] [cursor=pointer]
+                - generic [ref=e223]:
+                  - paragraph [ref=e224]: "QuickCheck: leaner 80/20-Workflow mit sieben Kostenkategorien für einen konsistenten Erstcheck."
+                  - paragraph [ref=e225]: "Nächster Schritt: 7 Kostenkategorien prüfen, dann Validation aktivieren."
+                  - paragraph [ref=e226]: "Status: QuickCheck bereit"
+                  - paragraph [ref=e227]: "KPI-Warnung: Netto-Marge <= 20% oder DB1 <= 0."
+              - generic [ref=e228]:
+                - generic [ref=e230]:
+                  - generic [ref=e231]:
+                    - img [ref=e233]
+                    - generic [ref=e235]:
+                      - heading "QuickCheck Workflow" [level=3] [ref=e236]
+                      - paragraph [ref=e237]: Prüfe die 7 Kostenkategorien, öffne Details nur bei Bedarf.
+                  - button "Hilfe zum QuickCheck-Workflow" [ref=e238] [cursor=pointer]: i
+                - generic [ref=e239]:
+                  - button "Top 2 Produkt 6,47 € / Unit EXW, Packaging, Setup-Anteile. · 30.6 % Anteil" [ref=e240] [cursor=pointer]:
+                    - generic [ref=e241]:
+                      - emphasis [ref=e242]: Top 2
+                      - img [ref=e244]
+                      - generic [ref=e246]: Produkt
+                    - strong [ref=e247]: 6,47 € / Unit
+                    - generic [ref=e248]: EXW, Packaging, Setup-Anteile. · 30.6 % Anteil
+                  - button "Shipping & Import 1,64 € / Unit Vorlauf, Hauptlauf, Nachlauf, Zoll. · 7.8 % Anteil" [ref=e249] [cursor=pointer]:
+                    - generic [ref=e250]:
+                      - img [ref=e252]
+                      - generic [ref=e254]: Shipping & Import
+                    - strong [ref=e255]: 1,64 € / Unit
+                    - generic [ref=e256]: Vorlauf, Hauptlauf, Nachlauf, Zoll. · 7.8 % Anteil
+                  - button "3PL 0,33 € / Unit Receiving, Lagerung, Outbound. · 1.6 % Anteil" [ref=e257] [cursor=pointer]:
+                    - generic [ref=e258]:
+                      - img [ref=e260]
+                      - generic [ref=e262]: 3PL
+                    - strong [ref=e263]: 0,33 € / Unit
+                    - generic [ref=e264]: Receiving, Lagerung, Outbound. · 1.6 % Anteil
+                  - button "Top 1 Amazon 8,02 € / Unit Referral, FBA, Amazon-Lagerung. · 38.0 % Anteil" [active] [ref=e265] [cursor=pointer]:
+                    - generic [ref=e266]:
+                      - emphasis [ref=e267]: Top 1
+                      - img [ref=e269]
+                      - generic [ref=e271]: Amazon
+                    - strong [ref=e272]: 8,02 € / Unit
+                    - generic [ref=e273]: Referral, FBA, Amazon-Lagerung. · 38.0 % Anteil
+                  - button "Top 3 Werbung & Retouren 3,57 € / Unit Ads, Retourenverlust, Handling. · 16.9 % Anteil" [ref=e274] [cursor=pointer]:
+                    - generic [ref=e275]:
+                      - emphasis [ref=e276]: Top 3
+                      - img [ref=e278]
+                      - generic [ref=e280]: Werbung & Retouren
+                    - strong [ref=e281]: 3,57 € / Unit
+                    - generic [ref=e282]: Ads, Retourenverlust, Handling. · 16.9 % Anteil
+                  - button "Launch & Lifecycle 0,40 € / Unit Listing, Launch-Boost, Ops. · 1.9 % Anteil" [ref=e283] [cursor=pointer]:
+                    - generic "Kostenblock für einmalige oder temporäre Kosten, die auf Zeitraum/Units verteilt werden." [ref=e284]:
+                      - img [ref=e286]
+                      - generic "Kostenblock für einmalige oder temporäre Kosten, die auf Zeitraum/Units verteilt werden." [ref=e288]: Launch & Lifecycle
+                    - strong [ref=e289]: 0,40 € / Unit
+                    - generic [ref=e290]: Listing, Launch-Boost, Ops. · 1.9 % Anteil
+                  - button "Overhead / Leakage 0,75 € / Unit Leakage / Overhead. · 3.6 % Anteil" [ref=e291] [cursor=pointer]:
+                    - generic [ref=e292]:
+                      - img [ref=e294]
+                      - generic [ref=e296]: Overhead / Leakage
+                    - strong [ref=e297]: 0,75 € / Unit
+                    - generic [ref=e298]: Leakage / Overhead. · 3.6 % Anteil
+            - generic [ref=e299]:
+              - generic [ref=e300]:
+                - heading "Eingabe" [level=3] [ref=e301]
+                - paragraph [ref=e302]: Pflichtfelder strukturiert ausfüllen.
+              - generic [ref=e303]:
+                - group [ref=e304]:
+                  - generic "1) Markt & Absatz" [ref=e305] [cursor=pointer]
+                  - generic [ref=e306]:
+                    - generic [ref=e308]:
+                      - generic [ref=e309]:
+                        - img [ref=e311]
+                        - heading "1) Markt & Absatz" [level=3] [ref=e313]
+                      - generic [ref=e314]:
+                        - button "Pricing/Absatz-Assistent" [ref=e315] [cursor=pointer]
+                        - button "Hilfe zu Markt und Absatz" [ref=e316] [cursor=pointer]: i
+                    - paragraph [ref=e317]: Lege Preis, Kategorie und Nachfrage als Start für den QuickCheck fest.
+                    - generic [ref=e318]:
+                      - 'generic "Interner Produktname zur Vergleichbarkeit in der Multi-Produkt-Ansicht. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e319]':
+                        - text: Produktname (optional)
+                        - textbox "Produktname (optional)" [ref=e320]:
+                          - /placeholder: z. B. Trinkflasche 750ml
+                          - text: Produkt 1
+                      - 'generic "Brutto-Verkaufspreis in EUR (inkl. USt.). Netto = Brutto / (1 + USt). Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e321]':
+                        - text: Verkaufspreis brutto (EUR inkl. USt.)
+                        - spinbutton "Verkaufspreis brutto (EUR inkl. USt.)" [ref=e322]: "29.99"
+                      - 'generic "Kategorie steuert Defaults wie TACoS, Retouren, Referral Fee und Zielmarge. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e323]':
+                        - text: Kategorie
+                        - combobox "Kategorie" [ref=e324]:
+                          - option "Home & Küche" [selected]
+                          - option "Beauty"
+                          - option "Elektronik"
+                          - option "Bekleidung"
+                          - option "Haustier"
+                          - option "Sonstiges"
+                      - 'generic "Absatzannahme je Tag oder Monat. Daraus werden Monats-Units berechnet. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e325]':
+                        - text: Absatzannahme
+                        - spinbutton "Absatzannahme" [ref=e326]: "280"
+                      - 'generic "Wähle, ob die Absatzannahme pro Tag oder pro Monat gilt. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e327]':
+                        - text: Absatz-Basis
+                        - combobox "Absatz-Basis" [ref=e328]:
+                          - option "Einheiten / Monat" [selected]
+                          - option "Einheiten / Tag"
+                      - 'generic "TACoS in % vom Brutto-Umsatz. Ads-Kosten je Stück = Brutto-Preis × TACoS. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: Produktannahme (Default aus Kategorie/Global, optional Override). Impact: hoch (15.5 % der Gesamtkosten). Robustheit: niedrig (Ads-Leistung ist stark produkt- und keywordabhängig.). Override: 10.0 % · Impact ~15.5 % · Robustheit: niedrig Herleitung: Kategorie-Default (Home & Küche) = 12.0 %. Impact auf Gesamtkosten: ca. 914,91 € / Monat (15.5 %). Robustheit: 45/100 (niedrig) - Ads-Leistung ist stark produkt- und keywordabhängig. Hinweis: Direkter Treiber der Ads-Kosten im Unit-Economics-Block." [ref=e329]':
+                        - text: TACoS (QuickCheck, %)
+                        - spinbutton "TACoS (QuickCheck, %)" [ref=e330]: "10"
+                      - 'generic "Retourenquote in % der Verkäufe. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: Produktannahme (Default aus Kategorie/Global, optional Override). Impact: niedrig (2.7 % der Gesamtkosten). Robustheit: niedrig (Retouren variieren je Produktqualität und Erwartungsmanagement.). Override: 10.0 % · Impact ~2.7 % · Robustheit: niedrig Herleitung: Kategorie-Default (Home & Küche) = 5.0 %. Impact auf Gesamtkosten: ca. 161,43 € / Monat (2.7 %). Robustheit: 50/100 (niedrig) - Retouren variieren je Produktqualität und Erwartungsmanagement. Hinweis: Treiber für Retourenverluste und Handlingkosten." [ref=e331]':
+                        - text: Retourenquote (QuickCheck, %)
+                        - spinbutton "Retourenquote (QuickCheck, %)" [ref=e332]: "10"
+                - group [ref=e333]:
+                  - generic "2) Produkt, Verpackung & Shipping Input" [ref=e334] [cursor=pointer]
+                  - generic [ref=e335]:
+                    - generic [ref=e337]:
+                      - generic [ref=e338]:
+                        - img [ref=e340]
+                        - heading "2) Produkt, Verpackung & Shipping Input" [level=3] [ref=e342]
+                      - generic [ref=e343]:
+                        - button "Shipping-Kartonisierungs-Assistent" [ref=e344] [cursor=pointer]
+                        - button "Hilfe zu Produkt, Verpackung und Shipping" [ref=e345] [cursor=pointer]: i
+                    - paragraph [ref=e346]: Gewicht, Masse und Transportmodus steuern die Logistik- und 3PL-Kosten.
+                    - generic [ref=e347]:
+                      - 'generic "Produktgewicht netto in Gramm; relevant für Kartonisierung, FBA-Tier und Shipping. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e348]':
+                        - text: Produktgewicht netto (g)
+                        - spinbutton "Produktgewicht netto (g)" [ref=e349]: "520"
+                      - 'generic "Produktverpackung Länge in cm je Einheit (nicht Umkarton). Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e350]':
+                        - text: Verpackung Länge (cm)
+                        - spinbutton "Verpackung Länge (cm)" [ref=e351]: "24"
+                      - 'generic "Produktverpackung Breite in cm je Einheit (nicht Umkarton). Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e352]':
+                        - text: Verpackung Breite (cm)
+                        - spinbutton "Verpackung Breite (cm)" [ref=e353]: "16"
+                      - 'generic "Produktverpackung Höhe in cm je Einheit (nicht Umkarton). Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e354]':
+                        - text: Verpackung Höhe (cm)
+                        - spinbutton "Verpackung Höhe (cm)" [ref=e355]: "8"
+                      - 'generic "Typische PO-Menge in Einheiten pro Import-Order. Basis für Door-to-Door Shipping/Unit. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e356]':
+                        - text: Units pro Order (PO)
+                        - spinbutton "Units pro Order (PO)" [ref=e357]: "1200"
+                      - 'generic "Transportmodus China -> DE für Door-to-Door Shipping (v1: Rail und Sea LCL). Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e358]':
+                        - text: Transportmodus
+                        - combobox "Transportmodus" [ref=e359]:
+                          - option "Rail (Default)" [selected]
+                          - option "Sea LCL"
+                          - option "Air (v2)" [disabled]
+                - group [ref=e360]:
+                  - generic "3) Einkauf, Amazon & Launch" [ref=e361] [cursor=pointer]
+                  - generic [ref=e362]:
+                    - generic [ref=e364]:
+                      - generic [ref=e365]:
+                        - img [ref=e367]
+                        - heading "3) Einkauf, Amazon & Launch" [level=3] [ref=e369]
+                      - button "Hilfe zu Einkauf, Amazon und Launch" [ref=e370] [cursor=pointer]: i
+                    - paragraph [ref=e371]: Definiere Einkaufs- und Launchannahmen; Amazon/FBA wird automatisch eingepreist.
+                    - generic [ref=e372]:
+                      - 'generic "Einkaufspreis EXW in USD. Wird mit aktuellem USD→EUR Kurs umgerechnet. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e373]':
+                        - text: EXW pro Einheit (USD)
+                        - spinbutton "EXW pro Einheit (USD)" [ref=e374]: "6.4"
+                      - 'generic "Marktplatz setzt die lokale USt für Brutto→Netto Berechnung. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e375]':
+                        - text: Marketplace
+                        - combobox "Marketplace" [ref=e376]:
+                          - option "Amazon.de" [selected]
+                          - option "Amazon.fr"
+                          - option "Amazon.it"
+                          - option "Amazon.es"
+                      - 'generic "Fulfillment-Flag. v1 rechnet FBA. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e377]':
+                        - text: Fulfillment-Modell
+                        - combobox "Fulfillment-Modell" [ref=e378]:
+                          - option "FBA" [selected]
+                          - option "FBM (v2)" [disabled]
+                      - 'generic "Auswahl der Listing-Serviceklasse. Preise kommen aus globalen Settings. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e379]':
+                        - text: Listing-Service
+                        - combobox "Listing-Service" [ref=e380]:
+                          - option "KI" [selected]
+                          - option "Fotograf"
+                          - option "Visual Advantage"
+                      - 'generic "Wettbewerbsniveau der Nische. Steuert Launch-Boost auf TACoS und Einführungspreis. Rechenweg: Der Wert fließt direkt in die zugehörige Kostenformel ein. Herkunft: User Input. Impact: niedrig (0.0 % der Gesamtkosten). Robustheit: mittel." [ref=e381]':
+                        - text: Nischenwettbewerb (Launch-Boost)
+                        - combobox "Nischenwettbewerb (Launch-Boost)" [ref=e382]:
+                          - option "Low"
+                          - option "Medium" [selected]
+                          - option "High"
+                    - paragraph [ref=e383]: "Währungslogik: EK/EXW in USD. Shipping, Amazon Fees, Launch und Overhead in EUR."
+              - paragraph [ref=e384]: Alle weiteren Kosten werden aus Settings/Defaults abgeleitet. Du kannst die wichtigsten Schätzblöcke oben prüfen und überschreiben.
+  - dialog "Amazon (EUR/Unit)" [ref=e385]:
+    - generic [ref=e387]:
+      - generic [ref=e388]:
+        - generic [ref=e389]:
+          - heading "Amazon (EUR/Unit)" [level=3] [ref=e390]
+          - paragraph [ref=e391]: 8,02 € / Unit · 2.244,81 € / Monat
+        - button "Schließen" [ref=e392] [cursor=pointer]
+      - generic [ref=e393]:
+        - generic [ref=e394]:
+          - article [ref=e395]:
+            - strong [ref=e396]: Was ist das?
+            - generic [ref=e397]: Amazon Fees und Lagerkosten.
+          - article [ref=e398]:
+            - strong [ref=e399]: Wie wird es berechnet?
+            - generic [ref=e400]: Kategorie total = Summe aller zugeordneten Kostenzeilen.
+          - article [ref=e401]:
+            - strong [ref=e402]: Herkunft & Robustheit
+            - generic [ref=e403]: "Herkunft: Kategorienmodell aus buildCostCategoryData(metrics). · Robustheit: Mittel."
+        - generic [ref=e404]:
+          - button "Alles aufklappen" [ref=e405] [cursor=pointer]
+          - button "Alles einklappen" [ref=e406] [cursor=pointer]
+        - group [ref=e407]:
+          - generic "Von dir eingegeben Produktfelder und Annahmen, die den Treiber direkt beeinflussen." [ref=e408] [cursor=pointer]:
+            - generic [ref=e409]: Von dir eingegeben
+            - generic [ref=e410]: Produktfelder und Annahmen, die den Treiber direkt beeinflussen.
+          - generic [ref=e411]:
+            - article [ref=e412]:
+              - strong [ref=e414]: Referral Fee %
+              - generic [ref=e415]:
+                - 'generic "Kein Override: Wert kommt aus Defaults/Settings." [ref=e416]': Default aktiv
+                - 'generic "Default: 15.0 % · Impact ~21.3 % · Robustheit: hoch" [ref=e417]': Default-Info
+                - 'generic "Anteil an Gesamtkosten: 37.4 %." [ref=e418]': Impact hoch
+              - generic [ref=e419]:
+                - checkbox "Override aktivieren" [ref=e420]
+                - generic [ref=e421]: Override aktivieren
+              - spinbutton [disabled] [ref=e422]: "15"
+              - generic [ref=e423]: Amazon Empfehlungsgebühr in % vom Brutto-Verkaufspreis.
+              - generic [ref=e424]: "Default-Logik: Default: 15.0 % · Impact ~21.3 % · Robustheit: hoch"
+            - article [ref=e425]:
+              - strong [ref=e427]: FBA Fee Override (statt Auto-Tier)
+              - generic [ref=e428]:
+                - generic "Produktannahme im Modell." [ref=e429]: Annahme
+                - 'generic "Anteil an Gesamtkosten: 37.4 %." [ref=e430]': Impact hoch
+              - generic [ref=e431]: "Berechneter Tabellenpreis (DE Ratecard): 3,40 € (Kleines Paket)."
+              - generic [ref=e432]:
+                - checkbox "Override aktivieren (manueller FBA-Wert)" [ref=e433]
+                - generic [ref=e434]: Override aktivieren (manueller FBA-Wert)
+              - generic [ref=e435]:
+                - text: Manuelle FBA Fee / Einheit (EUR)
+                - spinbutton "Manuelle FBA Fee / Einheit (EUR)" [disabled] [ref=e436]: "3.8"
+              - generic [ref=e437]: "Aktiv: Auto-Tier 3,40 € (Tabellenpreis)."
+              - generic [ref=e438]: Standard ist Auto-Tier aus der DE-Ratecard. Mit Override nutzt die Kalkulation den manuellen FBA-Wert.
+            - article [ref=e439]:
+              - strong [ref=e441]: Kategorie
+              - generic [ref=e442]:
+                - generic "Direkte Produkteingabe." [ref=e443]: User Input
+                - 'generic "Anteil an Gesamtkosten: 0.0 %." [ref=e444]': Impact niedrig
+              - combobox [ref=e445]:
+                - option "Home & Küche" [selected]
+                - option "Beauty"
+                - option "Elektronik"
+                - option "Bekleidung"
+                - option "Haustier"
+                - option "Sonstiges"
+              - generic [ref=e446]: Kategorie steuert Defaults wie TACoS, Retouren, Referral Fee und Zielmarge.
+            - article [ref=e447]:
+              - strong [ref=e449]: Verkaufspreis brutto (EUR inkl. USt.)
+              - generic [ref=e450]:
+                - generic "Direkte Produkteingabe." [ref=e451]: User Input
+                - 'generic "Anteil an Gesamtkosten: 0.0 %." [ref=e452]': Impact niedrig
+              - spinbutton [ref=e453]: "29.99"
+              - generic [ref=e454]: Brutto-Verkaufspreis in EUR (inkl. USt.). Netto = Brutto / (1 + USt).
+            - article [ref=e455]:
+              - strong [ref=e457]: Marketplace
+              - generic [ref=e458]:
+                - generic "Direkte Produkteingabe." [ref=e459]: User Input
+                - 'generic "Anteil an Gesamtkosten: 0.0 %." [ref=e460]': Impact niedrig
+              - combobox [ref=e461]:
+                - option "Amazon.de" [selected]
+                - option "Amazon.fr"
+                - option "Amazon.it"
+                - option "Amazon.es"
+              - generic [ref=e462]: Marktplatz setzt die lokale USt für Brutto→Netto Berechnung.
+            - article [ref=e463]:
+              - strong [ref=e465]: Produktgewicht netto (g)
+              - generic [ref=e466]:
+                - generic "Direkte Produkteingabe." [ref=e467]: User Input
+                - 'generic "Anteil an Gesamtkosten: 0.0 %." [ref=e468]': Impact niedrig
+              - spinbutton [ref=e469]: "520"
+              - generic [ref=e470]: Produktgewicht netto in Gramm; relevant für Kartonisierung, FBA-Tier und Shipping.
+            - article [ref=e471]:
+              - strong [ref=e473]: Produktverpackung-Länge (cm)
+              - generic [ref=e474]:
+                - generic "Direkte Produkteingabe." [ref=e475]: User Input
+                - 'generic "Anteil an Gesamtkosten: 0.0 %." [ref=e476]': Impact niedrig
+              - spinbutton [ref=e477]: "24"
+              - generic [ref=e478]: Produktverpackung Länge in cm je Einheit (nicht Umkarton).
+            - article [ref=e479]:
+              - strong [ref=e481]: Produktverpackung-Breite (cm)
+              - generic [ref=e482]:
+                - generic "Direkte Produkteingabe." [ref=e483]: User Input
+                - 'generic "Anteil an Gesamtkosten: 0.0 %." [ref=e484]': Impact niedrig
+              - spinbutton [ref=e485]: "16"
+              - generic [ref=e486]: Produktverpackung Breite in cm je Einheit (nicht Umkarton).
+            - article [ref=e487]:
+              - strong [ref=e489]: Produktverpackung-Höhe (cm)
+              - generic [ref=e490]:
+                - generic "Direkte Produkteingabe." [ref=e491]: User Input
+                - 'generic "Anteil an Gesamtkosten: 0.0 %." [ref=e492]': Impact niedrig
+              - spinbutton [ref=e493]: "8"
+              - generic [ref=e494]: Produktverpackung Höhe in cm je Einheit (nicht Umkarton).
+        - group [ref=e495]:
+          - generic "Defaults & globale Settings Systemweite Parameter. Optional als Produkt-Override oder globaler Default speicherbar." [ref=e496] [cursor=pointer]:
+            - generic [ref=e497]: Defaults & globale Settings
+            - generic [ref=e498]: Systemweite Parameter. Optional als Produkt-Override oder globaler Default speicherbar.
+        - group [ref=e499]:
+          - generic "Berechnete Zwischenwerte (read-only) Transparenzwerte aus der Rechnung. Nicht direkt editierbar." [ref=e500] [cursor=pointer]:
+            - generic [ref=e501]: Berechnete Zwischenwerte (read-only)
+            - generic [ref=e502]: Transparenzwerte aus der Rechnung. Nicht direkt editierbar.
