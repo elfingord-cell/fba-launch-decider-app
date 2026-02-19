@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "lib": ["ES2021", "DOM", "WebWorker"],
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts", "tailwind.config.ts"]
+}

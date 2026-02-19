@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 20% 97%;
+  --foreground: 222 31% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 31% 14%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 214 16% 46%;
+  --border: 214 21% 90%;
+  --input: 214 23% 88%;
+  --ring: 214 77% 52%;
+  --primary: 214 84% 44%;
+  --primary-foreground: 0 0% 100%;
+  --success: 148 72% 34%;
+  --success-foreground: 0 0% 100%;
+  --warning: 34 92% 46%;
+  --warning-foreground: 0 0% 100%;
+  --danger: 350 84% 52%;
+  --danger-foreground: 0 0% 100%;
+  --radius: 0.7rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+@layer components {
+  .card-shell {
+    @apply rounded-xl border bg-card shadow-card;
+  }
+
+  .left-kpi-accent {
+    @apply relative pl-3;
+  }
+
+  .left-kpi-accent::before {
+    content: "";
+    @apply absolute left-0 top-0 h-full w-1 rounded-l-lg bg-slate-300;
+  }
+
+  .left-kpi-accent.kpi-go::before {
+    @apply bg-emerald-500;
+  }
+
+  .left-kpi-accent.kpi-watch::before {
+    @apply bg-amber-400;
+  }
+
+  .left-kpi-accent.kpi-no-go::before {
+    @apply bg-rose-500;
+  }
+
+  .left-kpi-accent.kpi-neutral::before {
+    @apply bg-slate-300;
+  }
+}

@@ -2,6 +2,7 @@ const STORAGE_KEY_PRODUCTS = "fba-margin-calculator.8020.v3.products";
 const STORAGE_KEY_SETTINGS = "fba-margin-calculator.8020.v3.settings";
 const LEGACY_STORAGE_KEY = "fba-margin-calculator.8020.v2";
 const APP_PAGE = document.body?.dataset?.page === "settings" ? "settings" : "product";
+const BRIDGE_ONLY_MODE = typeof window !== "undefined" && window.__FBA_BRIDGE_ONLY__ === true;
 
 const MIN_REFERRAL_FEE = 0.3;
 const DEFAULT_USD_TO_EUR = 0.92;
@@ -18173,13 +18174,331 @@ async function init() {
   refreshFxRate();
 }
 
-init().catch((error) => {
-  console.error("App init failed", error);
-  stopRealtimeSync();
-  setAuthStatus("Initialisierung fehlgeschlagen. Fallback auf lokale Daten.", true);
-  setAppMode("ready_local");
-  loadSettingsLocal();
-  loadProductsLocal();
+const bridgeListeners = new Set();
+let bridgeBootstrapped = false;
+
+function buildBridgeQuickBlocks(metrics) {
+  const categories = buildCostCategoryData(metrics);
+  const totalPerUnit = Math.max(0, num(metrics?.totalCostPerUnit, 0));
+  return categories.map((entry) => ({
+    key: entry.key,
+    title: entry.title,
+    description: entry.description,
+    valuePerUnit: num(entry.totalPerUnit, 0),
+    sharePct: totalPerUnit > 0 ? (num(entry.totalPerUnit, 0) / totalPerUnit) * 100 : 0,
+  }));
+}
+
+function buildBridgeProductSummary(product, metrics) {
+  const stage = getProductStage(product);
+  const goNoGo = metrics?.goNoGoDecision ?? evaluateGoNoGoTraffic(metrics, state.settings?.goNoGoThresholds);
+  return {
+    id: product.id,
+    name: product.name,
+    stage,
+    goNoGoStatus: goNoGo?.color ?? "red",
+    headlineMetrics: {
+      priceGross: num(product?.basic?.priceGross, 0),
+      netMarginPct: num(metrics?.netMarginPct, 0),
+      sellerboardMarginPct: num(metrics?.sellerboardMarginPct, 0),
+    },
+  };
+}
+
+function buildBridgeSnapshot() {
   selectFirstProductIfNeeded();
-  renderPageAfterLoad();
-});
+  const selected = getSelectedProduct();
+  const metricsById = new Map();
+  state.products.forEach((product) => {
+    metricsById.set(product.id, calculateProduct(product));
+  });
+
+  const selectedMetrics = selected ? metricsById.get(selected.id) : null;
+  const stageState = selected && selectedMetrics ? buildStageState(selected, selectedMetrics) : null;
+  const decision = selectedMetrics
+    ? (selectedMetrics.goNoGoDecision ?? evaluateGoNoGoTraffic(selectedMetrics, state.settings?.goNoGoThresholds))
+    : null;
+  const launchDecision = selectedMetrics ? classifyLaunchDecision(selectedMetrics) : null;
+  const quickBlocks = selectedMetrics ? buildBridgeQuickBlocks(selectedMetrics) : [];
+  const visualCockpit = selectedMetrics
+    ? buildCockpitVisualPayload(selectedMetrics, stageState?.stage ?? "quick", buildCostCategoryData(selectedMetrics))
+    : null;
+  const profitPerUnit = selectedMetrics && selectedMetrics.monthlyUnits > 0
+    ? selectedMetrics.profitMonthly / selectedMetrics.monthlyUnits
+    : 0;
+
+  return {
+    timestamp: new Date().toISOString(),
+    selectedId: state.selectedId,
+    products: state.products.map((product) => buildBridgeProductSummary(product, metricsById.get(product.id))),
+    selectedProduct: selected ? deepClone(selected) : null,
+    fxStatus: {
+      usdToEur: num(state.fx.usdToEur, DEFAULT_USD_TO_EUR),
+      date: state.fx.date,
+      source: state.fx.source,
+      loading: Boolean(state.fx.loading),
+      error: state.fx.error ?? null,
+      text: `${formatNumber(num(state.fx.usdToEur, DEFAULT_USD_TO_EUR))} EUR`,
+    },
+    settingsMeta: {
+      storageMode: state.storage.mode,
+      productCount: state.products.length,
+      validationCoverageTargetDefault: VALIDATION_COVERAGE_TARGET_DEFAULT,
+    },
+    uiState: {
+      stage: stageState?.stage ?? "quick",
+      quickShowAllKpis: Boolean(state.ui.quickShowAllKpis),
+      cockpitVisualCollapsed: Boolean(state.ui.cockpitVisualCollapsed),
+      advancedVisible: Boolean(state.ui.advancedVisible),
+      driverPayload: state.ui.bridgeDriverPayload ?? null,
+    },
+    metrics: selectedMetrics
+      ? {
+        decision: {
+          color: launchDecision?.color ?? "red",
+          label: launchDecision?.label ?? "ROT",
+          score: num(decision?.score, 0),
+          text: decision?.text ?? "",
+          kpiStatus: decision?.kpiStatus ?? {
+            netMarginAfterPpc: "red",
+            marginBeforePpc: "red",
+            roi: "red",
+          },
+        },
+        kpis: {
+          netMarginAfterPpc: num(selectedMetrics.netMarginPct, 0),
+          marginBeforePpc: num(selectedMetrics.netMarginBeforePpcPct, 0),
+          roiUnit: num(selectedMetrics.goNoGoRoiPct, 0),
+          sellerboardMargin: num(selectedMetrics.sellerboardMarginPct, 0),
+          totalCostPerUnit: num(selectedMetrics.totalCostPerUnit, 0),
+          profitPerUnit,
+          grossRevenueMonthly: num(selectedMetrics.grossRevenueMonthly, 0),
+          profitMonthly: num(selectedMetrics.profitMonthly, 0),
+          shippingUnit: num(selectedMetrics.shippingUnit, 0),
+          landedUnit: num(selectedMetrics.landedUnit, 0),
+          breakEvenPrice: selectedMetrics.breakEvenPrice,
+          maxTacosRateForTarget: num(selectedMetrics.maxTacosRateForTarget, 0),
+        },
+        quickBlocks,
+        validation: {
+          ready: Boolean(selectedMetrics.validationReady),
+          coveragePct: num(selectedMetrics.validationCoveragePct, 0),
+          coverageTargetPct: num(selectedMetrics.validationCoverageTargetPct, VALIDATION_COVERAGE_TARGET_DEFAULT),
+          coveredPerUnit: num(selectedMetrics.validationCoveredPerUnit, 0),
+          residualPerUnit: num(selectedMetrics.validationResidualPerUnit, 0),
+          blockItems: deepClone(selectedMetrics.validationBlockItems ?? []),
+          openTopResidualItems: deepClone(selectedMetrics.validationOpenTopResidualItems ?? []),
+        },
+        visualCockpit,
+      }
+      : null,
+  };
+}
+
+function emitBridgeSnapshot(reason = "update") {
+  const snapshot = buildBridgeSnapshot();
+  bridgeListeners.forEach((listener) => {
+    try {
+      listener(snapshot, reason);
+    } catch (error) {
+      console.error("Bridge listener failed", error);
+    }
+  });
+  if (typeof window.CustomEvent === "function") {
+    window.dispatchEvent(new CustomEvent("fba-kernel-bridge:update", { detail: { snapshot, reason } }));
+  }
+}
+
+function bridgeSelectProduct(id) {
+  if (!id || !state.products.find((product) => product.id === id)) {
+    return;
+  }
+  state.selectedId = id;
+  saveProducts();
+}
+
+function bridgeAddProduct() {
+  const product = defaultProduct(state.products.length + 1);
+  ensureProductId(product);
+  state.products.push(product);
+  state.selectedId = product.id;
+  saveProducts();
+}
+
+function bridgeDuplicateProduct(id) {
+  const sourceId = id ?? state.selectedId;
+  const selected = state.products.find((product) => product.id === sourceId);
+  if (!selected) {
+    return;
+  }
+  const copy = deepClone(selected);
+  copy.id = uid();
+  ensureProductId(copy);
+  copy.name = `${selected.name} (Kopie)`;
+  state.products.push(copy);
+  state.selectedId = copy.id;
+  saveProducts();
+}
+
+function bridgeDeleteProduct(id) {
+  const sourceId = id ?? state.selectedId;
+  if (!sourceId || state.products.length <= 1) {
+    return;
+  }
+  state.products = state.products.filter((product) => product.id !== sourceId);
+  if (!state.products.length) {
+    const fallback = defaultProduct(1);
+    ensureProductId(fallback);
+    state.products = [fallback];
+  }
+  state.selectedId = state.products[0].id;
+  saveProducts();
+}
+
+function bridgeSetStage(stage) {
+  const selected = getSelectedProduct();
+  if (!selected) {
+    return;
+  }
+  const normalizedStage = stage === "deep_dive" ? "validation" : stage;
+  if (!WORKFLOW_VISIBLE_STAGES.includes(normalizedStage)) {
+    return;
+  }
+  selected.workflow.stage = normalizedStage;
+  if (normalizedStage === "quick") {
+    state.ui.advancedVisible = false;
+    state.ui.costCategoryExpanded = {};
+  }
+  saveProducts();
+}
+
+function bridgeOpenDriver(payload) {
+  state.ui.bridgeDriverPayload = payload ?? null;
+}
+
+function bridgeBuildBlockPayload(blockKey, stage = "quick") {
+  const selected = getSelectedProduct();
+  if (!selected || !blockKey) {
+    return null;
+  }
+  const metrics = calculateProduct(selected);
+  return buildCostBlockModalPayload(metrics, blockKey, stage) ?? null;
+}
+
+function createBridgeActions() {
+  return {
+    updateField(path, value) {
+      if (!path) {
+        return;
+      }
+      updateSelectedField(path, value);
+      emitBridgeSnapshot("update_field");
+    },
+    addProduct() {
+      bridgeAddProduct();
+      emitBridgeSnapshot("add_product");
+    },
+    duplicateProduct(id) {
+      bridgeDuplicateProduct(id);
+      emitBridgeSnapshot("duplicate_product");
+    },
+    deleteProduct(id) {
+      bridgeDeleteProduct(id);
+      emitBridgeSnapshot("delete_product");
+    },
+    selectProduct(id) {
+      bridgeSelectProduct(id);
+      emitBridgeSnapshot("select_product");
+    },
+    setStage(stage) {
+      bridgeSetStage(stage);
+      emitBridgeSnapshot("set_stage");
+    },
+    toggleDecisionDetails() {
+      state.ui.quickShowAllKpis = !state.ui.quickShowAllKpis;
+      emitBridgeSnapshot("toggle_decision_details");
+    },
+    toggleVisualCockpit() {
+      state.ui.cockpitVisualCollapsed = !state.ui.cockpitVisualCollapsed;
+      emitBridgeSnapshot("toggle_visual_cockpit");
+    },
+    openDriver(payload) {
+      bridgeOpenDriver(payload);
+      emitBridgeSnapshot("open_driver");
+    },
+    closeDriver() {
+      bridgeOpenDriver(null);
+      emitBridgeSnapshot("close_driver");
+    },
+    buildDriverPayloadForBlock(blockKey, stage) {
+      return bridgeBuildBlockPayload(blockKey, stage);
+    },
+  };
+}
+
+function initKernelBridge() {
+  if (window.FbaKernelBridge) {
+    return window.FbaKernelBridge;
+  }
+  const api = {
+    async init() {
+      if (bridgeBootstrapped) {
+        return buildBridgeSnapshot();
+      }
+      state.storage.mode = "local";
+      state.storage.adapter = createLocalStoreAdapter();
+      loadSettingsLocal();
+      loadProductsLocal();
+      selectFirstProductIfNeeded();
+      bridgeBootstrapped = true;
+      emitBridgeSnapshot("init");
+      return buildBridgeSnapshot();
+    },
+    getSnapshot() {
+      if (!bridgeBootstrapped) {
+        state.storage.mode = "local";
+        state.storage.adapter = createLocalStoreAdapter();
+        loadSettingsLocal();
+        loadProductsLocal();
+        selectFirstProductIfNeeded();
+        bridgeBootstrapped = true;
+      }
+      return buildBridgeSnapshot();
+    },
+    subscribe(listener) {
+      if (typeof listener !== "function") {
+        return () => {};
+      }
+      bridgeListeners.add(listener);
+      listener(buildBridgeSnapshot(), "subscribe");
+      return () => {
+        bridgeListeners.delete(listener);
+      };
+    },
+    actions: createBridgeActions(),
+  };
+  window.FbaKernelBridge = api;
+  return api;
+}
+
+async function initBridgeOnlyMode() {
+  initKernelBridge();
+  await window.FbaKernelBridge.init();
+}
+
+if (BRIDGE_ONLY_MODE) {
+  initBridgeOnlyMode().catch((error) => {
+    console.error("Bridge init failed", error);
+  });
+} else {
+  init().catch((error) => {
+    console.error("App init failed", error);
+    stopRealtimeSync();
+    setAuthStatus("Initialisierung fehlgeschlagen. Fallback auf lokale Daten.", true);
+    setAppMode("ready_local");
+    loadSettingsLocal();
+    loadProductsLocal();
+    selectFirstProductIfNeeded();
+    renderPageAfterLoad();
+  });
+}
