@@ -18423,7 +18423,13 @@ function bridgeBuildBlockPayload(blockKey, stage = "quick") {
 async function bridgeAuthLogin(email, password) {
   const client = await ensureSupabaseClient({ label: "supabase_client_bridge_login", showStatusOnError: false });
   if (!client) {
-    return { ok: false, error: "Supabase nicht erreichbar." };
+    const sdkMissing = !window.supabase?.createClient;
+    return {
+      ok: false,
+      error: sdkMissing
+        ? "Supabase SDK nicht geladen."
+        : "Supabase-Konfiguration fehlt oder /api/config liefert keine Keys.",
+    };
   }
 
   const normalizedEmail = String(email ?? "").trim();
@@ -18467,7 +18473,13 @@ async function bridgeAuthLogin(email, password) {
 async function bridgeAuthRegister(email, password) {
   const client = await ensureSupabaseClient({ label: "supabase_client_bridge_register", showStatusOnError: false });
   if (!client) {
-    return { ok: false, error: "Supabase nicht erreichbar." };
+    const sdkMissing = !window.supabase?.createClient;
+    return {
+      ok: false,
+      error: sdkMissing
+        ? "Supabase SDK nicht geladen."
+        : "Supabase-Konfiguration fehlt oder /api/config liefert keine Keys.",
+    };
   }
 
   const normalizedEmail = String(email ?? "").trim();
