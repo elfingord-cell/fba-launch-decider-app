@@ -17427,7 +17427,9 @@ function renderFxStatus() {
 async function refreshFxRate() {
   state.fx.loading = true;
   state.fx.error = null;
-  renderFxStatus();
+  if (!BRIDGE_ONLY_MODE) {
+    renderFxStatus();
+  }
 
   try {
     const response = await fetch(FX_ENDPOINT, { cache: "no-store" });
@@ -17449,8 +17451,10 @@ async function refreshFxRate() {
     state.fx.error = error instanceof Error ? error.message : "unbekannt";
   } finally {
     state.fx.loading = false;
-    renderFxStatus();
-    renderComputedViews();
+    if (!BRIDGE_ONLY_MODE) {
+      renderFxStatus();
+      renderComputedViews();
+    }
     if (BRIDGE_ONLY_MODE && bridgeBootstrapped && window.FbaKernelBridge) {
       emitBridgeSnapshot("fx_refresh");
     }
@@ -18157,12 +18161,15 @@ function renderPageAfterLoad() {
     return;
   }
 
+  if (BRIDGE_ONLY_MODE) {
+    if (bridgeBootstrapped && window.FbaKernelBridge) {
+      emitBridgeSnapshot("render_page_after_load");
+    }
+    return;
+  }
+
   renderFxStatus();
   renderAll();
-
-  if (BRIDGE_ONLY_MODE && bridgeBootstrapped && window.FbaKernelBridge) {
-    emitBridgeSnapshot("render_page_after_load");
-  }
 }
 
 async function init() {
