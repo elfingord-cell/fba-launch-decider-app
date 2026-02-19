@@ -9,6 +9,23 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  build: {
+    outDir: "dist",
+    assetsDir: "chunks",
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: "main.js",
+        chunkFileNames: "chunks/[name]-[hash].js",
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name?.endsWith(".css")) {
+            return "main.css";
+          }
+          return "chunks/[name]-[hash][extname]";
+        },
+      },
+    },
+  },
   server: {
     port: 5174,
     host: true,

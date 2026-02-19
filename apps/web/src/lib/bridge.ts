@@ -28,6 +28,24 @@ export interface BridgeSnapshot {
     productCount: number;
     validationCoverageTargetDefault: number;
   };
+  sessionState: {
+    appMode: "loading" | "auth_required" | "no_access" | "ready_shared" | "ready_local" | string;
+    requiresAuth: boolean;
+    isAuthenticated: boolean;
+    hasWorkspaceAccess: boolean;
+    pendingLocalImport: boolean;
+    userEmail: string;
+    workspaceId: string | null;
+    workspaceName: string;
+    storageMode: string;
+  };
+  syncState: {
+    connected: boolean;
+    pendingApply: boolean;
+    lastRemoteSuccessAt: string | null;
+    lastRemoteError: string | null;
+    realtimeFallbackActive: boolean;
+  };
   uiState: {
     stage: "quick" | "validation";
     quickShowAllKpis: boolean;
@@ -97,6 +115,12 @@ export interface KernelBridge {
     openDriver: (payload: unknown) => void;
     closeDriver: () => void;
     buildDriverPayloadForBlock: (blockKey: string, stage?: "quick" | "validation") => unknown;
+    refreshFx: () => Promise<void>;
+    syncNow: () => Promise<void>;
+    login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+    register: (email: string, password: string) => Promise<{ ok: boolean; error?: string; requiresEmailConfirmation?: boolean }>;
+    logout: () => Promise<{ ok: boolean; error?: string }>;
+    importLocalData: () => Promise<{ ok: boolean }>;
   };
 }
 

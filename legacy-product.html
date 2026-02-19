@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amazon FBA 80/20 Margenrechner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="data:," />
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="product">
+    <div class="blob blob-a"></div>
+    <div class="blob blob-b"></div>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-insight" viewBox="0 0 24 24">
+        <path d="M4 19.5h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M7 15.5v-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M12 15.5v-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M17 15.5v-3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-trend" viewBox="0 0 24 24">
+        <path d="M4.5 16.5l5.3-5.2 3.5 3.5 6.2-6.1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M16 8.7h3.5V12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-box" viewBox="0 0 24 24">
+        <path d="M12 3.8 4.5 8v8l7.5 4.2 7.5-4.2V8z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M4.8 8.2 12 12l7.2-3.8" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M12 12.2v7.7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-cart" viewBox="0 0 24 24">
+        <path d="M3.8 5.5h2.8l1.4 8h8.1l2-5.8H7.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <circle cx="10.1" cy="18.5" r="1.4" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <circle cx="16.7" cy="18.5" r="1.4" fill="none" stroke="currentColor" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-factory" viewBox="0 0 24 24">
+        <path d="M3.8 19.2h16.4V9.8l-3.6 2.1V9.8L13 11.9V9.8l-3.7 2.1V7.6H3.8z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M7.6 7.6V4.8h3.1v1.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-truck" viewBox="0 0 24 24">
+        <path d="M3.8 8h11.5v7.1H3.8z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M15.3 10.1h3.2l1.6 2.1v3H15.3z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <circle cx="8" cy="16.7" r="1.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <circle cx="17.5" cy="16.7" r="1.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-warehouse" viewBox="0 0 24 24">
+        <path d="M4 9.5 12 4.4l8 5.1v9.7H4z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M9.1 19.2v-5h5.8v5" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-store" viewBox="0 0 24 24">
+        <path d="M4.4 8.8 5.8 5h12.4l1.4 3.8" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M5.3 8.8h13.4v10.4H5.3z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M9.2 13.2h5.6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-megaphone" viewBox="0 0 24 24">
+        <path d="M4.6 12.9V9.6l8.9-3.8v11l-8.9-3.9z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M13.5 9.2h2.4c1.9 0 3.4 1.5 3.4 3.4S17.8 16 15.9 16h-2.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="m7.4 14.2 1.6 3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+    </svg>
+
+    <main class="shell teamhub-shell">
+      <header class="card hero">
+        <div class="hero-main">
+          <p class="eyebrow">Amazon FBA 80/20 Modell</p>
+          <h1 id="headerProductName">Produkt: -</h1>
+          <p>Launch-Entscheider pro Produkt: schnelle Go/Watch/No-Go Bewertung mit Progressive Disclosure.</p>
+          <div class="hero-tools">
+            <p id="fxStatus" class="fx-status">USD→EUR Kurs: wird geladen ...</p>
+            <button id="refreshFxBtn" type="button" class="btn btn-ghost">Kurs aktualisieren</button>
+            <a href="settings.html" class="btn btn-ghost settings-link">Zu Settings</a>
+            <button id="portfolioDrawerBtn" type="button" class="btn btn-ghost sidebar-mobile-toggle">Portfolio</button>
+            <button id="importLocalBtn" type="button" class="btn btn-ghost hidden">Lokale Daten importieren</button>
+            <button id="syncNowBtn" type="button" class="btn btn-ghost hidden">Jetzt synchronisieren</button>
+            <button id="authLogoutBtn" type="button" class="btn btn-ghost hidden">Abmelden</button>
+            <span id="sessionInfo" class="hint hidden"></span>
+          </div>
+        </div>
+        <div class="meta-grid">
+          <article>
+            <span>Produkte</span>
+            <strong id="productCount">0</strong>
+          </article>
+          <article>
+            <span>Speicher</span>
+            <strong id="storageModeLabel">lokal</strong>
+          </article>
+        </div>
+      </header>
+
+      <section id="authPanel" class="card auth-card hidden">
+        <h2>Login erforderlich</h2>
+        <p class="hint">Melde dich an, um den gemeinsamen Workspace mit deinem Kollegen zu nutzen.</p>
+        <div class="grid cols-2">
+          <label>
+            E-Mail
+            <input id="authEmail" type="email" placeholder="du@firma.de" autocomplete="username" />
+          </label>
+          <label>
+            Passwort
+            <input id="authPassword" type="password" placeholder="••••••••" autocomplete="current-password" />
+          </label>
+        </div>
+        <div class="auth-actions">
+          <button id="authLoginBtn" type="button" class="btn btn-primary">Anmelden</button>
+          <button id="authRegisterBtn" type="button" class="btn btn-ghost">Registrieren</button>
+        </div>
+        <p id="authStatus" class="stage-status">-</p>
+      </section>
+
+      <section id="noAccessPanel" class="card auth-card hidden">
+        <h2>Kein Zugriff auf Workspace</h2>
+        <p class="hint">Dein Account ist noch keinem Workspace zugeordnet. Bitte füge dich in `workspace_members` hinzu.</p>
+      </section>
+
+      <section id="appContent" class="layout hidden">
+        <button id="sidebarDrawerBackdrop" class="sidebar-drawer-backdrop hidden" type="button" aria-label="Sidebar schließen"></button>
+        <aside class="card sidebar">
+          <div class="sidebar-head">
+            <h2>Produkte</h2>
+            <div class="sidebar-head-actions">
+              <button id="addProductBtn" type="button" class="btn btn-primary">+ Neu</button>
+              <button id="sidebarDrawerCloseBtn" type="button" class="btn btn-ghost sidebar-close-btn" aria-label="Portfolio schließen">Schließen</button>
+            </div>
+          </div>
+          <ul id="productList" class="product-list"></ul>
+          <div class="sidebar-actions">
+            <button id="duplicateProductBtn" type="button" class="btn btn-ghost">Duplizieren</button>
+            <button id="deleteProductBtn" type="button" class="btn btn-danger">Löschen</button>
+          </div>
+        </aside>
+
+        <section class="main-column">
+          <div id="productWorkspace">
+	          <section class="workspace-zone workspace-zone-results" id="workspaceZoneResults">
+	          <section class="card decision-bar" id="decisionBar">
+            <div class="decision-head">
+              <div class="help-context">
+                <div class="help-title-row">
+                  <div class="section-title-row">
+                    <span class="ui-icon" data-icon="insight" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-insight"></use></svg>
+                    </span>
+                    <div class="section-title-copy">
+                      <h2>Decision-Bar</h2>
+                      <p>3-KPI Go/No-Go-Ampel (Grün/Orange/Rot) auf einen Blick.</p>
+                    </div>
+                  </div>
+                  <button type="button" class="info-trigger" data-help-key="ui.decision_bar" aria-label="Hilfe zur Decision-Bar" aria-expanded="false">
+                    i
+                  </button>
+                </div>
+              </div>
+              <div class="decision-head-actions">
+                <button id="toggleAllKpisBtn" type="button" class="btn btn-ghost">Details ausblenden</button>
+                <div id="trafficLight" class="traffic-badge traffic-neutral">STATUS: ROT</div>
+              </div>
+            </div>
+            <div class="decision-primary-grid">
+              <article class="kpi kpi-traffic-focus" data-kpi="kpiNetMargin">
+                <div class="kpi-head-row">
+                  <span>Netto-Marge nach PPC</span>
+                  <span id="kpiBadgeNetMargin" class="kpi-state-badge watch">Watch</span>
+                </div>
+                <strong id="kpiNetMargin">-</strong>
+                <small id="kpiMetaNetMargin" class="kpi-meta-line">Kosten/Stk: - · Gewinn/Stk: -</small>
+              </article>
+              <article class="kpi kpi-traffic-focus" data-kpi="kpiNetMarginBeforePpc">
+                <div class="kpi-head-row">
+                  <span>Marge vor PPC</span>
+                  <span id="kpiBadgeMarginBeforePpc" class="kpi-state-badge go">Go</span>
+                </div>
+                <strong id="kpiNetMarginBeforePpc">-</strong>
+                <small id="kpiMetaMarginBeforePpc" class="kpi-meta-line">Umsatz/Mo: - · Gewinn netto/Mo: -</small>
+              </article>
+              <article class="kpi kpi-traffic-focus" data-kpi="kpiGoNoGoRoi">
+                <div class="kpi-head-row">
+                  <span>ROI (Unit-basiert)</span>
+                  <span id="kpiBadgeRoi" class="kpi-state-badge no-go">No-Go</span>
+                </div>
+                <strong id="kpiGoNoGoRoi">-</strong>
+                <small id="kpiMetaRoi" class="kpi-meta-line">Landed/Unit: - · Shipping/Unit: -</small>
+              </article>
+              <article class="kpi" data-kpi="kpiSellerboardMargin">
+                <div class="kpi-head-row">
+                  <span>Sellerboard-Marge</span>
+                  <span id="kpiBadgeSellerboard" class="kpi-state-badge neutral">Neutral</span>
+                </div>
+                <strong id="kpiSellerboardMargin">-</strong>
+                <small id="kpiMetaSellerboard" class="kpi-meta-line">Break-even: - · Max TACoS: -</small>
+              </article>
+            </div>
+            <div id="decisionSecondaryWrap" class="decision-secondary-wrap">
+              <div class="decision-secondary-grid">
+                <article class="kpi compact" data-kpi="kpiTotalCostPerUnit"><span>Kosten pro Stück (EUR)</span><strong id="kpiTotalCostPerUnit">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiDb1Unit"><span>Gewinn pro Stück (EUR netto)</span><strong id="kpiDb1Unit">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiRevenueGross"><span>Umsatz / Monat (EUR brutto)</span><strong id="kpiRevenueGross">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiProfitMonthly"><span>Gewinn netto / Monat (EUR)</span><strong id="kpiProfitMonthly">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiDb1Margin"><span>DB1-Marge %</span><strong id="kpiDb1Margin">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiTotalCostMonthly"><span>Gesamtkosten / Monat (EUR)</span><strong id="kpiTotalCostMonthly">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiRevenueNet"><span>Umsatz / Monat (EUR netto)</span><strong id="kpiRevenueNet">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiShippingUnit"><span>Shipping D2D / Unit (EUR)</span><strong id="kpiShippingUnit">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiLandedUnit"><span>Landed / Unit (EUR)</span><strong id="kpiLandedUnit">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiGrossProfitMonthly"><span>Gewinn brutto / Monat (EUR)</span><strong id="kpiGrossProfitMonthly">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiPayback"><span>Payback (Monate)</span><strong id="kpiPayback">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiProductRoi"><span>Produkt-ROI %</span><strong id="kpiProductRoi">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiCashRoi"><span>Cash-ROI %</span><strong id="kpiCashRoi">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiBreakEvenPrice"><span>Break-even Preis brutto (EUR)</span><strong id="kpiBreakEvenPrice">-</strong></article>
+                <article class="kpi compact" data-kpi="kpiMaxTacos"><span>Max TACoS %</span><strong id="kpiMaxTacos">-</strong></article>
+              </div>
+            </div>
+	          </section>
+            <section id="cockpitVisualCard" class="card cockpit-visual-card">
+              <div class="section-head">
+                <div>
+                  <h2>Visual Cockpit</h2>
+                  <p>Preis, Risiko, Sensitivität und Kostentreiber auf einen Blick.</p>
+                </div>
+                <div class="section-head-actions">
+                  <button id="cockpitVisualToggleBtn" type="button" class="btn btn-ghost btn-compact">Ausklappen</button>
+                </div>
+              </div>
+              <div id="cockpitVisualGrid" class="cockpit-visual-grid"></div>
+            </section>
+	          </section>
+
+	          <section class="card basic-card">
+            <div class="section-head">
+              <div class="help-context">
+                <div class="help-title-row">
+                  <div class="section-title-row">
+                    <span class="ui-icon" data-icon="insight" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-insight"></use></svg>
+                    </span>
+                    <div class="section-title-copy">
+                      <h2>Basic View</h2>
+                      <p>2-Stufen-Flow: zuerst QuickCheck, dann Validation.</p>
+                    </div>
+                  </div>
+                  <button type="button" class="info-trigger" data-help-key="ui.basic_flow" aria-label="Hilfe zum Basic-Flow" aria-expanded="false">
+                    i
+                  </button>
+                </div>
+              </div>
+            </div>
+	            <div class="workflow-zones">
+	            <section class="workspace-zone workspace-zone-validation" id="workspaceZoneValidation">
+	              <header class="workspace-zone-head compact">
+	                <h3>Validierung / Erklärung</h3>
+	                <p>Prüfe zuerst die größten Kostentreiber und öffne Details nur dort, wo Klärung nötig ist.</p>
+	              </header>
+	            <section class="stage-panel">
+              <div class="stage-switch">
+                <button id="stageQuickBtn" class="stage-btn" type="button">QuickCheck</button>
+                <button id="stageValidationBtn" class="stage-btn" type="button">Validation</button>
+              </div>
+              <div class="stage-gate">
+                <p id="stageHint" class="hint">QuickCheck: Ballpark-Marge prüfen.</p>
+                <p id="stageNextStep" class="stage-next-step quick" data-next-step>Nächster Schritt: 7 Kostenkategorien prüfen, dann Validation aktivieren.</p>
+                <p id="stageGateStatus" class="stage-status">Status: -</p>
+                <p id="stageWarning" class="hint hidden">-</p>
+              </div>
+            </section>
+            <section id="quickStagePanel" class="card stage-impact quick-cost-workflow">
+              <div class="quick-cost-head help-context">
+                <div class="help-title-row">
+                  <div class="section-title-row">
+                    <span class="ui-icon" data-icon="insight" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-insight"></use></svg>
+                    </span>
+                    <div class="section-title-copy">
+                      <h3>QuickCheck Workflow</h3>
+                      <p class="hint">Prüfe die 7 Kostenkategorien, öffne Details nur bei Bedarf.</p>
+                    </div>
+                  </div>
+                  <button type="button" class="info-trigger" data-help-key="ui.quick_workflow" aria-label="Hilfe zum QuickCheck-Workflow" aria-expanded="false">
+                    i
+                  </button>
+                </div>
+              </div>
+              <div id="quickCostWorkflowGrid" class="quick-cost-grid">
+                <button type="button" class="quick-cost-card" data-quick-block="product">
+                  <span class="quick-card-label">
+                    <span class="ui-icon quick-card-icon" data-icon="box" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-box"></use></svg>
+                    </span>
+                    <span>Produkt</span>
+                  </span>
+                  <strong data-quick-value="product">-</strong>
+                  <small data-quick-subline="product">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="shipping_import">
+                  <span class="quick-card-label">
+                    <span class="ui-icon quick-card-icon" data-icon="truck" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-truck"></use></svg>
+                    </span>
+                    <span>Shipping &amp; Import</span>
+                  </span>
+                  <strong data-quick-value="shipping_import">-</strong>
+                  <small data-quick-subline="shipping_import">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="threepl">
+                  <span class="quick-card-label">
+                    <span class="ui-icon quick-card-icon" data-icon="warehouse" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-warehouse"></use></svg>
+                    </span>
+                    <span>3PL</span>
+                  </span>
+                  <strong data-quick-value="threepl">-</strong>
+                  <small data-quick-subline="threepl">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="amazon">
+                  <span class="quick-card-label">
+                    <span class="ui-icon quick-card-icon" data-icon="store" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-store"></use></svg>
+                    </span>
+                    <span>Amazon</span>
+                  </span>
+                  <strong data-quick-value="amazon">-</strong>
+                  <small data-quick-subline="amazon">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="ads_returns">
+                  <span class="quick-card-label">
+                    <span class="ui-icon quick-card-icon" data-icon="cart" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-cart"></use></svg>
+                    </span>
+                    <span>Werbung &amp; Retouren</span>
+                  </span>
+                  <strong data-quick-value="ads_returns">-</strong>
+                  <small data-quick-subline="ads_returns">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="launch_lifecycle">
+                  <span class="quick-card-label">
+                    <span class="ui-icon quick-card-icon" data-icon="megaphone" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-megaphone"></use></svg>
+                    </span>
+                    <span>Launch &amp; Lifecycle</span>
+                  </span>
+                  <strong data-quick-value="launch_lifecycle">-</strong>
+                  <small data-quick-subline="launch_lifecycle">-</small>
+                </button>
+                <button type="button" class="quick-cost-card" data-quick-block="overhead">
+                  <span class="quick-card-label">
+                    <span class="ui-icon quick-card-icon" data-icon="trend" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-trend"></use></svg>
+                    </span>
+                    <span>Overhead / Leakage</span>
+                  </span>
+                  <strong data-quick-value="overhead">-</strong>
+                  <small data-quick-subline="overhead">-</small>
+                </button>
+              </div>
+            </section>
+            <section id="validationStagePanel" class="card stage-impact validation-workflow hidden">
+              <div class="quick-cost-head help-context">
+                <div class="help-title-row">
+                  <div class="section-title-row">
+                    <span class="ui-icon" data-icon="insight" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><use href="#icon-insight"></use></svg>
+                    </span>
+                    <div class="section-title-copy">
+                      <h3>Validation Workflow</h3>
+                      <p class="hint">Schließe offene Restkosten, bis die Zielabdeckung erreicht ist.</p>
+                    </div>
+                  </div>
+                  <button type="button" class="info-trigger" data-help-key="ui.validation_workflow" aria-label="Hilfe zum Validation-Workflow" aria-expanded="false">
+                    i
+                  </button>
+                </div>
+              </div>
+              <article id="validationCoverageCard" class="quick-coverage-card">
+                <div>
+                  <span>Validation-Abdeckung</span>
+                  <strong id="validationCoveragePct">-</strong>
+                </div>
+                <div class="validation-coverage-progress">
+                  <div id="validationCoverageBar" class="validation-coverage-progress-bar"></div>
+                </div>
+                <div class="quick-coverage-values">
+                  <small id="validationCoverageTarget">-</small>
+                  <small id="validationCoveredCost">-</small>
+                  <small id="validationResidualCost">-</small>
+                </div>
+                <p id="validationCoverageStatus" class="hint">-</p>
+                <ul id="validationOpenTopList" class="quick-residual-list"></ul>
+              </article>
+              <div id="validationBlockGrid" class="validation-block-grid"></div>
+            </section>
+	            <section id="validationPlaygroundPanel" class="card validation-playground hidden">
+              <div class="quick-cost-head">
+                <h3>Validation Playground (Sandbox)</h3>
+                <p class="hint">
+                  Teste 7 Kernregler ohne Direktspeicherung. Erst mit „Übernehmen“ werden Werte ins Produkt übernommen.
+                </p>
+              </div>
+              <div class="validation-playground-grid">
+                <label>
+                  Produktgewicht netto (g)
+                  <input id="validationDraftWeightG" data-validation-draft-path="basic.netWeightG" type="number" min="0" step="1" />
+                </label>
+                <label>
+                  Verpackung Länge (cm)
+                  <input id="validationDraftLengthCm" data-validation-draft-path="basic.packLengthCm" type="number" min="0" step="0.1" />
+                </label>
+                <label>
+                  Verpackung Breite (cm)
+                  <input id="validationDraftWidthCm" data-validation-draft-path="basic.packWidthCm" type="number" min="0" step="0.1" />
+                </label>
+                <label>
+                  Verpackung Höhe (cm)
+                  <input id="validationDraftHeightCm" data-validation-draft-path="basic.packHeightCm" type="number" min="0" step="0.1" />
+                </label>
+                <label>
+                  TACoS (%)
+                  <input id="validationDraftTacos" data-validation-draft-path="assumptions.ads.tacosRate" type="number" min="0" max="100" step="0.1" />
+                </label>
+                <label>
+                  Retourenquote (%)
+                  <input id="validationDraftReturnRate" data-validation-draft-path="assumptions.returns.returnRate" type="number" min="0" max="100" step="0.1" />
+                </label>
+                <label>
+                  Listing-Service
+                  <select id="validationDraftListingPackage" data-validation-draft-path="basic.listingPackage">
+                    <option value="ai">KI</option>
+                    <option value="photographer">Fotograf</option>
+                    <option value="visual_advantage">Visual Advantage</option>
+                  </select>
+                </label>
+              </div>
+              <div class="validation-sandbox-actions">
+                <button id="validationApplyBtn" type="button" class="btn btn-primary">Übernehmen</button>
+                <button id="validationDiscardBtn" type="button" class="btn btn-ghost">Verwerfen</button>
+                <button id="validationResetBtn" type="button" class="btn btn-ghost">Reset auf Baseline</button>
+              </div>
+              <div id="validationCompareGrid" class="validation-compare-grid"></div>
+	            </section>
+	            </section>
+
+	            <section class="workspace-zone workspace-zone-input" id="workspaceZoneInput">
+	              <header class="workspace-zone-head compact">
+	                <h3>Eingabe</h3>
+	                <p>Pflichtfelder strukturiert ausfüllen.</p>
+	              </header>
+	            <form id="basicForm" class="form-grid">
+              <details class="input-accordion-item" open>
+                <summary class="input-accordion-trigger">1) Markt &amp; Absatz</summary>
+              <section>
+                <div class="help-context">
+                  <div class="form-section-head">
+                    <div class="section-title-row">
+                      <span class="ui-icon" data-icon="trend" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><use href="#icon-trend"></use></svg>
+                      </span>
+                      <h3>1) Markt & Absatz</h3>
+                    </div>
+                    <div class="form-section-actions">
+                      <button id="marketEstimatorOpenBtn" type="button" class="btn btn-ghost btn-inline-market-estimator">
+                        Pricing/Absatz-Assistent
+                      </button>
+                      <button type="button" class="info-trigger" data-help-key="ui.market_absatz" aria-label="Hilfe zu Markt und Absatz" aria-expanded="false">
+                        i
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p class="form-section-subtitle">Lege Preis, Kategorie und Nachfrage als Start für den QuickCheck fest.</p>
+                <div class="grid cols-3">
+                  <label>
+                    Produktname (optional)
+                    <input data-path="name" type="text" placeholder="z. B. Trinkflasche 750ml" />
+                  </label>
+                  <label>
+                    Verkaufspreis brutto (EUR inkl. USt.)
+                    <input data-path="basic.priceGross" type="number" min="0" step="0.01" />
+                  </label>
+                  <label>
+                    Kategorie
+                    <select data-path="basic.category">
+                      <option value="home">Home & Küche</option>
+                      <option value="beauty">Beauty</option>
+                      <option value="electronics">Elektronik</option>
+                      <option value="apparel">Bekleidung</option>
+                      <option value="pet">Haustier</option>
+                      <option value="generic">Sonstiges</option>
+                    </select>
+                  </label>
+                  <label>
+                    Absatzannahme
+                    <input data-path="basic.demandValue" type="number" min="0" step="1" />
+                  </label>
+                  <label>
+                    Absatz-Basis
+                    <select data-path="basic.demandBasis">
+                      <option value="month">Einheiten / Monat</option>
+                      <option value="day">Einheiten / Tag</option>
+                    </select>
+                  </label>
+                  <label>
+                    TACoS (QuickCheck, %)
+                    <input data-path="assumptions.ads.tacosRate" type="number" min="0" max="100" step="0.1" />
+                  </label>
+                  <label>
+                    Retourenquote (QuickCheck, %)
+                    <input data-path="assumptions.returns.returnRate" type="number" min="0" max="100" step="0.1" />
+                  </label>
+                </div>
+              </section>
+              </details>
+
+              <details class="input-accordion-item">
+                <summary class="input-accordion-trigger">2) Produkt, Verpackung &amp; Shipping Input</summary>
+              <section>
+                <div class="help-context">
+                  <div class="form-section-head">
+                    <div class="section-title-row">
+                      <span class="ui-icon" data-icon="box" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><use href="#icon-box"></use></svg>
+                      </span>
+                      <h3>2) Produkt, Verpackung & Shipping Input</h3>
+                    </div>
+                    <div class="form-section-actions">
+                      <button id="shippingPackAssistantOpenBtn" type="button" class="btn btn-ghost btn-inline-shipping-pack-assistant">
+                        Shipping-Kartonisierungs-Assistent
+                      </button>
+                      <button type="button" class="info-trigger" data-help-key="ui.product_shipping" aria-label="Hilfe zu Produkt, Verpackung und Shipping" aria-expanded="false">
+                        i
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p class="form-section-subtitle">Gewicht, Masse und Transportmodus steuern die Logistik- und 3PL-Kosten.</p>
+                <div class="grid cols-3">
+                  <label>
+                    Produktgewicht netto (g)
+                    <input data-path="basic.netWeightG" type="number" min="0" step="1" />
+                  </label>
+                  <label>
+                    Verpackung Länge (cm)
+                    <input data-path="basic.packLengthCm" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Verpackung Breite (cm)
+                    <input data-path="basic.packWidthCm" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Verpackung Höhe (cm)
+                    <input data-path="basic.packHeightCm" type="number" min="0" step="0.1" />
+                  </label>
+                  <label>
+                    Units pro Order (PO)
+                    <input data-path="basic.unitsPerOrder" type="number" min="1" step="1" />
+                  </label>
+                  <label>
+                    Transportmodus
+                    <select data-path="basic.transportMode">
+                      <option value="rail">Rail (Default)</option>
+                      <option value="sea_lcl">Sea LCL</option>
+                      <option value="air" disabled>Air (v2)</option>
+                    </select>
+                  </label>
+                </div>
+                <article id="shippingModuleSection" class="shipping-module-inline">
+                  <div class="shipping-module-head">
+                    <div>
+                      <h4>Shipping-Packbild (3D)</h4>
+                      <p class="shipping-module-purpose">Direkter Blick auf Ausrichtung, Raster und Karton-Auslastung.</p>
+                    </div>
+                    <button id="shippingModuleOpenDetailBtn" type="button" class="btn btn-ghost">Shipping-Details öffnen</button>
+                  </div>
+                  <div id="shippingModuleCanvasHost" class="shipping-layout-3d-canvas shipping-module-canvas" aria-label="3D Packbild"></div>
+                  <p id="shippingModuleMeta" class="shipping-module-meta">Orientierung: - · Raster: - · Platzierte Stücke: -</p>
+                  <p id="shippingModuleStatus" class="shipping-module-status hint">3D-Packbild wird vorbereitet ...</p>
+                </article>
+              </section>
+              </details>
+
+              <details class="input-accordion-item">
+                <summary class="input-accordion-trigger">3) Einkauf, Amazon &amp; Launch</summary>
+              <section>
+                <div class="help-context">
+                  <div class="form-section-head">
+                    <div class="section-title-row">
+                      <span class="ui-icon" data-icon="cart" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><use href="#icon-cart"></use></svg>
+                      </span>
+                      <h3>3) Einkauf, Amazon & Launch</h3>
+                    </div>
+                    <button type="button" class="info-trigger" data-help-key="ui.purchase_launch" aria-label="Hilfe zu Einkauf, Amazon und Launch" aria-expanded="false">
+                      i
+                    </button>
+                  </div>
+                </div>
+                <p class="form-section-subtitle">Definiere Einkaufs- und Launchannahmen; Amazon/FBA wird automatisch eingepreist.</p>
+                <div class="grid cols-3">
+                  <label>
+                    EXW pro Einheit (USD)
+                    <input data-path="basic.exwUnit" type="number" min="0" step="0.01" />
+                  </label>
+                  <label>
+                    Marketplace
+                    <select data-path="basic.marketplace">
+                      <option value="DE">Amazon.de</option>
+                      <option value="FR">Amazon.fr</option>
+                      <option value="IT">Amazon.it</option>
+                      <option value="ES">Amazon.es</option>
+                    </select>
+                  </label>
+                  <label>
+                    Fulfillment-Modell
+                    <select data-path="basic.fulfillmentModel">
+                      <option value="fba">FBA</option>
+                      <option value="fbm" disabled>FBM (v2)</option>
+                    </select>
+                  </label>
+                  <label>
+                    Listing-Service
+                    <select data-path="basic.listingPackage">
+                      <option value="ai">KI</option>
+                      <option value="photographer">Fotograf</option>
+                      <option value="visual_advantage">Visual Advantage</option>
+                    </select>
+                  </label>
+                  <label>
+                    Nischenwettbewerb (Launch-Boost)
+                    <select data-path="basic.launchCompetition">
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </label>
+                </div>
+                <article id="fbaInfoCard" class="fba-info-card">
+                  <div class="fba-info-head">
+                    <div>
+                      <h4>FBA Fulfillment Fee (DE)</h4>
+                      <p class="hint">Auto-Berechnung: Maße + Versandgewicht -> DE Ratecard 2026-02 (Netto).</p>
+                    </div>
+                    <strong id="fbaInfoFeeUnit">-</strong>
+                  </div>
+                  <div class="fba-info-grid">
+                    <div>
+                      <span>Profil</span>
+                      <strong id="fbaInfoProfile">-</strong>
+                    </div>
+                    <div>
+                      <span>Auto-Tier</span>
+                      <strong id="fbaInfoTier">-</strong>
+                    </div>
+                    <div>
+                      <span>Preis laut Tabelle</span>
+                      <strong id="fbaInfoTableFee">-</strong>
+                      <small id="fbaInfoTableFeeMeta">Auto-Tier (DE Ratecard)</small>
+                    </div>
+                    <div>
+                      <span>Versandgewicht</span>
+                      <strong id="fbaInfoShippingWeight">-</strong>
+                      <small id="fbaInfoWeightBreakdown">-</small>
+                    </div>
+                    <div>
+                      <span>Quelle</span>
+                      <strong id="fbaInfoSource">-</strong>
+                      <a id="fbaInfoSourceLink" class="fba-source-link" href="#" target="_blank" rel="noopener noreferrer">Ratecard öffnen</a>
+                    </div>
+                  </div>
+                  <p id="fbaInfoFallback" class="hint warn hidden">-</p>
+                  <ul id="fbaInfoHints" class="fba-hints hidden"></ul>
+                </article>
+                <p class="hint">
+                  Währungslogik: EK/EXW in USD. Shipping, Amazon Fees, Launch und Overhead in EUR.
+                </p>
+              </section>
+              </details>
+            </form>
+	            <p class="hint">
+	              Alle weiteren Kosten werden aus Settings/Defaults abgeleitet. Du kannst die wichtigsten Schätzblöcke oben prüfen und überschreiben.
+	            </p>
+	            </section>
+	            </div>
+	          </section>
+
+          <section id="advancedPanel" class="card advanced-card hidden">
+            <div class="section-head">
+              <div>
+                <h2>Advanced Defaults & Overrides</h2>
+                <p>Produktspezifische Defaults sind transparent und je Produkt überschreibbar.</p>
+              </div>
+            </div>
+
+            <div class="advanced-grid">
+              <section id="advancedAdsSection">
+                <h3>Ads (TACoS)</h3>
+                <label class="override-row">
+                  <span>
+                    TACoS %
+                    <small data-assumed="ads.tacosRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.ads.overrideTacos" type="checkbox" />
+                    <input data-path="assumptions.ads.tacosRate" type="number" min="0" max="100" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Launch-Multiplier
+                    <small data-assumed="ads.launchMultiplier"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.ads.overrideLaunchMultiplier" type="checkbox" />
+                    <input data-path="assumptions.ads.launchMultiplier" type="number" min="1" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Launch-Monate (Ads Boost)
+                    <small data-assumed="ads.launchMonths"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.ads.overrideLaunchMonths" type="checkbox" />
+                    <input data-path="assumptions.ads.launchMonths" type="number" min="1" step="1" />
+                  </div>
+                </label>
+              </section>
+
+              <section id="advancedReturnsSection">
+                <h3>Retouren</h3>
+                <label class="override-row">
+                  <span>
+                    Retourenquote %
+                    <small data-assumed="returns.returnRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.returns.overrideReturnRate" type="checkbox" />
+                    <input data-path="assumptions.returns.returnRate" type="number" min="0" max="100" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Davon verkaufbar (%)
+                    <small data-assumed="returns.sellableShare"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.returns.overrideSellableShare" type="checkbox" />
+                    <input data-path="assumptions.returns.sellableShare" type="number" min="0" max="100" step="0.1" />
+                  </div>
+                </label>
+                <p class="hint">Nicht verkaufbar (%) wird automatisch als 100 - verkaufbar berechnet.</p>
+                <label class="override-row">
+                  <span>
+                    Handling je Retoure (EUR)
+                    <small data-assumed="returns.handlingCost"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.returns.overrideHandlingCost" type="checkbox" />
+                    <input data-path="assumptions.returns.handlingCost" type="number" min="0" step="0.01" />
+                  </div>
+                </label>
+              </section>
+
+              <section id="advancedLeakageSection">
+                <h3>Leakage / Overhead</h3>
+                <label class="override-row">
+                  <span>
+                    Leakage % vom Umsatz
+                    <small data-assumed="leakage.ratePct"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.leakage.overrideRatePct" type="checkbox" />
+                    <input data-path="assumptions.leakage.ratePct" type="number" min="0" max="20" step="0.1" />
+                  </div>
+                </label>
+              </section>
+
+              <section id="advancedImportSection">
+                <h3>Import & Amazon</h3>
+                <label class="override-row">
+                  <span>
+                    Zollsatz %
+                    <small data-assumed="import.customsDutyRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.import.overrideCustomsDutyRate" type="checkbox" />
+                    <input data-path="assumptions.import.customsDutyRate" type="number" min="0" max="40" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Referral Fee %
+                    <small data-assumed="amazon.referralRate"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.amazon.overrideReferralRate" type="checkbox" />
+                    <input data-path="assumptions.amazon.referralRate" type="number" min="0" max="25" step="0.1" />
+                  </div>
+                </label>
+                <div id="advancedFbaOverridePanel" class="fba-override-panel">
+                  <div class="fba-override-head">
+                    <strong>FBA Fee (Auto-Tier / Override)</strong>
+                    <small>Standard: DE-Ratecard. Optional kannst du auf einen manuellen Wert überschreiben.</small>
+                  </div>
+                  <p id="advancedFbaAutoHint" class="hint">Berechneter Tabellenpreis (DE Ratecard): -</p>
+                  <label class="toggle-row">
+                    <input data-path="assumptions.amazon.useManualFbaFee" type="checkbox" />
+                    <span>Override aktivieren (manueller FBA-Wert)</span>
+                  </label>
+                  <label class="fba-override-input">
+                    Manuelle FBA Fee / Einheit (EUR)
+                    <input data-path="assumptions.amazon.manualFbaFee" type="number" min="0" step="0.01" />
+                  </label>
+                  <small id="advancedFbaOverrideStatus" class="hint">Aktiv: Auto-Tier.</small>
+                </div>
+              </section>
+
+              <section id="advancedLifecycleSection">
+                <h3>Launch & Lifecycle</h3>
+                <label class="override-row">
+                  <span>
+                    Zielmarge % (für Max TACoS)
+                    <small data-assumed="lifecycle.targetMarginPct"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.lifecycle.overrideTargetMarginPct" type="checkbox" />
+                    <input data-path="assumptions.lifecycle.targetMarginPct" type="number" min="0" max="50" step="0.1" />
+                  </div>
+                </label>
+                <label class="override-row">
+                  <span>
+                    Weitere Lifecycle-Kosten / Monat (EUR)
+                    <small data-assumed="lifecycle.otherMonthlyCost"></small>
+                  </span>
+                  <div>
+                    <input data-path="assumptions.lifecycle.overrideOtherMonthlyCost" type="checkbox" />
+                    <input data-path="assumptions.lifecycle.otherMonthlyCost" type="number" min="0" step="0.01" />
+                  </div>
+                </label>
+              </section>
+
+              <section id="advancedOpsSection">
+                <h3>Zusatzkosten (Produkt/Logistikkette)</h3>
+                <label class="toggle-row">
+                  <input data-path="assumptions.extraCosts.overridePackagingGroup" type="checkbox" />
+                  <span>Eigene Verpackungs-/Stückkosten statt Settings</span>
+                </label>
+                <div class="admin-grid">
+                  <label>
+                    Verpackung pro Unit (EUR)
+                    <input data-path="assumptions.extraCosts.packagingPerUnitEur" type="number" min="0" step="0.01" />
+                  </label>
+                  <label>
+                    Weitere Kosten pro Unit (EUR)
+                    <input data-path="assumptions.extraCosts.otherUnitCostEur" type="number" min="0" step="0.01" />
+                  </label>
+                </div>
+
+                <label class="toggle-row">
+                  <input data-path="assumptions.extraCosts.overrideLogisticsGroup" type="checkbox" />
+                  <span>Eigene 3PL-/Lager-/Orderkosten statt Settings</span>
+                </label>
+                <div class="admin-grid">
+                  <label>Dokumentation pro Order (EUR)<input data-path="assumptions.extraCosts.docsPerOrderEur" type="number" min="0" step="0.1" /></label>
+                  <label>Frachtpapiere pro Order (EUR)<input data-path="assumptions.extraCosts.freightPapersPerOrderEur" type="number" min="0" step="0.1" /></label>
+                  <label>Receiving-Modus<select data-path="assumptions.extraCosts.receivingMode"><option value="sorted">sorted</option><option value="mixed">mixed</option></select></label>
+                  <label>3PL Receiving sorted je Karton (EUR)<input data-path="assumptions.extraCosts.receivingPerCartonSortedEur" type="number" min="0" step="0.01" /></label>
+                  <label>3PL Receiving mixed je Karton (EUR)<input data-path="assumptions.extraCosts.receivingPerCartonMixedEur" type="number" min="0" step="0.01" /></label>
+                  <label>3PL Lager je Palette/Monat (EUR)<input data-path="assumptions.extraCosts.storagePerPalletPerMonthEur" type="number" min="0" step="0.1" /></label>
+                  <label>Units je Palette<input data-path="assumptions.extraCosts.unitsPerPallet" type="number" min="1" step="1" /></label>
+                  <label>Ø 3PL Lagerdauer (Monate)<input data-path="assumptions.extraCosts.avg3PlStorageMonths" type="number" min="0" step="0.1" /></label>
+                  <label>Outbound base je Karton (EUR)<input data-path="assumptions.extraCosts.outboundBasePerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>Pick & Pack je Karton (EUR)<input data-path="assumptions.extraCosts.pickPackPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>FBA Processing je Karton (EUR)<input data-path="assumptions.extraCosts.fbaProcessingPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>Inserts je Karton<input data-path="assumptions.extraCosts.insertsPerCarton" type="number" min="0" step="1" /></label>
+                  <label>Insert je Insert (EUR)<input data-path="assumptions.extraCosts.insertPerInsertEur" type="number" min="0" step="0.01" /></label>
+                  <label>Labels je Karton<input data-path="assumptions.extraCosts.labelsPerCarton" type="number" min="0" step="1" /></label>
+                  <label>Drittland-Label je Label (EUR)<input data-path="assumptions.extraCosts.thirdCountryLabelPerLabelEur" type="number" min="0" step="0.01" /></label>
+                  <label>Carrier 3PL -> Amazon je Karton (EUR)<input data-path="assumptions.extraCosts.carrierCostPerCartonEur" type="number" min="0" step="0.01" /></label>
+                  <label>Amazon Lager je CBM/Monat (EUR)<input data-path="assumptions.extraCosts.amazonStoragePerCbmMonthEur" type="number" min="0" step="0.1" /></label>
+                  <label>Ø Amazon Lagerdauer (Monate)<input data-path="assumptions.extraCosts.avgAmazonStorageMonths" type="number" min="0" step="0.1" /></label>
+                </div>
+
+                <label class="toggle-row">
+                  <input data-path="assumptions.extraCosts.overrideLaunchOpsGroup" type="checkbox" />
+                  <span>Eigene Launch-Operationskosten statt Settings</span>
+                </label>
+                <div class="admin-grid">
+                  <label>Grußkarte pro Launch-Unit (EUR)<input data-path="assumptions.extraCosts.greetingCardPerLaunchUnitEur" type="number" min="0" step="0.01" /></label>
+                  <label>Samples je Produkt (EUR)<input data-path="assumptions.extraCosts.samplesPerProductEur" type="number" min="0" step="0.1" /></label>
+                  <label>Tooling je Produkt (EUR)<input data-path="assumptions.extraCosts.toolingPerProductEur" type="number" min="0" step="0.1" /></label>
+                  <label>Zertifikate je Produkt (EUR)<input data-path="assumptions.extraCosts.certificatesPerProductEur" type="number" min="0" step="0.1" /></label>
+                  <label>Inspection in China (EUR)<input data-path="assumptions.extraCosts.inspectionPerProductEur" type="number" min="0" step="0.1" /></label>
+                </div>
+              </section>
+
+            </div>
+          </section>
+
+          <section id="outputsCard" class="card outputs-card">
+            <div class="section-head">
+              <div>
+                <h2>Kostenblöcke & Treiber</h2>
+                <p>Nur Kostenblöcke in den Treiber-Listen; KPIs bleiben ausschließlich in der Decision-Bar.</p>
+              </div>
+            </div>
+
+            <section id="chainMapSection" class="chain-map">
+              <h3>Kosten entlang der Logistikkette</h3>
+              <p class="hint">Top-Treiber je Stufe nach Impact (Quick: Top 10, Validation: Top 20). Weitere Positionen lassen sich je Stufe einblenden.</p>
+              <div class="chain-grid">
+                <article>
+                  <h4>Lieferant</h4>
+                  <div id="chainSupplierChips" class="chain-chip-list"></div>
+                </article>
+                <article>
+                  <h4>Shipping zu 3PL</h4>
+                  <div id="chainImportChips" class="chain-chip-list"></div>
+                </article>
+                <article>
+                  <h4>3PL</h4>
+                  <div id="chainThreePlChips" class="chain-chip-list"></div>
+                </article>
+                <article>
+                  <h4>Amazon Inbound</h4>
+                  <div id="chainInboundChips" class="chain-chip-list"></div>
+                </article>
+                <article>
+                  <h4>Amazon</h4>
+                  <div id="chainAmazonChips" class="chain-chip-list"></div>
+                </article>
+                <article>
+                  <h4>Sonstiges & Lifecycle</h4>
+                  <div id="chainLaunchChips" class="chain-chip-list"></div>
+                </article>
+              </div>
+              <div class="cost-consistency-grid">
+                <article class="consistency-card">
+                  <span>Nebenkosten entlang der Kette</span>
+                  <strong id="chainTotalSummary">-</strong>
+                </article>
+                <article class="consistency-card">
+                  <span>Kosten nach Kategorie</span>
+                  <strong id="categoryTotalSummary">-</strong>
+                </article>
+                <article id="costDeltaCard" class="consistency-card">
+                  <span>Delta (Kette vs. Kategorie)</span>
+                  <strong id="costDeltaSummary">-</strong>
+                </article>
+              </div>
+            </section>
+
+            <section id="categoryMapSection" class="category-map">
+              <h3>Kosten nach Kategorie</h3>
+              <p class="hint">Alternative Sicht auf dieselben Kostenblöcke wie in der Lieferkette.</p>
+              <div class="block-grid">
+                <div id="costCategoryGrid" class="cost-category-grid"></div>
+              </div>
+            </section>
+            <p id="driverFocusHint" class="hint">
+              Tipp: Klicke auf eine Kostenzeile. Die wichtigsten Treiber werden markiert (Impact: niedrig/mittel/hoch).
+            </p>
+
+            <div id="sensitivitySection" class="sensitivity">
+              <h3>Sensitivität</h3>
+              <div class="sensitivity-controls">
+                <label>
+                  Preis (EUR brutto)
+                  <input id="sensSimPriceInput" type="number" min="0" step="0.01" />
+                </label>
+                <label>
+                  TACoS (%)
+                  <input id="sensSimTacosInput" type="number" min="0" max="100" step="0.1" />
+                </label>
+                <label>
+                  Absatz / Monat
+                  <input id="sensSimUnitsInput" type="number" min="0" step="1" />
+                </label>
+                <button id="sensSimResetBtn" type="button" class="btn btn-ghost">Zurücksetzen</button>
+              </div>
+              <p id="sensSimInfo" class="hint">Simulation inaktiv.</p>
+              <div class="sensitivity-grid">
+                <article><span>Preis -10%</span><strong id="sensPriceDown">-</strong></article>
+                <article><span>TACoS +2 pp</span><strong id="sensTacosUp">-</strong></article>
+                <article><span>Absatz -10%</span><strong id="sensUnitsDown">-</strong></article>
+                <article><span>Worst Case</span><strong id="sensWorst">-</strong></article>
+                <article><span>Best Case</span><strong id="sensBest">-</strong></article>
+              </div>
+            </div>
+          </section>
+          </div>
+        </section>
+      </section>
+
+      <section id="compareCard" class="card compare-card">
+        <div class="section-head">
+          <div>
+            <h2>Portfolio-Ansicht (sekundär)</h2>
+            <p>Nicht primär für Launch-Entscheidung; dient optional zur Priorisierung mehrerer Ideen.</p>
+          </div>
+          <div class="head-controls">
+            <label class="inline-select">
+              Sortieren
+              <select id="compareSort">
+                <option value="profit_desc">Gewinn netto/Monat (EUR) ↓</option>
+                <option value="db1_margin_desc">DB1-Marge ↓</option>
+                <option value="roi_desc">ROI ↓</option>
+                <option value="cash_roi_desc">Cash-ROI ↓</option>
+                <option value="payback_asc">Payback ↑</option>
+                <option value="shipping_asc">Shipping / Unit (EUR) ↑</option>
+                <option value="max_tacos_desc">Max TACoS ↓</option>
+              </select>
+            </label>
+            <label class="inline-select">
+              Filter
+              <select id="compareFilter">
+                <option value="all">Alle</option>
+                <option value="green">Ampel Grün</option>
+                <option value="orange">Ampel Orange</option>
+                <option value="red">Ampel Rot</option>
+                <option value="profit">Nur profitabel</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Produkt</th>
+                <th>Kategorie</th>
+                <th>Preis brutto (EUR)</th>
+                <th>Preis netto (EUR)</th>
+                <th>Shipping / Unit (EUR)</th>
+                <th>Landed / Unit (EUR)</th>
+                <th>DB1/Stück (EUR netto)</th>
+                <th>DB1-Marge %</th>
+                <th>Gewinn netto/Monat (EUR)</th>
+                <th>ROI %</th>
+                <th>Cash-ROI %</th>
+                <th>Payback</th>
+                <th>Break-even Preis brutto (EUR)</th>
+                <th>Max TACoS %</th>
+                <th>Ampel</th>
+                <th>Worst/Best Gewinn netto</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div id="driverModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="driverModalTitle">
+      <div class="modal-backdrop" data-modal-close="true"></div>
+      <section class="modal-card">
+        <header class="modal-head">
+          <div>
+            <h3 id="driverModalTitle">Treiber-Maske</h3>
+            <p id="driverModalSubtitle" class="hint"></p>
+          </div>
+          <button id="driverModalCloseBtn" class="btn btn-ghost" type="button">Schließen</button>
+        </header>
+        <div id="driverModalFields" class="modal-fields"></div>
+      </section>
+    </div>
+
+    <template id="productItemTemplate">
+      <li>
+        <button class="product-btn" type="button">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="name"></span>
+          <span class="meta"></span>
+          <span class="pill"></span>
+        </button>
+      </li>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="modules/packaging3d.js"></script>
+    <script src="modules/domain/shipping.js"></script>
+    <script src="modules/domain/market-estimator.js"></script>
+    <script src="modules/ui/market-estimator-charts.js"></script>
+    <script src="modules/ui/cockpit-charts.js"></script>
+    <script src="modules/ui/tooltips.js"></script>
+    <script src="modules/ui/shipping-dashboard.js"></script>
+    <script src="app.js"></script>
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        if (window.lucide && typeof window.lucide.createIcons === "function") {
+          window.lucide.createIcons();
+        }
+      });
+    </script>
+  </body>
+</html>

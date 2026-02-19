@@ -1,0 +1,10 @@
+{
+  "name": "amazon-fba-launch-decider",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "dev:web": "npm --prefix apps/web run dev",
+    "build:web": "npm --prefix apps/web install && npm --prefix apps/web run build",
+    "preview:web": "npm --prefix apps/web run preview"
+  }
+}
