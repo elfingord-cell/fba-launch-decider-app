@@ -1,0 +1,35 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - paragraph [ref=e5]: Amazon FBA 80/20 Modell
+      - 'heading "Produkt: -" [level=1] [ref=e6]'
+      - paragraph [ref=e7]: "Launch-Entscheider pro Produkt: schnelle Go/Watch/No-Go Bewertung mit Progressive Disclosure."
+      - generic [ref=e8]:
+        - paragraph [ref=e9]: "USD→EUR Kurs: wird geladen ..."
+        - button "Kurs aktualisieren" [ref=e10] [cursor=pointer]
+        - link "Zu Settings" [ref=e11] [cursor=pointer]:
+          - /url: settings.html
+    - generic [ref=e12]:
+      - article [ref=e13]:
+        - generic [ref=e14]: Produkte
+        - strong [ref=e15]: "0"
+      - article [ref=e16]:
+        - generic [ref=e17]: Speicher
+        - strong [ref=e18]: lokal
+  - generic [ref=e19]:
+    - heading "Login erforderlich" [level=2] [ref=e20]
+    - paragraph [ref=e21]: Melde dich an, um den gemeinsamen Workspace mit deinem Kollegen zu nutzen.
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - text: E-Mail
+        - textbox "E-Mail" [ref=e24]:
+          - /placeholder: du@firma.de
+      - generic [ref=e25]:
+        - text: Passwort
+        - textbox "Passwort" [ref=e26]:
+          - /placeholder: ••••••••
+    - generic [ref=e27]:
+      - button "Anmelden" [ref=e28] [cursor=pointer]
+      - button "Registrieren" [ref=e29] [cursor=pointer]
+    - paragraph [ref=e30]: Bitte anmelden, um auf den gemeinsamen Workspace zuzugreifen.
+  - text: Ampel-KPI Ampel-KPI Ampel-KPI
