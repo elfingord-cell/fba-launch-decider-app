@@ -4246,7 +4246,9 @@ function setAppMode(mode, reason = "") {
 function setSidebarDrawerOpen(isOpen) {
   const nextState = Boolean(isOpen);
   state.ui.sidebarDrawerOpen = nextState;
-  document.body.classList.toggle("sidebar-drawer-open", nextState);
+  if (document.body) {
+    document.body.classList.toggle("sidebar-drawer-open", nextState);
+  }
   if (dom.sidebarDrawerBackdrop) {
     dom.sidebarDrawerBackdrop.classList.toggle("hidden", !nextState);
   }
